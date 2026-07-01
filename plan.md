@@ -87,15 +87,15 @@ lib/
 # PHASES & TASKS
 
 ## Phase 0 — Project Scaffold & Infrastructure
-- [ ] 0.1 `flutter create` (org `io.sheikhy.app`), set up folder structure above.
-- [ ] 0.2 Add all dependencies; `flutter pub get`; `flutter analyze` clean.
-- [ ] 0.3 `AppConfig` reading `--dart-define` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SHEIKH_NAME`, `PRIMARY_COLOR`); commit `dart_define.example.json`.
-- [ ] 0.4 `Supabase.initialize` in `main.dart`; connectivity smoke test (`from('books').select().limit(1)`).
-- [ ] 0.5 Theme (`ColorScheme.fromSeed` light + dark, gold accent, Cairo font, cards/badges/progress styles); `ThemeCubit` + persistence.
-- [ ] 0.6 RTL + Arabic locale (`Locale('ar')`, delegates); global RTL verified.
-- [ ] 0.7 `go_router` skeleton + `AuthCubit`-driven role redirect (placeholders).
-- [ ] 0.8 Shared widgets: PrimaryButton, AppCard, ProgressBar, EmptyState, ErrorState, InitialsAvatar, SectionIcon registry (8 icons), StatusBadge, McqOptionCard, OfflineBanner.
-- [ ] 0.9 **Companion migration** `supabase/migrations/0001_app_support.sql` (you review + run): 3 student views; tighten `quiz_select_all`/`final_exam_q_select_all`/`questions_select_all` → `is_admin()`; `submit_final_exam(p_book_id,p_answers,p_started_at)` RPC (guards, attempt limit CC-13, server grade CC-18, insert attempt + cert ON CONFLICT DO NOTHING with **grade_label banding (≥90 ممتاز / ≥80 جيد جداً / else جيد)**, achievement notif); `grade_lesson_quiz` RPC; **verify `on_auth_user_created` exists — do not recreate**.
+- [x] 0.1 `flutter create` (org `io.sheikhy.app`), set up folder structure above.
+- [x] 0.2 Add all dependencies; `flutter pub get`; `flutter analyze` clean.
+- [x] 0.3 `AppConfig` reading `--dart-define` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SHEIKH_NAME`, `PRIMARY_COLOR`); commit `dart_define.example.json`.
+- [x] 0.4 `Supabase.initialize` in `main.dart`; connectivity smoke test (`from('books').select().limit(1)`).
+- [x] 0.5 Theme (`ColorScheme.fromSeed` light + dark, gold accent, Cairo font, cards/badges/progress styles); `ThemeCubit` + persistence.
+- [x] 0.6 RTL + Arabic locale (`Locale('ar')`, delegates); global RTL verified.
+- [x] 0.7 `go_router` skeleton + `AuthCubit`-driven role redirect (placeholders).
+- [x] 0.8 Shared widgets: PrimaryButton, AppCard, ProgressBar, EmptyState, ErrorState, InitialsAvatar, SectionIcon registry (8 icons), StatusBadge, McqOptionCard, OfflineBanner.
+- [x] 0.9 **Companion migration** `supabase/migrations/0001_app_support.sql` (you review + run): 3 student views; tighten `quiz_select_all`/`final_exam_q_select_all`/`questions_select_all` → `is_admin()`; `submit_final_exam(p_book_id,p_answers,p_started_at)` RPC (guards, attempt limit CC-13, server grade CC-18, insert attempt + cert ON CONFLICT DO NOTHING with **grade_label banding (≥90 ممتاز / ≥80 جيد جداً / else جيد)**, achievement notif); `grade_lesson_quiz` RPC; **verify `on_auth_user_created` exists — do not recreate**.
 - 🛑 **Review gate.**
 
 ## Phase 1 — Auth & Role Routing (`docs/screens/#1 Auth`)
