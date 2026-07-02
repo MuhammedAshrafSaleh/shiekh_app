@@ -45,7 +45,13 @@ GoRouter buildRouter(AuthCubit authCubit) {
       }
 
       if (authState is AuthInitial || authState is AuthLoading) {
-        return isOnSplash ? null : '/splash';
+        // Auth pages and splash handle loading in-place. Redirecting away from
+        // an auth page during loading destroys the page's BlocListener before
+        // it can handle the result (e.g. AuthEmailConfirmationRequired dialog,
+        // AuthError snackbar), and exposes a race with authStateChanges stream
+        // events that can cause spurious navigation to /home.
+        if (isOnSplash || isOnAuth) return null;
+        return '/splash';
       }
 
       if (authState is AuthError) {

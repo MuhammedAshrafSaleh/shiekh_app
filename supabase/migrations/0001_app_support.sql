@@ -57,15 +57,15 @@ create or replace view public.lesson_quiz_questions_student
   with (security_invoker = true)
 as
 select
-  id,
-  lesson_id,
-  order_index,
-  question_text,
-  choice_a,
-  choice_b,
-  choice_c,
-  choice_d,
-  created_at
+  q.id,
+  q.lesson_id,
+  q.order_index,
+  q.question_text,
+  q.choice_a,
+  q.choice_b,
+  q.choice_c,
+  q.choice_d,
+  q.created_at
 from public.lessons l
 join public.lesson_quiz_questions q on q.lesson_id = l.id
 where l.status = 'published';
