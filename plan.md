@@ -7,6 +7,11 @@ is **finalized and authoritative — not to be redesigned**. UI matches `docs/sc
 
 > **Workflow:** build **one phase at a time, stop for review** before the next. Each phase below is a
 > checklist of tasks.
+>
+> **Testing is incremental** — see `docs/testing_plan.md`. At every 🛑 review gate, that phase gets:
+> unit tests (repo layer), widget tests (complex stateful UI), a 3–6 item manual device checklist, and
+> its security spot-checks. Phase 8 is the full 30-corner-case sweep. Phases 0–1 coverage is already
+> in place (`test/features/auth/auth_repository_test.dart`, `test/widget_test.dart`).
 
 ---
 
@@ -96,7 +101,7 @@ lib/
 - [x] 0.7 `go_router` skeleton + `AuthCubit`-driven role redirect (placeholders).
 - [x] 0.8 Shared widgets: PrimaryButton, AppCard, ProgressBar, EmptyState, ErrorState, InitialsAvatar, SectionIcon registry (8 icons), StatusBadge, McqOptionCard, OfflineBanner.
 - [x] 0.9 **Companion migration** `supabase/migrations/0001_app_support.sql` (you review + run): 3 student views; tighten `quiz_select_all`/`final_exam_q_select_all`/`questions_select_all` → `is_admin()`; `submit_final_exam(p_book_id,p_answers,p_started_at)` RPC (guards, attempt limit CC-13, server grade CC-18, insert attempt + cert ON CONFLICT DO NOTHING with **grade_label banding (≥90 ممتاز / ≥80 جيد جداً / else جيد)**, achievement notif); `grade_lesson_quiz` RPC; **verify `on_auth_user_created` exists — do not recreate**.
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 1 — Auth & Role Routing (`docs/screens/#1 Auth`)
 - [x] 1.1 `AuthRepository` + `AuthCubit` (session, role, signIn/signUp/signOut/reset).
@@ -105,7 +110,7 @@ lib/
 - [x] 1.4 Sign Up (name/email/pw/confirm + **mandatory terms checkbox**; handle confirm-ON/OFF — F).
 - [x] 1.5 Forgot Password + Reset-Sent (open-email button, **45s resend cooldown**, neutral msg CC-30).
 - [x] 1.6 Deep link `io.sheikhy.app://reset-callback`; role-based redirect (student→Home, admin→Admin).
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 2 — Student Shell & Discovery (`#2 Student Home`)
 - [ ] 2.1 Bottom nav shell (الرئيسية/المسار/إنجازاتي/حسابي), active = green pill.
@@ -113,7 +118,7 @@ lib/
 - [ ] 2.3 Path: "جارية الآن"/"لم تبدأ بعد" tabs, continue-card deep-link, in-progress list, empty state.
 - [ ] 2.4 Scientific Sections grid (2-col, published book counts, fixed icons, empty state).
 - [ ] 2.5 Books-of-Section (published only, search, progress bars, 100%=gold).
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 3 — Book, Lesson, Q&A (`#3 Video Section`)
 - [ ] 3.1 Book Details: cover/desc/overall progress, numbered lessons (complete/locked), locked Final-Exam card.
@@ -126,7 +131,7 @@ lib/
 - [ ] 3.8 Progress/completion (rule L): upsert `lesson_progress`; recompute book % vs published lessons (CC-1/CC-21).
 - [ ] 3.9 Q&A bottom sheet (privacy notice, char counter) → insert `student_questions` (pending, lesson+book).
 - [ ] 3.10 Book-level Q&A screen via `student_questions_public` (peer-anonymous CC-22; pending badge/answers).
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 4 — Final Exam, Certificates, Achievements (`#3`, `#2`)
 - [ ] 4.1 `ExamBloc` (timer stream, answers map, navigator status, resume/auto-submit CC-11/CC-12).
@@ -136,14 +141,14 @@ lib/
 - [ ] 4.5 Result screen (score ring, correct count, cert preview, download/back).
 - [ ] 4.6 Certificate client-side PDF (`pdf`+`printing`) + share/save; list from `certificates`.
 - [ ] 4.7 Achievements: 3 stat cards, activity heatmap (M), certificates list, empty state.
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 5 — Profile & Notifications (`#2`)
 - [ ] 5.1 Profile (initials avatar, 3 stats, list: شهاداتي/تغيير كلمة المرور/الوضع الليلي toggle/عن التطبيق/تسجيل الخروج).
 - [ ] 5.2 Edit Profile (name editable, email read-only, change-password w/ current-password verify).
 - [ ] 5.3 Notifications: uniform cards, unread dots + light bg, deep-link on tap, mark-all-read (bulk `notification_reads`), Realtime live-update.
 - [ ] 5.4 *(Optional)* Topic-based FCM (`students` topic) + Edge Function on insert — N.
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 6 — Admin Core (`#4 Admin Home`)
 - [ ] 6.1 Admin 2-tab shell (لوحة التحكم/الإعدادات), gold active pill.
@@ -151,7 +156,7 @@ lib/
 - [ ] 6.3 Section mgmt: name + fixed 8-icon picker + desc; list w/ counts; delete-restrict error (CC-3).
 - [ ] 6.4 Book mgmt: cover (bucket G), title/desc/section dropdown, **featured toggle + order** (3–5 cap warning CC-24), dual status axes (status/review_status).
 - [ ] 6.5 Banner mgmt: add/edit/delete, order, `is_active`, book/external link (CC-26 nullable target).
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 7 — Admin Authoring (`#5 Add Lesson`, `#6 Book Stats`)
 - [ ] 7.1 Lesson mgmt: 4 tabs (video/audio/PDF/quiz) with **one sticky "حفظ الدرس" → unified single-record save**.
@@ -161,7 +166,7 @@ lib/
 - [ ] 7.5 Per-book dashboard: combined Lessons+stats+recent-questions tab; Statistics (completion, students, avg score+stars, enrollment chart via `fl_chart`).
 - [ ] 7.6 Admin Q&A answering (full identity, pending/answered tabs, inline reply → answered + notify asker).
 - [ ] 7.7 Admin Notifications create (4 authorable types, char counter, link, immediate/schedule, preview).
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 8 — Hardening & White-label
 - [ ] 8.1 Sweep all 30 corner cases (table below); offline/error/empty states everywhere.
@@ -169,7 +174,7 @@ lib/
 - [ ] 8.3 Performance (lazy/paginated lists, ~2s Home/Path).
 - [ ] 8.4 Security spot-check (student cannot read peer identity or any `correct_choice`).
 - [ ] 8.5 White-label README (re-deploy steps: new Supabase → run schema + migration → `--dart-define` → swap brand assets; CC-29 admin recovery SQL).
-- 🛑 **Review gate.**
+- 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ---
 

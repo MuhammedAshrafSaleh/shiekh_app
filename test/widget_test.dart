@@ -1,51 +1,47 @@
 // test/widget_test.dart
+//
+// Retroactive widget coverage for Phase 1 auth screens.
+// Verifies each page renders its required Arabic copy and runs client-side
+// validation. AuthRepository is mocked so no Supabase project is needed.
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
-import 'package:sheikh_app/features/auth/view/login_page.dart';
-import 'package:sheikh_app/features/auth/view/signup_page.dart';
-import 'package:sheikh_app/features/auth/view/forgot_password_page.dart';
-import 'package:sheikh_app/features/auth/view/reset_sent_page.dart';
-import 'package:sheikh_app/features/auth/view/splash_page.dart';
-import 'package:sheikh_app/features/auth/cubit/auth_cubit.dart';
-import 'package:sheikh_app/features/auth/cubit/auth_state.dart';
-import 'package:sheikh_app/core/theme/app_theme.dart';
-import 'package:sheikh_app/features/notifications/cubit/connectivity_cubit.dart';
+import 'package:sheikhy_app/core/theme/app_theme.dart';
+import 'package:sheikhy_app/features/auth/cubit/auth_cubit.dart';
+import 'package:sheikhy_app/features/auth/data/auth_repository.dart';
+import 'package:sheikhy_app/features/auth/view/forgot_password_page.dart';
+import 'package:sheikhy_app/features/auth/view/login_page.dart';
+import 'package:sheikhy_app/features/auth/view/reset_sent_page.dart';
+import 'package:sheikhy_app/features/auth/view/signup_page.dart';
+import 'package:sheikhy_app/features/auth/view/splash_page.dart';
 
-// Minimal AuthCubit mock
-class _FakeAuthCubit extends AuthCubit {
-  _FakeAuthCubit() : super(_FakeAuthRepo());
+class _MockAuthRepository extends Mock implements AuthRepository {}
+
+/// Builds an AuthCubit backed by a mock repo whose auth stream never fires,
+/// so the page under test stays in its initial (unauthenticated) render.
+AuthCubit _stubCubit() {
+  final repo = _MockAuthRepository();
+  when(() => repo.authStateChanges).thenAnswer((_) => const Stream.empty());
+  when(() => repo.currentSession).thenReturn(null);
+  return AuthCubit(repo);
 }
 
-class _FakeAuthRepo extends Fake implements dynamic {
-  @override dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
-}
-
-Widget _wrap(Widget child, {AuthState initialState = const _Unauth()}) {
+Widget _wrap(Widget child) {
   return MaterialApp(
     locale: const Locale('ar'),
     theme: AppTheme.light(primaryColor: const Color(0xFF1B5E20)),
     home: BlocProvider<AuthCubit>(
-      create: (_) => _FakeAuthCubit(),
+      create: (_) => _stubCubit(),
       child: child,
     ),
   );
 }
 
-class _Unauth extends AuthUnauthenticated {
-  const _Unauth();
-}
-
 void main() {
   testWidgets('SplashPage builds', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('ar'),
-        theme: AppTheme.light(primaryColor: const Color(0xFF1B5E20)),
-        home: const SplashPage(),
-      ),
-    );
+    await tester.pumpWidget(_wrap(const SplashPage()));
     await tester.pump();
     expect(find.byType(SplashPage), findsOneWidget);
   });
@@ -63,7 +59,6 @@ void main() {
   testWidgets('LoginPage validates empty fields', (tester) async {
     await tester.pumpWidget(_wrap(const LoginPage()));
     await tester.pump();
-    // Tap login button with empty fields
     await tester.tap(find.text('تسجيل الدخول'));
     await tester.pumpAndSettle();
     expect(find.text('أدخل بريدك الإلكتروني'), findsOneWidget);
@@ -80,7 +75,9 @@ void main() {
   testWidgets('SignupPage validates empty fields', (tester) async {
     await tester.pumpWidget(_wrap(const SignupPage()));
     await tester.pump();
-    await tester.tap(find.text('إنشاء الحساب'));
+    final submit = find.text('إنشاء الحساب');
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
     await tester.pumpAndSettle();
     expect(find.text('أدخل اسمك الكامل'), findsOneWidget);
   });
@@ -94,16 +91,7 @@ void main() {
   });
 
   testWidgets('ResetSentPage shows email and resend UI', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('ar'),
-        theme: AppTheme.light(primaryColor: const Color(0xFF1B5E20)),
-        home: BlocProvider<AuthCubit>(
-          create: (_) => _FakeAuthCubit(),
-          child: const ResetSentPage(email: 'test@example.com'),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_wrap(const ResetSentPage(email: 'test@example.com')));
     await tester.pump();
     expect(find.text('تم إرسال الرابط بنجاح'), findsOneWidget);
     expect(find.text('test@example.com'), findsOneWidget);
