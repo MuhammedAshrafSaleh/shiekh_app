@@ -68,7 +68,21 @@ class AuthCubit extends Cubit<AuthState> {
     );
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (_) => _log.info('signUp OK'),
+      (confirmationRequired) {
+        if (confirmationRequired) {
+          emit(AuthEmailConfirmationRequired());
+        }
+        // else: authStateChanges stream fires and emits AuthAuthenticated
+      },
+    );
+  }
+
+  Future<void> resetPassword(String email) async {
+    emit(AuthLoading());
+    final result = await _repo.resetPassword(email);
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(AuthPasswordResetSent(email)),
     );
   }
 

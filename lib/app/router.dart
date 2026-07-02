@@ -4,6 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/cubit/auth_state.dart';
+import '../features/auth/view/forgot_password_page.dart';
+import '../features/auth/view/login_page.dart';
+import '../features/auth/view/reset_sent_page.dart';
+import '../features/auth/view/signup_page.dart';
+import '../features/auth/view/splash_page.dart';
 
 // --- Placeholder pages (replaced phase by phase) ---
 class _PlaceholderPage extends StatelessWidget {
@@ -25,13 +30,27 @@ GoRouter buildRouter(AuthCubit authCubit) {
     refreshListenable: _AuthNotifier(authCubit),
     redirect: (context, state) {
       final authState = authCubit.state;
-      final isOnSplash = state.matchedLocation == '/splash';
-      final isOnAuth = state.matchedLocation.startsWith('/login') ||
-          state.matchedLocation.startsWith('/signup') ||
-          state.matchedLocation.startsWith('/forgot-password');
+      final loc = state.matchedLocation;
+
+      final isOnSplash = loc == '/splash';
+      final isOnAuth = loc.startsWith('/login') ||
+          loc.startsWith('/signup') ||
+          loc.startsWith('/forgot-password') ||
+          loc.startsWith('/reset-sent') ||
+          loc.startsWith('/reset-callback');
+
+      // Transient states — don't redirect; let BlocListeners in the pages drive navigation
+      if (authState is AuthPasswordResetSent || authState is AuthEmailConfirmationRequired) {
+        return null;
+      }
 
       if (authState is AuthInitial || authState is AuthLoading) {
         return isOnSplash ? null : '/splash';
+      }
+
+      if (authState is AuthError) {
+        // Stay on auth screens; the BlocListener in each page shows the error
+        return isOnAuth ? null : '/login';
       }
 
       if (authState is AuthUnauthenticated) {
@@ -42,7 +61,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
         if (isOnAuth || isOnSplash) {
           return authState.isAdmin ? '/admin' : '/home';
         }
-        if (state.matchedLocation.startsWith('/admin') && !authState.isAdmin) {
+        if (loc.startsWith('/admin') && !authState.isAdmin) {
           return '/home';
         }
       }
@@ -52,19 +71,33 @@ GoRouter buildRouter(AuthCubit authCubit) {
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (ctx, _) => const _PlaceholderPage('Splash'),
+        builder: (_, _) => const SplashPage(),
       ),
       GoRoute(
         path: '/login',
-        builder: (ctx, _) => const _PlaceholderPage('تسجيل الدخول'),
+        builder: (_, _) => const LoginPage(),
       ),
       GoRoute(
         path: '/signup',
-        builder: (ctx, _) => const _PlaceholderPage('إنشاء حساب'),
+        builder: (_, _) => const SignupPage(),
       ),
       GoRoute(
         path: '/forgot-password',
-        builder: (ctx, _) => const _PlaceholderPage('نسيت كلمة المرور'),
+        builder: (_, _) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/reset-sent',
+        builder: (_, state) {
+          final email = state.extra as String? ?? '';
+          return ResetSentPage(email: email);
+        },
+      ),
+      // Deep link callback from Supabase password-reset email
+      // Supabase Flutter SDK automatically picks up the session from the URL fragment;
+      // authStateChanges fires and the redirect above routes the user correctly.
+      GoRoute(
+        path: '/reset-callback',
+        builder: (_, _) => const SplashPage(),
       ),
 
       // --- Student Shell ---
@@ -73,19 +106,19 @@ GoRouter buildRouter(AuthCubit authCubit) {
         routes: [
           GoRoute(
             path: '/home',
-            builder: (ctx, _) => const _PlaceholderPage('الرئيسية'),
+            builder: (_, _) => const _PlaceholderPage('الرئيسية'),
           ),
           GoRoute(
             path: '/path',
-            builder: (ctx, _) => const _PlaceholderPage('مساري'),
+            builder: (_, _) => const _PlaceholderPage('مساري'),
           ),
           GoRoute(
             path: '/achievements',
-            builder: (ctx, _) => const _PlaceholderPage('إنجازاتي'),
+            builder: (_, _) => const _PlaceholderPage('إنجازاتي'),
           ),
           GoRoute(
             path: '/profile',
-            builder: (ctx, _) => const _PlaceholderPage('حسابي'),
+            builder: (_, _) => const _PlaceholderPage('حسابي'),
           ),
         ],
       ),
@@ -96,11 +129,11 @@ GoRouter buildRouter(AuthCubit authCubit) {
         routes: [
           GoRoute(
             path: '/admin',
-            builder: (ctx, _) => const _PlaceholderPage('لوحة التحكم'),
+            builder: (_, _) => const _PlaceholderPage('لوحة التحكم'),
           ),
           GoRoute(
             path: '/admin/settings',
-            builder: (ctx, _) => const _PlaceholderPage('الإعدادات'),
+            builder: (_, _) => const _PlaceholderPage('الإعدادات'),
           ),
         ],
       ),

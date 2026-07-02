@@ -32,18 +32,20 @@ class AuthRepository {
     }
   }
 
-  Future<Either<Failure, void>> signUp({
+  // Returns true if email confirmation is required, false if signed in immediately.
+  Future<Either<Failure, bool>> signUp({
     required String email,
     required String password,
     required String fullName,
   }) async {
     try {
-      await _client.auth.signUp(
+      final response = await _client.auth.signUp(
         email: email,
         password: password,
         data: {'full_name': fullName},
       );
-      return const Right(null);
+      final confirmationRequired = response.session == null;
+      return Right(confirmationRequired);
     } on AuthException catch (e) {
       _log.warning('signUp failed: ${e.message}');
       return Left(AuthFailure(_mapAuthError(e.message)));

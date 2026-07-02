@@ -99,12 +99,12 @@ lib/
 - 🛑 **Review gate.**
 
 ## Phase 1 — Auth & Role Routing (`docs/screens/#1 Auth`)
-- [ ] 1.1 `AuthRepository` + `AuthCubit` (session, role, signIn/signUp/signOut/reset).
-- [ ] 1.2 Splash (brand logo/name, "تحت إشراف اللجنة العلمية", loader → route by session/role).
-- [ ] 1.3 Login (email/password + show-hide, forgot link, inline Arabic errors — CC-27).
-- [ ] 1.4 Sign Up (name/email/pw/confirm + **mandatory terms checkbox**; handle confirm-ON/OFF — F).
-- [ ] 1.5 Forgot Password + Reset-Sent (open-email button, **45s resend cooldown**, neutral msg CC-30).
-- [ ] 1.6 Deep link `io.sheikhy.app://reset-callback`; role-based redirect (student→Home, admin→Admin).
+- [x] 1.1 `AuthRepository` + `AuthCubit` (session, role, signIn/signUp/signOut/reset).
+- [x] 1.2 Splash (brand logo/name, "تحت إشراف اللجنة العلمية", loader → route by session/role).
+- [x] 1.3 Login (email/password + show-hide, forgot link, inline Arabic errors — CC-27).
+- [x] 1.4 Sign Up (name/email/pw/confirm + **mandatory terms checkbox**; handle confirm-ON/OFF — F).
+- [x] 1.5 Forgot Password + Reset-Sent (open-email button, **45s resend cooldown**, neutral msg CC-30).
+- [x] 1.6 Deep link `io.sheikhy.app://reset-callback`; role-based redirect (student→Home, admin→Admin).
 - 🛑 **Review gate.**
 
 ## Phase 2 — Student Shell & Discovery (`#2 Student Home`)
