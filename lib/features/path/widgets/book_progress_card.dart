@@ -1,0 +1,103 @@
+// lib/features/path/widgets/book_progress_card.dart
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/constants/app_spacing.dart';
+import '../../../core/widgets/progress_bar.dart';
+import '../../../models/book_with_progress_entity.dart';
+
+class BookProgressCard extends StatelessWidget {
+  final BookWithProgressEntity item;
+
+  const BookProgressCard({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final progressPercent = (item.progress * 100).toInt();
+
+    return Card(
+      margin: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => context.go('/books/${item.book.id}'),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 64,
+                  height: 80,
+                  child: item.book.coverImageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: item.book.coverImageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) =>
+                              _ThumbnailPlaceholder(title: item.book.title, theme: theme),
+                          errorWidget: (_, _, _) =>
+                              _ThumbnailPlaceholder(title: item.book.title, theme: theme),
+                        )
+                      : _ThumbnailPlaceholder(title: item.book.title, theme: theme),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.book.title,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '$progressPercent٪',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    ProgressBar(value: item.progress),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThumbnailPlaceholder extends StatelessWidget {
+  final String title;
+  final ThemeData theme;
+
+  const _ThumbnailPlaceholder({required this.title, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: theme.colorScheme.secondaryContainer,
+      child: Center(
+        child: Text(
+          title.isNotEmpty ? title[0] : '؟',
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: theme.colorScheme.onSecondaryContainer,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}

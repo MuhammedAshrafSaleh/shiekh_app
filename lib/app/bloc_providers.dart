@@ -6,7 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/theme_cubit.dart';
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/data/auth_repository.dart';
+import '../features/home/data/home_repository.dart';
 import '../features/notifications/cubit/connectivity_cubit.dart';
+import '../features/path/data/path_repository.dart';
+import '../features/sections/data/section_repository.dart';
 import 'app.dart';
 
 class SheikhyProviders extends StatelessWidget {
@@ -16,27 +19,40 @@ class SheikhyProviders extends StatelessWidget {
   Widget build(BuildContext context) {
     final supabase = Supabase.instance.client;
 
-    return MultiRepositoryProvider(
+    return MultiBlocProvider(
       providers: [
-        RepositoryProvider<AuthRepository>(
-          create: (_) => AuthRepository(supabase),
+        BlocProvider<ThemeCubit>(
+          create: (_) => ThemeCubit()..load(),
         ),
-        // Feature repositories are added here as phases are completed
+        BlocProvider<ConnectivityCubit>(
+          create: (_) => ConnectivityCubit(),
+        ),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider<ThemeCubit>(
-            create: (_) => ThemeCubit()..load(),
-          ),
-          BlocProvider<ConnectivityCubit>(
-            create: (_) => ConnectivityCubit(),
-          ),
-          BlocProvider<AuthCubit>(
-            create: (ctx) => AuthCubit(ctx.read<AuthRepository>())
-              ..initialize(),
-          ),
-        ],
-        child: const SheikhyApp(),
+      child: Builder(
+        builder: (ctx) {
+          final connectivity = ctx.read<ConnectivityCubit>();
+          return MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider<AuthRepository>(
+                create: (_) => AuthRepository(supabase),
+              ),
+              RepositoryProvider<HomeRepository>(
+                create: (_) => HomeRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<PathRepository>(
+                create: (_) => PathRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<SectionRepository>(
+                create: (_) => SectionRepository(supabase, connectivity),
+              ),
+            ],
+            child: BlocProvider<AuthCubit>(
+              create: (repoCtx) =>
+                  AuthCubit(repoCtx.read<AuthRepository>())..initialize(),
+              child: const SheikhyApp(),
+            ),
+          );
+        },
       ),
     );
   }

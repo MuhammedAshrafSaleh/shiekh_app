@@ -90,6 +90,15 @@ abstract final class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        indicatorColor: scheme.primary,
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: scheme.onPrimary);
+          }
+          return IconThemeData(color: scheme.onSurfaceVariant);
+        }),
+      ),
     );
   }
 }

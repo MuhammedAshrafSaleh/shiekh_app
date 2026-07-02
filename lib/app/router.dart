@@ -1,5 +1,6 @@
 // lib/app/router.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/cubit/auth_cubit.dart';
@@ -9,8 +10,18 @@ import '../features/auth/view/login_page.dart';
 import '../features/auth/view/reset_sent_page.dart';
 import '../features/auth/view/signup_page.dart';
 import '../features/auth/view/splash_page.dart';
+import '../features/home/cubit/home_cubit.dart';
+import '../features/home/data/home_repository.dart';
+import '../features/home/view/home_page.dart';
+import '../features/path/cubit/path_cubit.dart';
+import '../features/path/data/path_repository.dart';
+import '../features/path/view/path_page.dart';
+import '../features/sections/cubit/section_books_cubit.dart';
+import '../features/sections/cubit/sections_cubit.dart';
+import '../features/sections/data/section_repository.dart';
+import '../features/sections/view/section_books_page.dart';
+import '../features/sections/view/sections_page.dart';
 
-// --- Placeholder pages (replaced phase by phase) ---
 class _PlaceholderPage extends StatelessWidget {
   final String title;
   const _PlaceholderPage(this.title);
@@ -39,23 +50,17 @@ GoRouter buildRouter(AuthCubit authCubit) {
           loc.startsWith('/reset-sent') ||
           loc.startsWith('/reset-callback');
 
-      // Transient states — don't redirect; let BlocListeners in the pages drive navigation
-      if (authState is AuthPasswordResetSent || authState is AuthEmailConfirmationRequired) {
+      if (authState is AuthPasswordResetSent ||
+          authState is AuthEmailConfirmationRequired) {
         return null;
       }
 
       if (authState is AuthInitial || authState is AuthLoading) {
-        // Auth pages and splash handle loading in-place. Redirecting away from
-        // an auth page during loading destroys the page's BlocListener before
-        // it can handle the result (e.g. AuthEmailConfirmationRequired dialog,
-        // AuthError snackbar), and exposes a race with authStateChanges stream
-        // events that can cause spurious navigation to /home.
         if (isOnSplash || isOnAuth) return null;
         return '/splash';
       }
 
       if (authState is AuthError) {
-        // Stay on auth screens; the BlocListener in each page shows the error
         return isOnAuth ? null : '/login';
       }
 
@@ -98,9 +103,6 @@ GoRouter buildRouter(AuthCubit authCubit) {
           return ResetSentPage(email: email);
         },
       ),
-      // Deep link callback from Supabase password-reset email
-      // Supabase Flutter SDK automatically picks up the session from the URL fragment;
-      // authStateChanges fires and the redirect above routes the user correctly.
       GoRoute(
         path: '/reset-callback',
         builder: (_, _) => const SplashPage(),
@@ -112,11 +114,19 @@ GoRouter buildRouter(AuthCubit authCubit) {
         routes: [
           GoRoute(
             path: '/home',
-            builder: (_, _) => const _PlaceholderPage('الرئيسية'),
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  HomeCubit(ctx.read<HomeRepository>())..loadHome(),
+              child: const HomePage(),
+            ),
           ),
           GoRoute(
             path: '/path',
-            builder: (_, _) => const _PlaceholderPage('مساري'),
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  PathCubit(ctx.read<PathRepository>())..loadPath(),
+              child: const PathPage(),
+            ),
           ),
           GoRoute(
             path: '/achievements',
@@ -127,6 +137,32 @@ GoRouter buildRouter(AuthCubit authCubit) {
             builder: (_, _) => const _PlaceholderPage('حسابي'),
           ),
         ],
+      ),
+
+      // --- Full-page routes (not in shell) ---
+      GoRoute(
+        path: '/sections',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              SectionsCubit(ctx.read<SectionRepository>())..loadSections(),
+          child: const SectionsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/sections/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return BlocProvider(
+            create: (ctx) =>
+                SectionBooksCubit(ctx.read<SectionRepository>())
+                  ..loadBooks(id),
+            child: SectionBooksPage(sectionId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/books/:id',
+        builder: (_, state) => _PlaceholderPage('تفاصيل الكتاب'),
       ),
 
       // --- Admin Shell ---
@@ -147,22 +183,47 @@ GoRouter buildRouter(AuthCubit authCubit) {
   );
 }
 
-// --------------- Shell widgets (placeholder nav) ---------------
+// --------------- Shell widgets ---------------
 
 class _StudentShell extends StatelessWidget {
   final Widget child;
   const _StudentShell({required this.child});
+
+  int _selectedIndex(BuildContext context) {
+    final loc = GoRouterState.of(context).matchedLocation;
+    if (loc.startsWith('/path')) return 1;
+    if (loc.startsWith('/achievements')) return 2;
+    if (loc.startsWith('/profile')) return 3;
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex(context),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'الرئيسية'),
-          NavigationDestination(icon: Icon(Icons.route_outlined), label: 'مساري'),
-          NavigationDestination(icon: Icon(Icons.emoji_events_outlined), label: 'إنجازاتي'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'حسابي'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'الرئيسية',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.route_outlined),
+            selectedIcon: Icon(Icons.route),
+            label: 'مساري',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.emoji_events_outlined),
+            selectedIcon: Icon(Icons.emoji_events),
+            label: 'إنجازاتي',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'حسابي',
+          ),
         ],
         onDestinationSelected: (i) {
           const routes = ['/home', '/path', '/achievements', '/profile'];
@@ -183,8 +244,14 @@ class _AdminShell extends StatelessWidget {
       body: child,
       bottomNavigationBar: NavigationBar(
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'لوحة التحكم'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'الإعدادات'),
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            label: 'لوحة التحكم',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            label: 'الإعدادات',
+          ),
         ],
         onDestinationSelected: (i) {
           const routes = ['/admin', '/admin/settings'];

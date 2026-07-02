@@ -113,11 +113,11 @@ lib/
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 2 — Student Shell & Discovery (`#2 Student Home`)
-- [ ] 2.1 Bottom nav shell (الرئيسية/المسار/إنجازاتي/حسابي), active = green pill.
-- [ ] 2.2 Home: banner carousel (`home_banners` active, ordered) + featured books (`is_featured && published`) with progress; banner tap → book/external; empty/default state.
-- [ ] 2.3 Path: "جارية الآن"/"لم تبدأ بعد" tabs, continue-card deep-link, in-progress list, empty state.
-- [ ] 2.4 Scientific Sections grid (2-col, published book counts, fixed icons, empty state).
-- [ ] 2.5 Books-of-Section (published only, search, progress bars, 100%=gold).
+- [x] 2.1 Bottom nav shell (الرئيسية/المسار/إنجازاتي/حسابي), active = green pill.
+- [x] 2.2 Home: banner carousel (`home_banners` active, ordered) + featured books (`is_featured && published`) with progress; banner tap → book/external; empty/default state.
+- [x] 2.3 Path: "جارية الآن"/"لم تبدأ بعد" tabs, continue-card deep-link, in-progress list, empty state.
+- [x] 2.4 Scientific Sections grid (2-col, published book counts, fixed icons, empty state).
+- [x] 2.5 Books-of-Section (published only, search, progress bars, 100%=gold).
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 3 — Book, Lesson, Q&A (`#3 Video Section`)

@@ -1,0 +1,128 @@
+// lib/features/home/data/home_repository.dart
+import 'dart:io';
+
+import 'package:dartz/dartz.dart';
+import 'package:logging/logging.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/errors/failures.dart';
+import '../../../features/notifications/cubit/connectivity_cubit.dart';
+import '../../../models/banner_entity.dart';
+import '../../../models/book_entity.dart';
+import '../../../models/book_with_progress_entity.dart';
+
+class HomeRepository {
+  final SupabaseClient _client;
+  final ConnectivityCubit _connectivity;
+  final _log = Logger('HomeRepository');
+
+  HomeRepository(this._client, this._connectivity);
+
+  Either<Failure, T>? _checkNetwork<T>() {
+    if (!_connectivity.state.isOffline) return null;
+    return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+  }
+
+  Future<Either<Failure, List<BannerEntity>>> getActiveBanners() async {
+    final networkError = _checkNetwork<List<BannerEntity>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final response = await _client
+          .from('home_banners')
+          .select()
+          .eq('is_active', true)
+          .order('order_index')
+          .limit(10);
+
+      final banners = (response as List)
+          .map((e) => BannerEntity.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return Right(banners);
+    } on PostgrestException catch (e) {
+      _log.warning('getActiveBanners: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, List<BookWithProgressEntity>>> getFeaturedBooks() async {
+    final networkError = _checkNetwork<List<BookWithProgressEntity>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+
+      final booksRaw = await _client
+          .from('books')
+          .select()
+          .eq('is_featured', true)
+          .eq('status', 'published')
+          .order('featured_order', nullsFirst: false)
+          .limit(20);
+
+      final books = (booksRaw as List)
+          .map((e) => BookEntity.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      if (books.isEmpty) return const Right([]);
+
+      final bookIds = books.map((b) => b.id).toList();
+
+      final lessonsRaw = await _client
+          .from('lessons')
+          .select('id, book_id')
+          .eq('status', 'published')
+          .inFilter('book_id', bookIds)
+          .limit(500);
+
+      final Map<String, List<String>> lessonIdsByBook = {};
+      final Map<String, String> lessonIdToBookId = {};
+      for (final row in (lessonsRaw as List)) {
+        final bookId = row['book_id'] as String;
+        final lessonId = row['id'] as String;
+        lessonIdsByBook.putIfAbsent(bookId, () => []).add(lessonId);
+        lessonIdToBookId[lessonId] = bookId;
+      }
+
+      final Map<String, int> completedByBook = {};
+      if (userId != null && lessonIdToBookId.isNotEmpty) {
+        final allLessonIds = lessonIdToBookId.keys.toList();
+        final progressRaw = await _client
+            .from('lesson_progress')
+            .select('lesson_id')
+            .eq('user_id', userId)
+            .eq('completed', true)
+            .inFilter('lesson_id', allLessonIds);
+
+        for (final row in (progressRaw as List)) {
+          final lessonId = row['lesson_id'] as String;
+          final bookId = lessonIdToBookId[lessonId];
+          if (bookId != null) {
+            completedByBook[bookId] = (completedByBook[bookId] ?? 0) + 1;
+          }
+        }
+      }
+
+      final result = books.map((book) {
+        final total = lessonIdsByBook[book.id]?.length ?? 0;
+        final completed = completedByBook[book.id] ?? 0;
+        return BookWithProgressEntity(
+          book: book,
+          totalLessons: total,
+          completedLessons: completed,
+          progress: completed / (total > 0 ? total : 1),
+          isEnrolled: false,
+        );
+      }).toList();
+
+      return Right(result);
+    } on PostgrestException catch (e) {
+      _log.warning('getFeaturedBooks: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+}
