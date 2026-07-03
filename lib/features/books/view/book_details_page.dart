@@ -219,7 +219,10 @@ class _BookDetailsView extends StatelessWidget {
                 isEnrolled: state.isEnrolled,
                 isExamPublished: state.hasFinalExam,
                 completionPercentage: state.completionPercentage,
-                onTap: () => context.push('/books/$bookId/exam'),
+                onTap: () => context.push(
+                  '/books/$bookId/exam',
+                  extra: state.book.title,
+                ),
               ),
             ),
           ),

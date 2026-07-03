@@ -134,13 +134,13 @@ lib/
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 4 — Final Exam, Certificates, Achievements (`#3`, `#2`)
-- [ ] 4.1 `ExamBloc` (timer stream, answers map, navigator status, resume/auto-submit CC-11/CC-12).
-- [ ] 4.2 Exam Intro (count/time/pass %, attempts + lock CC-13/CC-15/CC-16, past-attempts link).
-- [ ] 4.3 Exam In-Progress (red-timer, navigator grid, MCQ via `final_exam_questions_student` view, prev/next).
-- [ ] 4.4 Submit-confirm modal (unanswered warning) → `submit_final_exam` RPC (CC-17 inclusive).
-- [ ] 4.5 Result screen (score ring, correct count, cert preview, download/back).
-- [ ] 4.6 Certificate client-side PDF (`pdf`+`printing`) + share/save; list from `certificates`.
-- [ ] 4.7 Achievements: 3 stat cards, activity heatmap (M), certificates list, empty state.
+- [x] 4.1 `ExamBloc` (timer stream, answers map, navigator status, resume/auto-submit CC-11/CC-12).
+- [x] 4.2 Exam Intro (count/time/pass %, attempts + lock CC-13/CC-15/CC-16, past-attempts link).
+- [x] 4.3 Exam In-Progress (red-timer, navigator grid, MCQ via `final_exam_questions_student` view, prev/next).
+- [x] 4.4 Submit-confirm modal (unanswered warning) → `submit_final_exam` RPC (CC-17 inclusive).
+- [x] 4.5 Result screen (score ring, correct count, cert preview, download/back).
+- [x] 4.6 Certificate client-side PDF (`pdf`+`printing`) + share/save; list from `certificates`.
+- [x] 4.7 Achievements: 3 stat cards, activity heatmap (M), certificates list, empty state.
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 5 — Profile & Notifications (`#2`)

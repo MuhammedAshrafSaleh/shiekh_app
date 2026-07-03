@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/achievements/cubit/achievements_cubit.dart';
+import '../features/achievements/data/achievements_repository.dart';
+import '../features/achievements/view/achievements_page.dart';
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/cubit/auth_state.dart';
 import '../features/auth/view/forgot_password_page.dart';
@@ -13,6 +16,13 @@ import '../features/auth/view/splash_page.dart';
 import '../features/books/cubit/book_details_cubit.dart';
 import '../features/books/data/book_repository.dart';
 import '../features/books/view/book_details_page.dart';
+import '../features/certificates/view/certificate_detail_page.dart';
+import '../features/exam/bloc/exam_bloc.dart';
+import '../features/exam/bloc/exam_event.dart';
+import '../features/exam/bloc/exam_state.dart';
+import '../features/exam/data/exam_repository.dart';
+import '../features/exam/view/exam_page.dart';
+import '../features/exam/view/exam_result_page.dart';
 import '../features/home/cubit/home_cubit.dart';
 import '../features/home/data/home_repository.dart';
 import '../features/home/view/home_page.dart';
@@ -30,6 +40,7 @@ import '../features/sections/cubit/sections_cubit.dart';
 import '../features/sections/data/section_repository.dart';
 import '../features/sections/view/section_books_page.dart';
 import '../features/sections/view/sections_page.dart';
+import '../models/certificate_entity.dart';
 
 class _PlaceholderPage extends StatelessWidget {
   final String title;
@@ -139,7 +150,11 @@ GoRouter buildRouter(AuthCubit authCubit) {
           ),
           GoRoute(
             path: '/achievements',
-            builder: (_, _) => const _PlaceholderPage('إنجازاتي'),
+            builder: (context, _) => BlocProvider(
+              create: (ctx) => AchievementsCubit(
+                  ctx.read<AchievementsRepository>()),
+              child: const AchievementsPage(),
+            ),
           ),
           GoRoute(
             path: '/profile',
@@ -192,13 +207,54 @@ GoRouter buildRouter(AuthCubit authCubit) {
               );
             },
           ),
-          // Placeholder for exam (Phase 4)
+          // Exam routes (Phase 4)
           GoRoute(
             path: 'exam',
-            builder: (_, state) =>
-                _PlaceholderPage('الاختبار الشامل'),
+            builder: (context, routeState) {
+              final bookId = routeState.pathParameters['id']!;
+              // bookTitle passed via extra or falls back
+              final extra = routeState.extra;
+              final bookTitle =
+                  extra is String ? extra : 'الاختبار الشامل';
+              return BlocProvider(
+                create: (ctx) => ExamBloc(ctx.read<ExamRepository>())
+                  ..add(ExamLoadRequested(bookId)),
+                child: ExamPage(
+                  bookId: bookId,
+                  bookTitle: bookTitle,
+                ),
+              );
+            },
+            routes: [
+              GoRoute(
+                path: 'result',
+                builder: (context, routeState) {
+                  final examCompleted =
+                      routeState.extra as ExamCompleted;
+                  return ExamResultPage(examCompleted: examCompleted);
+                },
+              ),
+            ],
           ),
         ],
+      ),
+
+      // --- Certificate Detail (Task 4.6) ---
+      GoRoute(
+        path: '/certificates/:bookId',
+        builder: (context, state) {
+          final extra = state.extra;
+          final cert = extra is CertificateEntity ? extra : null;
+          final bookId = state.pathParameters['bookId']!;
+          if (cert == null) {
+            return const _PlaceholderPage('الشهادة');
+          }
+          return CertificateDetailPage(
+            certificate: cert,
+            bookTitle: bookId,
+            studentName: '',
+          );
+        },
       ),
 
       // --- Lesson (Tasks 3.3–3.8) ---
