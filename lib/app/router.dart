@@ -363,6 +363,14 @@ GoRouter buildRouter(AuthCubit authCubit) {
             path: '/admin/settings',
             builder: (_, _) => const AdminSettingsPage(),
           ),
+          GoRoute(
+            path: '/admin/change-password',
+            builder: (context, _) => BlocProvider(
+              create: (ctx) => ProfileCubit(ctx.read<ProfileRepository>())
+                ..loadProfile(),
+              child: const ChangePasswordPage(),
+            ),
+          ),
         ],
       ),
 

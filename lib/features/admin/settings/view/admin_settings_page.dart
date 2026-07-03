@@ -63,6 +63,12 @@ class AdminSettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           _SectionHeader('الحساب'),
+          _SettingsTile(
+            icon: Icons.lock_reset,
+            title: 'تغيير كلمة المرور',
+            subtitle: 'تحديث كلمة المرور الخاصة بك',
+            onTap: () => context.push('/admin/change-password'),
+          ),
           Card(
             margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.xs),
             child: ListTile(
