@@ -11,7 +11,7 @@ final _log = Logger('main');
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  Logger.root.level = Level.ALL;
+  Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((r) {
     // ignore: avoid_print
     debugPrint('[${r.level.name}] ${r.loggerName}: ${r.message}');
