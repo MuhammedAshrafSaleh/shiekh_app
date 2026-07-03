@@ -30,6 +30,18 @@ class AdminSettingsPage extends StatelessWidget {
             subtitle: 'إدارة البانرات والإعلانات',
             onTap: () => context.push('/admin/banners'),
           ),
+          _SettingsTile(
+            icon: Icons.notifications_outlined,
+            title: 'الإشعارات',
+            subtitle: 'إرسال إشعارات للطلاب وجدولتها',
+            onTap: () => context.push('/admin/notifications'),
+          ),
+          _SettingsTile(
+            icon: Icons.question_answer_outlined,
+            title: 'أسئلة الطلاب',
+            subtitle: 'الإجابة على أسئلة الطلاب ومتابعتها',
+            onTap: () => context.push('/admin/qa'),
+          ),
           const SizedBox(height: AppSpacing.md),
           _SectionHeader('تفضيلات التطبيق'),
           BlocBuilder<ThemeCubit, ThemeMode>(

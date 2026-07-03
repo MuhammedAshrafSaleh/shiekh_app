@@ -229,6 +229,14 @@ class _QuickActions extends StatelessWidget {
                 onTap: () => context.push('/admin/banners'),
               ),
             ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _QuickActionButton(
+                icon: Icons.notifications_outlined,
+                label: 'الإشعارات',
+                onTap: () => context.push('/admin/notifications'),
+              ),
+            ),
           ],
         ),
       ],
