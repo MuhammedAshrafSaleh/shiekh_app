@@ -48,7 +48,25 @@ import '../features/sections/cubit/sections_cubit.dart';
 import '../features/sections/data/section_repository.dart';
 import '../features/sections/view/section_books_page.dart';
 import '../features/sections/view/sections_page.dart';
+import '../features/admin/dashboard/cubit/admin_dashboard_cubit.dart';
+import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
+import '../features/admin/dashboard/view/admin_dashboard_page.dart';
+import '../features/admin/sections/cubit/admin_sections_cubit.dart';
+import '../features/admin/sections/data/admin_section_repository.dart';
+import '../features/admin/sections/view/admin_section_form_page.dart';
+import '../features/admin/sections/view/admin_sections_page.dart';
+import '../features/admin/books/cubit/admin_book_cubit.dart';
+import '../features/admin/books/data/admin_book_repository.dart';
+import '../features/admin/books/view/admin_book_form_page.dart';
+import '../features/admin/banners/cubit/admin_banner_cubit.dart';
+import '../features/admin/banners/data/admin_banner_repository.dart';
+import '../features/admin/banners/view/admin_banner_form_page.dart';
+import '../features/admin/banners/view/admin_banners_page.dart';
+import '../features/admin/settings/view/admin_settings_page.dart';
+import '../models/banner_entity.dart';
+import '../models/book_entity.dart';
 import '../models/certificate_entity.dart';
+import '../models/section_entity.dart';
 
 class _PlaceholderPage extends StatelessWidget {
   final String title;
@@ -310,17 +328,118 @@ GoRouter buildRouter(AuthCubit authCubit) {
         },
       ),
 
-      // --- Admin Shell ---
+      // --- Admin Shell (Task 6.1) ---
       ShellRoute(
         builder: (context, state, child) => _AdminShell(child: child),
         routes: [
           GoRoute(
             path: '/admin',
-            builder: (_, _) => const _PlaceholderPage('لوحة التحكم'),
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  AdminDashboardCubit(ctx.read<AdminDashboardRepository>())
+                    ..load(),
+              child: const AdminDashboardPage(),
+            ),
           ),
           GoRoute(
             path: '/admin/settings',
-            builder: (_, _) => const _PlaceholderPage('الإعدادات'),
+            builder: (_, _) => const AdminSettingsPage(),
+          ),
+        ],
+      ),
+
+      // --- Admin: Sections (Task 6.3) ---
+      GoRoute(
+        path: '/admin/sections',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminSectionsCubit(ctx.read<AdminSectionRepository>())
+                ..load(),
+          child: const AdminSectionsPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  AdminSectionsCubit(ctx.read<AdminSectionRepository>()),
+              child: const AdminSectionFormPage(),
+            ),
+          ),
+          GoRoute(
+            path: ':id/edit',
+            builder: (context, state) {
+              final section = state.extra as SectionEntity;
+              return BlocProvider(
+                create: (ctx) => AdminSectionsCubit(
+                    ctx.read<AdminSectionRepository>()),
+                child: AdminSectionFormPage(existing: section),
+              );
+            },
+          ),
+        ],
+      ),
+
+      // --- Admin: Books (Task 6.4) ---
+      GoRoute(
+        path: '/admin/books/new',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminBookCubit(ctx.read<AdminBookRepository>())
+                ..loadForm(),
+          child: const AdminBookFormPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/books/:id/edit',
+        builder: (context, state) {
+          final bookId = state.pathParameters['id']!;
+          return BlocProvider(
+            create: (ctx) =>
+                AdminBookCubit(ctx.read<AdminBookRepository>())
+                  ..loadForm(bookId: bookId),
+            child: AdminBookFormPage(bookId: bookId),
+          );
+        },
+      ),
+
+      // --- Admin: Banners (Task 6.5) ---
+      GoRoute(
+        path: '/admin/banners',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminBannerCubit(ctx.read<AdminBannerRepository>())..load(),
+          child: const AdminBannersPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, state) {
+              final books =
+                  (state.extra as List?)?.cast<BookEntity>() ?? <BookEntity>[];
+              return BlocProvider(
+                create: (ctx) =>
+                    AdminBannerCubit(ctx.read<AdminBannerRepository>()),
+                child: AdminBannerFormPage(books: books),
+              );
+            },
+          ),
+          GoRoute(
+            path: ':id/edit',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>;
+              final banner = extra['banner'] as BannerEntity;
+              final books =
+                  (extra['books'] as List).cast<BookEntity>();
+              return BlocProvider(
+                create: (ctx) =>
+                    AdminBannerCubit(ctx.read<AdminBannerRepository>()),
+                child: AdminBannerFormPage(
+                  existing: banner,
+                  books: books,
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -383,25 +502,49 @@ class _AdminShell extends StatelessWidget {
   final Widget child;
   const _AdminShell({required this.child});
 
+  int _selectedIndex(BuildContext context) {
+    final loc = GoRouterState.of(context).matchedLocation;
+    if (loc.startsWith('/admin/settings')) return 1;
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            label: 'لوحة التحكم',
+      bottomNavigationBar: Theme(
+        // Gold active pill for admin shell
+        data: Theme.of(context).copyWith(
+          navigationBarTheme: NavigationBarThemeData(
+            indicatorColor: const Color(0xFFFFB300), // AppColors.gold
+            iconTheme: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return const IconThemeData(color: Colors.black87);
+              }
+              return IconThemeData(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant);
+            }),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            label: 'الإعدادات',
-          ),
-        ],
-        onDestinationSelected: (i) {
-          const routes = ['/admin', '/admin/settings'];
-          context.go(routes[i]);
-        },
+        ),
+        child: NavigationBar(
+          selectedIndex: _selectedIndex(context),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'لوحة التحكم',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: 'الإعدادات',
+            ),
+          ],
+          onDestinationSelected: (i) {
+            const routes = ['/admin', '/admin/settings'];
+            context.go(routes[i]);
+          },
+        ),
       ),
     );
   }

@@ -151,11 +151,11 @@ lib/
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 6 — Admin Core (`#4 Admin Home`)
-- [ ] 6.1 Admin 2-tab shell (لوحة التحكم/الإعدادات), gold active pill.
-- [ ] 6.2 Dashboard: live stat cards, 3 quick actions, "كتبي" list w/ dual-axis badges, edit/delete (CC-4 warning).
-- [ ] 6.3 Section mgmt: name + fixed 8-icon picker + desc; list w/ counts; delete-restrict error (CC-3).
-- [ ] 6.4 Book mgmt: cover (bucket G), title/desc/section dropdown, **featured toggle + order** (3–5 cap warning CC-24), dual status axes (status/review_status).
-- [ ] 6.5 Banner mgmt: add/edit/delete, order, `is_active`, book/external link (CC-26 nullable target).
+- [x] 6.1 Admin 2-tab shell (لوحة التحكم/الإعدادات), gold active pill.
+- [x] 6.2 Dashboard: live stat cards, 3 quick actions, "كتبي" list w/ dual-axis badges, edit/delete (CC-4 warning).
+- [x] 6.3 Section mgmt: name + fixed 8-icon picker + desc; list w/ counts; delete-restrict error (CC-3).
+- [x] 6.4 Book mgmt: cover (bucket G), title/desc/section dropdown, **featured toggle + order** (3–5 cap warning CC-24), dual status axes (status/review_status).
+- [x] 6.5 Banner mgmt: add/edit/delete, order, `is_active`, book/external link (CC-26 nullable target).
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 7 — Admin Authoring (`#5 Add Lesson`, `#6 Book Stats`)

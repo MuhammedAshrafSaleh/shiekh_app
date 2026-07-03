@@ -5,6 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme/theme_cubit.dart';
 import '../features/achievements/data/achievements_repository.dart';
+import '../features/admin/banners/data/admin_banner_repository.dart';
+import '../features/admin/books/data/admin_book_repository.dart';
+import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
+import '../features/admin/sections/data/admin_section_repository.dart';
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/books/data/book_repository.dart';
@@ -78,6 +82,22 @@ class SheikhyProviders extends StatelessWidget {
               RepositoryProvider<NotificationsRepository>(
                 create: (_) =>
                     NotificationsRepository(supabase, connectivity),
+              ),
+              // --- Admin repositories (Phase 6) ---
+              RepositoryProvider<AdminDashboardRepository>(
+                create: (_) =>
+                    AdminDashboardRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminSectionRepository>(
+                create: (_) =>
+                    AdminSectionRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminBookRepository>(
+                create: (_) => AdminBookRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminBannerRepository>(
+                create: (_) =>
+                    AdminBannerRepository(supabase, connectivity),
               ),
             ],
             child: BlocProvider<AuthCubit>(

@@ -42,3 +42,7 @@ class AttemptsExhaustedFailure extends Failure {
 class NotEnrolledFailure extends Failure {
   const NotEnrolledFailure([super.message = 'غير مسجّل في هذا الكتاب']);
 }
+
+class DeleteRestrictedFailure extends Failure {
+  const DeleteRestrictedFailure([super.message = 'لا يمكن الحذف لوجود بيانات مرتبطة']);
+}

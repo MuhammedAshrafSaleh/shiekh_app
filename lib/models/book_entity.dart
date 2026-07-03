@@ -7,7 +7,8 @@ class BookEntity extends Equatable {
   final String title;
   final String? description;
   final String? coverImageUrl;
-  final String status;
+  final String status; // 'draft' | 'published'
+  final String reviewStatus; // 'in_review' | 'completed'
   final bool isFeatured;
   final int? featuredOrder;
 
@@ -18,6 +19,7 @@ class BookEntity extends Equatable {
     this.description,
     this.coverImageUrl,
     required this.status,
+    this.reviewStatus = 'in_review',
     required this.isFeatured,
     this.featuredOrder,
   });
@@ -30,6 +32,7 @@ class BookEntity extends Equatable {
       description: json['description'] as String?,
       coverImageUrl: json['cover_image_url'] as String?,
       status: json['status'] as String,
+      reviewStatus: json['review_status'] as String? ?? 'in_review',
       isFeatured: json['is_featured'] as bool,
       featuredOrder: json['featured_order'] as int?,
     );
@@ -43,6 +46,7 @@ class BookEntity extends Equatable {
         description,
         coverImageUrl,
         status,
+        reviewStatus,
         isFeatured,
         featuredOrder,
       ];
