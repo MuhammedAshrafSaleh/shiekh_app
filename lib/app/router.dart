@@ -10,12 +10,21 @@ import '../features/auth/view/login_page.dart';
 import '../features/auth/view/reset_sent_page.dart';
 import '../features/auth/view/signup_page.dart';
 import '../features/auth/view/splash_page.dart';
+import '../features/books/cubit/book_details_cubit.dart';
+import '../features/books/data/book_repository.dart';
+import '../features/books/view/book_details_page.dart';
 import '../features/home/cubit/home_cubit.dart';
 import '../features/home/data/home_repository.dart';
 import '../features/home/view/home_page.dart';
+import '../features/lesson/cubit/lesson_cubit.dart';
+import '../features/lesson/data/lesson_repository.dart';
+import '../features/lesson/view/lesson_page.dart';
 import '../features/path/cubit/path_cubit.dart';
 import '../features/path/data/path_repository.dart';
 import '../features/path/view/path_page.dart';
+import '../features/qa/cubit/qa_cubit.dart';
+import '../features/qa/data/qa_repository.dart';
+import '../features/qa/view/book_qa_page.dart';
 import '../features/sections/cubit/section_books_cubit.dart';
 import '../features/sections/cubit/sections_cubit.dart';
 import '../features/sections/data/section_repository.dart';
@@ -160,9 +169,49 @@ GoRouter buildRouter(AuthCubit authCubit) {
           );
         },
       ),
+
+      // --- Book Details (Task 3.1 / 3.2) ---
       GoRoute(
         path: '/books/:id',
-        builder: (_, state) => _PlaceholderPage('تفاصيل الكتاب'),
+        builder: (context, state) {
+          final bookId = state.pathParameters['id']!;
+          return BlocProvider(
+            create: (ctx) => BookDetailsCubit(ctx.read<BookRepository>()),
+            child: BookDetailsPage(bookId: bookId),
+          );
+        },
+        routes: [
+          // Book-level Q&A (Task 3.10)
+          GoRoute(
+            path: 'qa',
+            builder: (context, state) {
+              final bookId = state.pathParameters['id']!;
+              return BlocProvider(
+                create: (ctx) => QaCubit(ctx.read<QaRepository>()),
+                child: BookQaPage(bookId: bookId),
+              );
+            },
+          ),
+          // Placeholder for exam (Phase 4)
+          GoRoute(
+            path: 'exam',
+            builder: (_, state) =>
+                _PlaceholderPage('الاختبار الشامل'),
+          ),
+        ],
+      ),
+
+      // --- Lesson (Tasks 3.3–3.8) ---
+      GoRoute(
+        path: '/lessons/:id',
+        builder: (context, state) {
+          final lessonId = state.pathParameters['id']!;
+          final bookId = state.uri.queryParameters['bookId'] ?? '';
+          return BlocProvider(
+            create: (ctx) => LessonCubit(ctx.read<LessonRepository>()),
+            child: LessonPage(lessonId: lessonId, bookId: bookId),
+          );
+        },
       ),
 
       // --- Admin Shell ---

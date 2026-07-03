@@ -121,16 +121,16 @@ lib/
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 3 — Book, Lesson, Q&A (`#3 Video Section`)
-- [ ] 3.1 Book Details: cover/desc/overall progress, numbered lessons (complete/locked), locked Final-Exam card.
-- [ ] 3.2 Enrollment: first visit "تسجيل في الكتاب" → confirm dialog → `enrollments` insert (idempotent CC-19); then "استمرار المذاكرة"; **gate lesson access on enrollment (CC-20)**.
-- [ ] 3.3 Lesson shell: 4 tabs فيديو/صوت/PDF/اختبار, default = first available; "اسأل سؤالك" entry; "الدرس التالي".
-- [ ] 3.4 Video tab: `youtube_player_iframe`; save `last_position_seconds`; resume; error CC-6.
-- [ ] 3.5 Audio tab: Drive→`uc?export=download` (`drive_url`), `dio` download w/ progress + cancel, local cache + reuse check, `just_audio` playback; CC-7/CC-9/CC-10.
-- [ ] 3.6 PDF tab: `pdfx` from Drive URL; error CC-8.
-- [ ] 3.7 Lesson Quiz: fetch via `lesson_quiz_questions_student` view; `grade_lesson_quiz` feedback; MCQ UI + timer.
-- [ ] 3.8 Progress/completion (rule L): upsert `lesson_progress`; recompute book % vs published lessons (CC-1/CC-21).
-- [ ] 3.9 Q&A bottom sheet (privacy notice, char counter) → insert `student_questions` (pending, lesson+book).
-- [ ] 3.10 Book-level Q&A screen via `student_questions_public` (peer-anonymous CC-22; pending badge/answers).
+- [x] 3.1 Book Details: cover/desc/overall progress, numbered lessons (complete/locked), locked Final-Exam card.
+- [x] 3.2 Enrollment: first visit "تسجيل في الكتاب" → confirm dialog → `enrollments` insert (idempotent CC-19); then "استمرار المذاكرة"; **gate lesson access on enrollment (CC-20)**.
+- [x] 3.3 Lesson shell: 4 tabs فيديو/صوت/PDF/اختبار, default = first available; "اسأل سؤالك" entry; "الدرس التالي".
+- [x] 3.4 Video tab: `youtube_player_iframe`; save `last_position_seconds`; resume; error CC-6.
+- [x] 3.5 Audio tab: Drive→`uc?export=download` (`drive_url`), `dio` download w/ progress + cancel, local cache + reuse check, `just_audio` playback; CC-7/CC-9/CC-10.
+- [x] 3.6 PDF tab: `pdfx` from Drive URL; error CC-8.
+- [x] 3.7 Lesson Quiz: fetch via `lesson_quiz_questions_student` view; `grade_lesson_quiz` feedback; MCQ UI + timer.
+- [x] 3.8 Progress/completion (rule L): upsert `lesson_progress`; recompute book % vs published lessons (CC-1/CC-21).
+- [x] 3.9 Q&A bottom sheet (privacy notice, char counter) → insert `student_questions` (pending, lesson+book).
+- [x] 3.10 Book-level Q&A screen via `student_questions_public` (peer-anonymous CC-22; pending badge/answers).
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 4 — Final Exam, Certificates, Achievements (`#3`, `#2`)

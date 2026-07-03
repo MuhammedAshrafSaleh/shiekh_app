@@ -6,9 +6,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/theme_cubit.dart';
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/data/auth_repository.dart';
+import '../features/books/data/book_repository.dart';
 import '../features/home/data/home_repository.dart';
+import '../features/lesson/data/lesson_repository.dart';
 import '../features/notifications/cubit/connectivity_cubit.dart';
 import '../features/path/data/path_repository.dart';
+import '../features/qa/data/qa_repository.dart';
 import '../features/sections/data/section_repository.dart';
 import 'app.dart';
 
@@ -44,6 +47,15 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<SectionRepository>(
                 create: (_) => SectionRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<BookRepository>(
+                create: (_) => BookRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<LessonRepository>(
+                create: (_) => LessonRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<QaRepository>(
+                create: (_) => QaRepository(supabase, connectivity),
               ),
             ],
             child: BlocProvider<AuthCubit>(
