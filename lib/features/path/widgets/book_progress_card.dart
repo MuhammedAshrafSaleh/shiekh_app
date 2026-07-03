@@ -16,64 +16,103 @@ class BookProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final progressPercent = (item.progress * 100).toInt();
+    final isAvailable = item.book.status == 'published';
 
+    // CC-2: unpublished enrolled book → show card but with unavailable overlay;
+    // enrollment row persists, user is just informed it's temporarily unavailable.
     return Card(
       margin: const EdgeInsetsDirectional.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go('/books/${item.book.id}'),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 64,
-                  height: 80,
-                  child: item.book.coverImageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: item.book.coverImageUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (_, _) =>
-                              _ThumbnailPlaceholder(title: item.book.title, theme: theme),
-                          errorWidget: (_, _, _) =>
-                              _ThumbnailPlaceholder(title: item.book.title, theme: theme),
-                        )
-                      : _ThumbnailPlaceholder(title: item.book.title, theme: theme),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.book.title,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+      child: Stack(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: isAvailable ? () => context.go('/books/${item.book.id}') : null,
+            child: Opacity(
+              opacity: isAvailable ? 1.0 : 0.45,
+              child: Padding(
+              padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 64,
+                      height: 80,
+                      child: item.book.coverImageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: item.book.coverImageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, _) =>
+                                  _ThumbnailPlaceholder(title: item.book.title, theme: theme),
+                              errorWidget: (_, _, _) =>
+                                  _ThumbnailPlaceholder(title: item.book.title, theme: theme),
+                            )
+                          : _ThumbnailPlaceholder(title: item.book.title, theme: theme),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '$progressPercent٪',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.book.title,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '$progressPercent٪',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        ProgressBar(value: item.progress),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    ProgressBar(value: item.progress),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          ),
+          // CC-2: show unavailable badge when book has been unpublished
+          if (!isAvailable)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.black.withValues(alpha: 0.35),
+                ),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsetsDirectional.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'غير متاح حاليًا',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

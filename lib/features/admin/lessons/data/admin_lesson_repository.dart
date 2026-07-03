@@ -181,17 +181,19 @@ class AdminLessonRepository {
     }
   }
 
-  /// CC-5: transactional reorder — updates all affected rows atomically.
+  /// CC-5: transactional reorder — delegates to the reorder_lessons RPC
+  /// (added in 0002_hardening.sql) so all order_index updates run inside a
+  /// single server-side transaction; a partial network failure cannot leave
+  /// the order table in an inconsistent state.
   Future<Either<Failure, Unit>> reorderLessons(
       List<({String id, int orderIndex})> updates) async {
     final net = _checkNetwork<Unit>();
     if (net != null) return net;
     try {
-      // Use upsert to update order_index for each lesson
-      final rows = updates
+      final payload = updates
           .map((u) => {'id': u.id, 'order_index': u.orderIndex})
           .toList();
-      await _client.from('lessons').upsert(rows);
+      await _client.rpc('reorder_lessons', params: {'p_updates': payload});
       return const Right(unit);
     } on PostgrestException catch (e) {
       _log.warning('reorderLessons: ${e.message}');

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/widgets/offline_banner.dart';
 import '../features/achievements/cubit/achievements_cubit.dart';
 import '../features/achievements/data/achievements_repository.dart';
 import '../features/achievements/view/achievements_page.dart';
@@ -583,7 +584,12 @@ class _StudentShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex(context),
         destinations: const [
@@ -630,7 +636,12 @@ class _AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: Theme(
         // Gold active pill for admin shell
         data: Theme.of(context).copyWith(

@@ -169,11 +169,18 @@ lib/
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 8 — Hardening & White-label
-- [ ] 8.1 Sweep all 30 corner cases (table below); offline/error/empty states everywhere.
-- [ ] 8.2 RTL + light/dark QA against each `docs/screens/` mockup.
-- [ ] 8.3 Performance (lazy/paginated lists, ~2s Home/Path).
-- [ ] 8.4 Security spot-check (student cannot read peer identity or any `correct_choice`).
-- [ ] 8.5 White-label README (re-deploy steps: new Supabase → run schema + migration → `--dart-define` → swap brand assets; CC-29 admin recovery SQL).
+- [x] 8.1 Sweep all 30 corner cases (table below); offline/error/empty states everywhere.
+      — CC-2 overlay in `book_progress_card.dart`; CC-5 now calls `reorder_lessons` RPC (atomic);
+        CC-25 `enforce_featured_cap` trigger in `0002_hardening.sql`; `OfflineBanner` wired to
+        both student and admin shells (router.dart) so every screen shows the offline indicator.
+- [ ] 8.2 RTL + light/dark QA against each `docs/screens/` mockup. *(manual device checklist)*
+- [ ] 8.3 Performance (lazy/paginated lists, ~2s Home/Path). *(manual profiling on device)*
+- [x] 8.4 Security spot-check (student cannot read peer identity or any `correct_choice`).
+      — Grepped all repositories: `correct_choice` + base exam/quiz tables are admin-only;
+        student QA reads via `student_questions_public`; student quiz/exam reads via `_student` views.
+- [x] 8.5 White-label README (re-deploy steps: new Supabase → run schema + migration →
+      `--dart-define` → swap brand assets; CC-29 admin recovery SQL).
+      — Created `docs/WHITELABEL.md` (10-step guide + checklist); `docs/admin_recovery.sql` committed.
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ---
