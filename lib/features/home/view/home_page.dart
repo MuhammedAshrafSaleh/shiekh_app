@@ -24,6 +24,13 @@ class HomePage extends StatelessWidget {
         title: Text(AppConfig.sheikhName),
         centerTitle: true,
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: 'الإشعارات',
+            onPressed: () => context.push('/notifications'),
+          ),
+        ],
       ),
       body: BlocBuilder<HomeCubit, HomeState>(
         builder: (context, state) {

@@ -144,9 +144,9 @@ lib/
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 5 — Profile & Notifications (`#2`)
-- [ ] 5.1 Profile (initials avatar, 3 stats, list: شهاداتي/تغيير كلمة المرور/الوضع الليلي toggle/عن التطبيق/تسجيل الخروج).
-- [ ] 5.2 Edit Profile (name editable, email read-only, change-password w/ current-password verify).
-- [ ] 5.3 Notifications: uniform cards, unread dots + light bg, deep-link on tap, mark-all-read (bulk `notification_reads`), Realtime live-update.
+- [x] 5.1 Profile (initials avatar, 3 stats, list: شهاداتي/تغيير كلمة المرور/الوضع الليلي toggle/عن التطبيق/تسجيل الخروج).
+- [x] 5.2 Edit Profile (name editable, email read-only, change-password w/ current-password verify).
+- [x] 5.3 Notifications: uniform cards, unread dots + light bg, deep-link on tap, mark-all-read (bulk `notification_reads`), Realtime live-update.
 - [ ] 5.4 *(Optional)* Topic-based FCM (`students` topic) + Edge Function on insert — N.
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 

@@ -32,6 +32,14 @@ import '../features/lesson/view/lesson_page.dart';
 import '../features/path/cubit/path_cubit.dart';
 import '../features/path/data/path_repository.dart';
 import '../features/path/view/path_page.dart';
+import '../features/notifications/cubit_notifs/notifications_cubit.dart';
+import '../features/notifications/data/notifications_repository.dart';
+import '../features/notifications/view/notifications_page.dart';
+import '../features/profile/cubit/profile_cubit.dart';
+import '../features/profile/data/profile_repository.dart';
+import '../features/profile/view/change_password_page.dart';
+import '../features/profile/view/edit_profile_page.dart';
+import '../features/profile/view/profile_page.dart';
 import '../features/qa/cubit/qa_cubit.dart';
 import '../features/qa/data/qa_repository.dart';
 import '../features/qa/view/book_qa_page.dart';
@@ -158,7 +166,11 @@ GoRouter buildRouter(AuthCubit authCubit) {
           ),
           GoRoute(
             path: '/profile',
-            builder: (_, _) => const _PlaceholderPage('حسابي'),
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  ProfileCubit(ctx.read<ProfileRepository>()),
+              child: const ProfilePage(),
+            ),
           ),
         ],
       ),
@@ -237,6 +249,34 @@ GoRouter buildRouter(AuthCubit authCubit) {
             ],
           ),
         ],
+      ),
+
+      // --- Profile sub-routes (Tasks 5.1 / 5.2) ---
+      GoRoute(
+        path: '/profile/edit',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) => ProfileCubit(ctx.read<ProfileRepository>())
+            ..loadProfile(),
+          child: const EditProfilePage(),
+        ),
+      ),
+      GoRoute(
+        path: '/profile/edit-password',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) => ProfileCubit(ctx.read<ProfileRepository>())
+            ..loadProfile(),
+          child: const ChangePasswordPage(),
+        ),
+      ),
+
+      // --- Notifications (Task 5.3) ---
+      GoRoute(
+        path: '/notifications',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              NotificationsCubit(ctx.read<NotificationsRepository>()),
+          child: const NotificationsPage(),
+        ),
       ),
 
       // --- Certificate Detail (Task 4.6) ---

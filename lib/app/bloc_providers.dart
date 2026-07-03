@@ -13,7 +13,9 @@ import '../features/exam/data/exam_repository.dart';
 import '../features/home/data/home_repository.dart';
 import '../features/lesson/data/lesson_repository.dart';
 import '../features/notifications/cubit/connectivity_cubit.dart';
+import '../features/notifications/data/notifications_repository.dart';
 import '../features/path/data/path_repository.dart';
+import '../features/profile/data/profile_repository.dart';
 import '../features/qa/data/qa_repository.dart';
 import '../features/sections/data/section_repository.dart';
 import 'app.dart';
@@ -69,6 +71,13 @@ class SheikhyProviders extends StatelessWidget {
               RepositoryProvider<AchievementsRepository>(
                 create: (_) =>
                     AchievementsRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<ProfileRepository>(
+                create: (_) => ProfileRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<NotificationsRepository>(
+                create: (_) =>
+                    NotificationsRepository(supabase, connectivity),
               ),
             ],
             child: BlocProvider<AuthCubit>(
