@@ -71,6 +71,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     obscureText: !_showCurrent,
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور الحالية',
+
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(_showCurrent
@@ -94,6 +95,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     obscureText: !_showNew,
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور الجديدة',
+
                       prefixIcon: const Icon(Icons.lock_reset),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -116,6 +118,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     obscureText: !_showConfirm,
                     decoration: InputDecoration(
                       labelText: 'تأكيد كلمة المرور الجديدة',
+
                       prefixIcon: const Icon(Icons.lock_reset),
                       suffixIcon: IconButton(
                         icon: Icon(_showConfirm

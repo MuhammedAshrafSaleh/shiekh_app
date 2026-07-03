@@ -76,6 +76,9 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
+        fillColor: scheme.brightness == Brightness.light
+            ? Colors.white
+            : scheme.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
