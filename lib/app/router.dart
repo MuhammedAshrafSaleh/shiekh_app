@@ -62,7 +62,24 @@ import '../features/admin/banners/cubit/admin_banner_cubit.dart';
 import '../features/admin/banners/data/admin_banner_repository.dart';
 import '../features/admin/banners/view/admin_banner_form_page.dart';
 import '../features/admin/banners/view/admin_banners_page.dart';
+import '../features/admin/exam/cubit/admin_exam_cubit.dart';
+import '../features/admin/exam/data/admin_exam_repository.dart';
+import '../features/admin/exam/view/admin_exam_page.dart';
+import '../features/admin/lessons/cubit/admin_lesson_cubit.dart';
+import '../features/admin/lessons/data/admin_lesson_repository.dart';
+import '../features/admin/lessons/view/admin_lesson_form_page.dart';
+import '../features/admin/lessons/view/admin_lessons_page.dart';
+import '../features/admin/notifications/cubit/admin_notifications_cubit.dart';
+import '../features/admin/notifications/data/admin_notifications_repository.dart';
+import '../features/admin/notifications/view/admin_notification_form_page.dart';
+import '../features/admin/notifications/view/admin_notifications_page.dart';
+import '../features/admin/qa/cubit/admin_qa_cubit.dart';
+import '../features/admin/qa/data/admin_qa_repository.dart';
+import '../features/admin/qa/view/admin_qa_page.dart';
 import '../features/admin/settings/view/admin_settings_page.dart';
+import '../features/admin/stats/cubit/admin_stats_cubit.dart';
+import '../features/admin/stats/data/admin_stats_repository.dart';
+import '../features/admin/stats/view/admin_book_dashboard_page.dart';
 import '../models/banner_entity.dart';
 import '../models/book_entity.dart';
 import '../models/certificate_entity.dart';
@@ -401,6 +418,108 @@ GoRouter buildRouter(AuthCubit authCubit) {
             child: AdminBookFormPage(bookId: bookId),
           );
         },
+      ),
+
+      // --- Admin: Lessons (Tasks 7.1 / 7.2 / 7.3) ---
+      GoRoute(
+        path: '/admin/books/:bookId/lessons',
+        builder: (context, state) {
+          final bookId = state.pathParameters['bookId']!;
+          final bookTitle = state.uri.queryParameters['title'] ?? 'الكتاب';
+          return BlocProvider(
+            create: (ctx) =>
+                AdminLessonListCubit(ctx.read<AdminLessonRepository>())
+                  ..load(bookId),
+            child: AdminLessonsPage(bookId: bookId, bookTitle: bookTitle),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, state) {
+              final bookId = state.pathParameters['bookId']!;
+              return BlocProvider(
+                create: (ctx) =>
+                    AdminLessonFormCubit(ctx.read<AdminLessonRepository>()),
+                child: AdminLessonFormPage(bookId: bookId),
+              );
+            },
+          ),
+          GoRoute(
+            path: ':lessonId/edit',
+            builder: (context, state) {
+              final bookId = state.pathParameters['bookId']!;
+              final lessonId = state.pathParameters['lessonId']!;
+              return BlocProvider(
+                create: (ctx) =>
+                    AdminLessonFormCubit(ctx.read<AdminLessonRepository>()),
+                child: AdminLessonFormPage(
+                    bookId: bookId, lessonId: lessonId),
+              );
+            },
+          ),
+        ],
+      ),
+
+      // --- Admin: Final Exam (Task 7.4) ---
+      GoRoute(
+        path: '/admin/books/:bookId/exam',
+        builder: (context, state) {
+          final bookId = state.pathParameters['bookId']!;
+          final bookTitle = state.uri.queryParameters['title'] ?? 'الكتاب';
+          return BlocProvider(
+            create: (ctx) =>
+                AdminExamCubit(ctx.read<AdminExamRepository>())..load(bookId),
+            child: AdminExamPage(bookId: bookId, bookTitle: bookTitle),
+          );
+        },
+      ),
+
+      // --- Admin: Per-book Dashboard (Task 7.5) ---
+      GoRoute(
+        path: '/admin/books/:bookId/dashboard',
+        builder: (context, state) {
+          final bookId = state.pathParameters['bookId']!;
+          final bookTitle = state.uri.queryParameters['title'] ?? 'الكتاب';
+          return BlocProvider(
+            create: (ctx) =>
+                AdminStatsCubit(ctx.read<AdminStatsRepository>())
+                  ..load(bookId),
+            child:
+                AdminBookDashboardPage(bookId: bookId, bookTitle: bookTitle),
+          );
+        },
+      ),
+
+      // --- Admin: Q&A (Task 7.6) ---
+      GoRoute(
+        path: '/admin/qa',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminQaCubit(ctx.read<AdminQaRepository>())..load(),
+          child: const AdminQaPage(),
+        ),
+      ),
+
+      // --- Admin: Notifications (Task 7.7) ---
+      GoRoute(
+        path: '/admin/notifications',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminNotificationsCubit(ctx.read<AdminNotificationsRepository>())
+                ..load(),
+          child: const AdminNotificationsPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, _) => BlocProvider(
+              create: (ctx) => AdminNotificationsCubit(
+                  ctx.read<AdminNotificationsRepository>()),
+              child: const AdminNotificationFormPage(),
+            ),
+          ),
+        ],
       ),
 
       // --- Admin: Banners (Task 6.5) ---

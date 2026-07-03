@@ -159,13 +159,13 @@ lib/
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 7 — Admin Authoring (`#5 Add Lesson`, `#6 Book Stats`)
-- [ ] 7.1 Lesson mgmt: 4 tabs (video/audio/PDF/quiz) with **one sticky "حفظ الدرس" → unified single-record save**.
-- [ ] 7.2 Lesson-quiz authoring (text, 4 choices, mark correct, edit/delete).
-- [ ] 7.3 Lesson reorder: transactional `order_index` update (CC-5); publish toggle.
-- [ ] 7.4 Final-exam mgmt: settings (time/pass %/attempts), questions + **optional bank import** (`source_quiz_question_id`), preview, publish (CC-14/CC-16).
-- [ ] 7.5 Per-book dashboard: combined Lessons+stats+recent-questions tab; Statistics (completion, students, avg score+stars, enrollment chart via `fl_chart`).
-- [ ] 7.6 Admin Q&A answering (full identity, pending/answered tabs, inline reply → answered + notify asker).
-- [ ] 7.7 Admin Notifications create (4 authorable types, char counter, link, immediate/schedule, preview).
+- [x] 7.1 Lesson mgmt: 4 tabs (video/audio/PDF/quiz) with **one sticky "حفظ الدرس" → unified single-record save**.
+- [x] 7.2 Lesson-quiz authoring (text, 4 choices, mark correct, edit/delete).
+- [x] 7.3 Lesson reorder: transactional `order_index` update (CC-5); publish toggle.
+- [x] 7.4 Final-exam mgmt: settings (time/pass %/attempts), questions + **optional bank import** (`source_quiz_question_id`), preview, publish (CC-14/CC-16).
+- [x] 7.5 Per-book dashboard: combined Lessons+stats+recent-questions tab; Statistics (completion, students, avg score+stars, enrollment chart via `fl_chart`).
+- [x] 7.6 Admin Q&A answering (full identity, pending/answered tabs, inline reply → answered + notify asker).
+- [x] 7.7 Admin Notifications create (4 authorable types, char counter, link, immediate/schedule, preview).
 - 🛑 **Review gate** — incl. this phase's tests + manual checklist + security spot-checks (`docs/testing_plan.md`).
 
 ## Phase 8 — Hardening & White-label

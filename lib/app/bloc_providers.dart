@@ -8,7 +8,12 @@ import '../features/achievements/data/achievements_repository.dart';
 import '../features/admin/banners/data/admin_banner_repository.dart';
 import '../features/admin/books/data/admin_book_repository.dart';
 import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
+import '../features/admin/exam/data/admin_exam_repository.dart';
+import '../features/admin/lessons/data/admin_lesson_repository.dart';
+import '../features/admin/notifications/data/admin_notifications_repository.dart';
+import '../features/admin/qa/data/admin_qa_repository.dart';
 import '../features/admin/sections/data/admin_section_repository.dart';
+import '../features/admin/stats/data/admin_stats_repository.dart';
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/books/data/book_repository.dart';
@@ -98,6 +103,25 @@ class SheikhyProviders extends StatelessWidget {
               RepositoryProvider<AdminBannerRepository>(
                 create: (_) =>
                     AdminBannerRepository(supabase, connectivity),
+              ),
+              // --- Admin repositories (Phase 7) ---
+              RepositoryProvider<AdminLessonRepository>(
+                create: (_) =>
+                    AdminLessonRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminExamRepository>(
+                create: (_) => AdminExamRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminStatsRepository>(
+                create: (_) =>
+                    AdminStatsRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminQaRepository>(
+                create: (_) => AdminQaRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminNotificationsRepository>(
+                create: (_) =>
+                    AdminNotificationsRepository(supabase, connectivity),
               ),
             ],
             child: BlocProvider<AuthCubit>(
