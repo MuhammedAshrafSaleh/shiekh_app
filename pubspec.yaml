@@ -75,6 +75,9 @@ dependencies:
   # Logging
   logging: ^1.3.0
 
+  # Splash screen (runtime — preserve/remove in main.dart)
+  flutter_native_splash: ^2.4.6
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
@@ -85,6 +88,28 @@ dev_dependencies:
   freezed: ^2.5.8
   json_serializable: ^6.9.5
   mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.6
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app-icon.png"
+  adaptive_icon_background: "#1B5E20"
+  adaptive_icon_foreground: "assets/app-icon.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#1B5E20"
+  image: assets/app-icon.png
+  color_dark: "#1B5E20"
+  image_dark: assets/app-icon.png
+  android_12:
+    color: "#1B5E20"
+    image: assets/app-icon.png
+    color_dark: "#1B5E20"
+    image_dark: assets/app-icon.png
+  fullscreen: false
 
 flutter:
   uses-material-design: true

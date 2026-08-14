@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -9,7 +10,8 @@ import 'core/config/app_config.dart';
 final _log = Logger('main');
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((r) {
@@ -29,6 +31,8 @@ Future<void> main() async {
   );
 
   await _smokeTestConnection();
+
+  FlutterNativeSplash.remove();
 
   runApp(const SheikhyProviders());
 }
