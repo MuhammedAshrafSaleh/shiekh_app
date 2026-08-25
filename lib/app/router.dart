@@ -29,6 +29,7 @@ import '../features/home/data/home_repository.dart';
 import '../features/home/view/home_page.dart';
 import '../features/lesson/cubit/lesson_cubit.dart';
 import '../features/lesson/data/lesson_repository.dart';
+import '../features/lesson/data/video_stream_repository.dart';
 import '../features/lesson/view/lesson_page.dart';
 import '../features/path/cubit/path_cubit.dart';
 import '../features/path/data/path_repository.dart';
@@ -340,7 +341,10 @@ GoRouter buildRouter(AuthCubit authCubit) {
           final lessonId = state.pathParameters['id']!;
           final bookId = state.uri.queryParameters['bookId'] ?? '';
           return BlocProvider(
-            create: (ctx) => LessonCubit(ctx.read<LessonRepository>()),
+            create: (ctx) => LessonCubit(
+              ctx.read<LessonRepository>(),
+              ctx.read<VideoStreamRepository>(),
+            ),
             child: LessonPage(lessonId: lessonId, bookId: bookId),
           );
         },

@@ -3,12 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../models/lesson_progress_entity.dart';
 import '../data/lesson_repository.dart';
+import '../data/video_stream_repository.dart';
 import 'lesson_state.dart';
 
 class LessonCubit extends Cubit<LessonState> {
   final LessonRepository _repo;
+  final VideoStreamRepository _videoStreamRepo;
 
-  LessonCubit(this._repo) : super(LessonInitial());
+  LessonCubit(this._repo, this._videoStreamRepo) : super(LessonInitial());
 
   Future<void> loadLesson(String lessonId, String bookId) async {
     emit(LessonLoading());
@@ -27,6 +29,12 @@ class LessonCubit extends Cubit<LessonState> {
     final progress = progressResult.getOrElse(() => null);
     final hasQuiz = quizResult.fold((_) => false, (q) => q.isNotEmpty);
     final nextLesson = nextResult.getOrElse(() => null);
+
+    // Prefetch the video stream URL so the player is ready by the time the
+    // student opens the video tab (extraction runs while the page renders).
+    if (lesson.hasVideo && lesson.videoUrl != null) {
+      _videoStreamRepo.prefetch(lesson.videoUrl!);
+    }
 
     emit(LessonLoaded(
       lesson: lesson,
