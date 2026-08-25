@@ -30,44 +30,39 @@ class LessonListItem extends StatelessWidget {
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm + 4,
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _LessonStatusIcon(
-              isCompleted: isCompleted,
-              isEnrolled: isEnrolled,
-              orderIndex: item.lesson.orderIndex,
-              colorScheme: colorScheme,
+            Row(
+              children: [
+                _LessonStatusIcon(
+                  isCompleted: isCompleted,
+                  isEnrolled: isEnrolled,
+                  orderIndex: item.lesson.orderIndex,
+                  colorScheme: colorScheme,
+                ),
+                const Spacer(),
+                _MediaIcons(lesson: item.lesson),
+              ],
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.lesson.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: isEnrolled
-                          ? null
-                          : colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  if (!isEnrolled)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                          top: AppSpacing.xs),
-                      child: Text(
-                        'يجب التسجيل في الكتاب أولاً',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color:
-                              colorScheme.onSurface.withValues(alpha: 0.45),
-                        ),
-                      ),
-                    ),
-                ],
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              item.lesson.title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: isEnrolled
+                    ? null
+                    : colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            _MediaIcons(lesson: item.lesson),
+            if (!isEnrolled) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'يجب التسجيل في الكتاب أولاً',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+            ],
           ],
         ),
       ),

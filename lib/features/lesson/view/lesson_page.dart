@@ -134,7 +134,28 @@ class _LessonView extends StatelessWidget {
 
     if (tabs.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: Text(lesson.title)),
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'الدرس ${lesson.orderIndex}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
+                    ),
+              ),
+              Text(
+                lesson.title,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+        ),
         body: const Center(child: Text('لا يوجد محتوى لهذا الدرس بعد')),
       );
     }
@@ -143,18 +164,33 @@ class _LessonView extends StatelessWidget {
       length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(lesson.title, overflow: TextOverflow.ellipsis),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.question_answer_outlined),
-              tooltip: 'اسأل سؤالك',
-              onPressed: () => _openAskSheet(context),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'الدرس ${lesson.orderIndex}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
+                    ),
+              ),
+              Text(
+                lesson.title,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+          bottom: _LessonAppBarBottom(
+            onAskTap: () => _openAskSheet(context),
+            tabBar: TabBar(
+              tabs: tabs
+                  .map((t) => Tab(icon: Icon(t.icon), text: t.label))
+                  .toList(),
             ),
-          ],
-          bottom: TabBar(
-            tabs: tabs
-                .map((t) => Tab(icon: Icon(t.icon), text: t.label))
-                .toList(),
           ),
         ),
         body: Column(
@@ -213,6 +249,40 @@ class _NextLessonBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LessonAppBarBottom extends StatelessWidget implements PreferredSizeWidget {
+  final VoidCallback onAskTap;
+  final TabBar tabBar;
+
+  const _LessonAppBarBottom({
+    required this.onAskTap,
+    required this.tabBar,
+  });
+
+  @override
+  Size get preferredSize => Size.fromHeight(48 + tabBar.preferredSize.height);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.question_answer_outlined),
+              tooltip: 'اسأل سؤالك',
+              onPressed: onAskTap,
+            ),
+          ],
+        ),
+        tabBar,
+      ],
     );
   }
 }

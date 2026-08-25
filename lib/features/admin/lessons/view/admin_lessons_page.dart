@@ -173,53 +173,66 @@ class _LessonTile extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
-      child: ListTile(
-        leading: Icon(
-          Icons.drag_handle,
-          color: scheme.onSurfaceVariant,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
         ),
-        title: Text(
-          lesson.title,
-          style: Theme.of(context)
-              .textTheme
-              .bodyLarge
-              ?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Wrap(
-          spacing: AppSpacing.xs,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _MediaChip(
-                icon: Icons.videocam_outlined,
-                active: lesson.hasVideo && !lesson.audioOnly),
-            _MediaChip(
-                icon: Icons.audiotrack_outlined, active: lesson.hasAudio),
-            _MediaChip(
-                icon: Icons.picture_as_pdf_outlined, active: lesson.hasPdf),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Switch(
-              value: isPublished,
-              activeThumbColor: scheme.primary,
-              onChanged: (v) => context
-                  .read<AdminLessonListCubit>()
-                  .togglePublish(lesson.id, v),
+            Row(
+              children: [
+                Icon(Icons.drag_handle, color: scheme.onSurfaceVariant),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    lesson.title,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () async {
-                await context.push(
-                    '/admin/books/$bookId/lessons/${lesson.id}/edit');
-                onRefresh();
-              },
-              tooltip: 'تعديل',
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => _confirmDelete(context),
-              tooltip: 'حذف',
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                _MediaChip(
+                    icon: Icons.videocam_outlined,
+                    active: lesson.hasVideo && !lesson.audioOnly),
+                const SizedBox(width: AppSpacing.xs),
+                _MediaChip(
+                    icon: Icons.audiotrack_outlined,
+                    active: lesson.hasAudio),
+                const SizedBox(width: AppSpacing.xs),
+                _MediaChip(
+                    icon: Icons.picture_as_pdf_outlined,
+                    active: lesson.hasPdf),
+                const Spacer(),
+                Switch(
+                  value: isPublished,
+                  activeThumbColor: scheme.primary,
+                  onChanged: (v) => context
+                      .read<AdminLessonListCubit>()
+                      .togglePublish(lesson.id, v),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () async {
+                    await context.push(
+                        '/admin/books/$bookId/lessons/${lesson.id}/edit');
+                    onRefresh();
+                  },
+                  tooltip: 'تعديل',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => _confirmDelete(context),
+                  tooltip: 'حذف',
+                ),
+              ],
             ),
           ],
         ),
