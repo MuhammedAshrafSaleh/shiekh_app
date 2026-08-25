@@ -343,7 +343,9 @@ class _BookListItem extends StatelessWidget {
             ),
           ],
         ),
-        onTap: () => context.push('/admin/books/${book.id}/edit'),
+        onTap: () => context.push(
+          '/admin/books/${book.id}/lessons?title=${Uri.encodeComponent(book.title)}',
+        ),
       ),
     );
   }
