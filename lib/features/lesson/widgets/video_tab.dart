@@ -12,10 +12,15 @@ class VideoTab extends StatefulWidget {
   final String videoUrl;
   final int initialPositionSeconds;
 
+  /// When true, the player runs without any progress tracking (no LessonCubit
+  /// calls) — used by the admin "preview as student" screen.
+  final bool previewMode;
+
   const VideoTab({
     super.key,
     required this.videoUrl,
     required this.initialPositionSeconds,
+    this.previewMode = false,
   });
 
   @override
@@ -47,6 +52,8 @@ class _VideoTabState extends State<VideoTab> {
       ),
     );
 
+    if (widget.previewMode) return;
+
     // Save position every 15 seconds
     _positionTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _savePosition();
@@ -59,7 +66,7 @@ class _VideoTabState extends State<VideoTab> {
   }
 
   Future<void> _savePosition() async {
-    if (!mounted) return;
+    if (widget.previewMode || !mounted) return;
     try {
       final position = await _controller.currentTime;
       if (mounted) {
@@ -69,7 +76,7 @@ class _VideoTabState extends State<VideoTab> {
   }
 
   Future<void> _checkWatchedThreshold() async {
-    if (_watchedThreshold || !mounted) return;
+    if (widget.previewMode || _watchedThreshold || !mounted) return;
     try {
       final duration = await _controller.duration;
       final position = await _controller.currentTime;
@@ -85,7 +92,7 @@ class _VideoTabState extends State<VideoTab> {
   @override
   void dispose() {
     _positionTimer?.cancel();
-    _savePosition();
+    if (!widget.previewMode) _savePosition();
     _controller.close();
     super.dispose();
   }

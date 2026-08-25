@@ -7,6 +7,7 @@ import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/lesson_entity.dart';
 import '../cubit/admin_lesson_cubit.dart';
 import '../cubit/admin_lesson_state.dart';
+import 'admin_lesson_preview_page.dart';
 
 class AdminLessonFormPage extends StatefulWidget {
   final String bookId;
@@ -34,11 +35,13 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
   bool _audioOnly = false;
   String _status = 'draft';
   bool _populated = false;
+  String? _currentLessonId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _currentLessonId = widget.lessonId;
     context
         .read<AdminLessonFormCubit>()
         .load(lessonId: widget.lessonId);
@@ -93,14 +96,47 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
         );
   }
 
+  void _openPreview() {
+    final video = _videoCtrl.text.trim();
+    final audio = _audioCtrl.text.trim();
+    final pdf = _pdfCtrl.text.trim();
+    final hasVideo = !_audioOnly && video.isNotEmpty;
+    final hasContent = hasVideo ||
+        audio.isNotEmpty ||
+        pdf.isNotEmpty ||
+        _currentLessonId != null;
+
+    if (!hasContent) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('أضف رابط محتوى أولاً للمعاينة'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 3),
+      ));
+      return;
+    }
+
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => AdminLessonPreviewPage(
+        title: _titleCtrl.text.trim(),
+        videoUrl: video.isEmpty ? null : video,
+        audioUrl: audio.isEmpty ? null : audio,
+        pdfUrl: pdf.isEmpty ? null : pdf,
+        audioOnly: _audioOnly,
+        lessonId: _currentLessonId,
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AdminLessonFormCubit, AdminLessonFormState>(
       listener: (context, state) {
         if (state is AdminLessonFormLoaded && state.lesson != null) {
           _populate(state.lesson!);
+          _currentLessonId = state.lesson!.id;
         }
         if (state is AdminLessonFormSaved) {
+          _currentLessonId = state.lesson.id;
           if (!_populated) {
             _populated = true;
             _titleCtrl.text = state.lesson.title;
@@ -144,6 +180,13 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
           appBar: AppBar(
             title: Text(
                 widget.lessonId == null ? 'إضافة درس جديد' : 'تعديل الدرس'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.visibility_outlined),
+                tooltip: 'معاينة كطالب',
+                onPressed: _openPreview,
+              ),
+            ],
             bottom: TabBar(
               controller: _tabController,
               tabs: const [

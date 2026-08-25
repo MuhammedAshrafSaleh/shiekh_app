@@ -14,7 +14,11 @@ enum _QuizPhase { loading, error, answering, submitted }
 class QuizTab extends StatefulWidget {
   final String lessonId;
 
-  const QuizTab({super.key, required this.lessonId});
+  /// When true, grading still runs (read-only) but no attempt is recorded via
+  /// LessonCubit — used by the admin "preview as student" screen.
+  final bool previewMode;
+
+  const QuizTab({super.key, required this.lessonId, this.previewMode = false});
 
   @override
   State<QuizTab> createState() => _QuizTabState();
@@ -77,7 +81,9 @@ class _QuizTabState extends State<QuizTab> {
             _result = grade;
             _phase = _QuizPhase.submitted;
           });
-          context.read<LessonCubit>().markQuizAttempted();
+          if (!widget.previewMode) {
+            context.read<LessonCubit>().markQuizAttempted();
+          }
         }
       },
     );
