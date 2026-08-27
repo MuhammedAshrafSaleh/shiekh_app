@@ -173,7 +173,14 @@ class _LessonTile extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
-      child: Padding(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () async {
+          await context
+              .push('/admin/books/$bookId/lessons/${lesson.id}/edit');
+          onRefresh();
+        },
+        child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm,
@@ -237,6 +244,7 @@ class _LessonTile extends StatelessWidget {
           ],
         ),
       ),
+        ),
     );
   }
 
