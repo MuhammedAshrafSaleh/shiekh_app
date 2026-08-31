@@ -38,6 +38,8 @@ class AdminBannersPage extends StatelessWidget {
               ),
             ],
           ),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
               final loaded =

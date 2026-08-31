@@ -41,6 +41,8 @@ class AdminSectionsPage extends StatelessWidget {
               ),
             ],
           ),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
               await context.push('/admin/sections/new');

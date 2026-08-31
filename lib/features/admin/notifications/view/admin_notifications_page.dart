@@ -37,6 +37,8 @@ class AdminNotificationsPage extends StatelessWidget {
               ),
             ],
           ),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             icon: const Icon(Icons.add_alert_outlined),
             label: const Text('إشعار جديد'),

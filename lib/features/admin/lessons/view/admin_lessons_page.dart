@@ -43,6 +43,8 @@ class AdminLessonsPage extends StatelessWidget {
               ),
             ],
           ),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             icon: const Icon(Icons.add),
             label: const Text('درس جديد'),
