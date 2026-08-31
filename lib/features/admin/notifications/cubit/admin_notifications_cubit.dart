@@ -12,6 +12,7 @@ class AdminNotificationsCubit extends Cubit<AdminNotificationsState> {
   Future<void> load() async {
     emit(AdminNotificationsLoading());
     final result = await _repo.getNotifications();
+    if (isClosed) return;
     result.fold(
       (f) => emit(AdminNotificationsError(f.message)),
       (list) => list.isEmpty
@@ -35,6 +36,7 @@ class AdminNotificationsCubit extends Cubit<AdminNotificationsState> {
       linkUrl: linkUrl,
       sendAt: sendAt,
     );
+    if (isClosed) return false;
     return result.fold(
       (f) {
         emit(AdminNotificationsError(f.message));
@@ -50,6 +52,7 @@ class AdminNotificationsCubit extends Cubit<AdminNotificationsState> {
 
   Future<void> delete(String notificationId) async {
     final result = await _repo.deleteNotification(notificationId);
+    if (isClosed) return;
     result.fold(
       (f) => emit(AdminNotificationsError(f.message)),
       (_) => load(),
