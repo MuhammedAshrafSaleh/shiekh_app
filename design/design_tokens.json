@@ -1,0 +1,34 @@
+{
+  "$meta": { "name": "sheikhi", "direction": "rtl", "version": "1.0.0" },
+  "color": {
+    "primary":      { "900": "#14291F", "800": "#1E4034", "600": "#2F5F4C", "50": "#EAF0EC" },
+    "gold":         { "600": "#8A6A2F", "500": "#C09A4E", "300": "#E3CE9B", "50": "#F6EEDC" },
+    "paper":        { "base": "#FBF7EF", "sunk": "#F1EADC", "raised": "#FFFFFF" },
+    "border":       { "base": "#E4D9C4", "subtle": "#F1EADC", "gold": "#C09A4E" },
+    "ink":          { "base": "#3B2E23", "muted": "#6B5B4B", "faint": "#A2937F", "invert": "#FBF7EF" },
+    "state":        { "success": "#2E6B4F", "warning": "#9A6B23", "danger": "#8A3A2E", "info": "#3D5A80" }
+  },
+  "font": {
+    "family": {
+      "display": "'Aref Ruqaa', serif",
+      "heading": "'Reem Kufi', sans-serif",
+      "body":    "'Tajawal', 'IBM Plex Sans Arabic', sans-serif"
+    },
+    "size":   { "display": 56, "h1": 40, "h2": 32, "h3": 24, "body-lg": 19, "body": 17, "small": 15, "caption": 13 },
+    "weight": { "light": 300, "regular": 400, "medium": 500, "semibold": 600, "bold": 700 },
+    "lineHeight": { "display": 1.18, "heading": 1.35, "body": 1.8, "body-lg": 1.85, "tight": 1.4 },
+    "tracking": { "caption": "0.04em", "brand": "0.14em" }
+  },
+  "space": { "1": 4, "2": 8, "3": 12, "4": 16, "5": 24, "6": 32, "7": 48, "8": 64, "9": 96 },
+  "radius": { "sm": 6, "md": 10, "lg": 16, "xl": 24, "pill": 999, "arch": "mihrab-path" },
+  "size": { "control": { "sm": 38, "md": 48 }, "touchTarget": 44, "progressBar": 10 },
+  "border": { "width": { "hairline": 1, "control": 1.5, "accent": 4 } },
+  "shadow": { "card": "0 2px 10px rgba(59,46,35,0.05)", "raised": "0 6px 24px rgba(59,46,35,0.09)" },
+  "pattern": {
+    "girih":     { "unit": 56, "stroke": 1, "opacityOnPaper": 0.10, "opacityOnPrimary": 0.14 },
+    "arabesque": { "unit": 44, "stroke": 1, "opacityOnPrimary": 0.16 },
+    "rules":     ["no living beings", "decoration = frames, dividers, backgrounds only", "never under running text"]
+  },
+  "layout": { "pageMax": 1240, "gutter": { "mobile": 24, "tablet": 48, "desktop": 64 }, "readingMeasure": "60-75ch" },
+  "motion": { "duration": { "fast": 120, "base": 180, "slow": 320 }, "easing": "cubic-bezier(0.2,0.7,0.3,1)" }
+}

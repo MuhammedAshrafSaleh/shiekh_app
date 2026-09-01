@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400;500;600;700&family=Aref+Ruqaa:wght@400;700&family=Tajawal:wght@300;400;500;700;800&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0}
+body{background:#F1EADC;font-family:'Tajawal','IBM Plex Sans Arabic',system-ui,sans-serif;color:#3B2E23}
+a{color:#8A6A2F;text-decoration:none}
+a:hover{color:#C09A4E}
+::selection{background:#E3CE9B;color:#3B2E23}
+@keyframes skShimmer{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+</style>
+</helmet>
+
+<div dir="rtl" style="--sk-primary:{{ primary }};--sk-gold:{{ gold }};background:#FBF7EF;min-height:100vh;padding:0 0 96px">
+
+  <!-- ===== HEADER (mihrab arch) ===== -->
+  <div style="position:relative;background:var(--sk-primary,#1E4034);padding:56px 64px 72px;overflow:hidden">
+    <svg width="100%" height="100%" viewBox="0 0 120 120" preserveAspectRatio="xMidYMid" style="position:absolute;inset:0;width:100%;height:100%;opacity:.13" aria-hidden="true">
+      <defs>
+        <pattern id="skGirihHead" width="60" height="60" patternUnits="userSpaceOnUse">
+          <g fill="none" stroke="#E3CE9B" stroke-width="1.1">
+            <path d="M30 0 L60 30 L30 60 L0 30 Z"></path>
+            <path d="M30 12 L48 30 L30 48 L12 30 Z"></path>
+            <path d="M0 0 L12 30 L0 60 M60 0 L48 30 L60 60"></path>
+            <path d="M0 0 L30 12 L60 0 M0 60 L30 48 L60 60"></path>
+          </g>
+        </pattern>
+      </defs>
+      <rect width="120" height="120" fill="url(#skGirihHead)"></rect>
+    </svg>
+    <div style="position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <div style="max-width:640px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <svg width="34" height="44" viewBox="0 0 34 44" fill="none" aria-hidden="true">
+            <path d="M17 1 C26 9 33 15 33 23 V43 H1 V23 C1 15 8 9 17 1 Z" stroke="#E3CE9B" stroke-width="1.6"></path>
+            <path d="M17 9 C23 15 27 18 27 24 V37 H7 V24 C7 18 11 15 17 9 Z" stroke="#C09A4E" stroke-width="1.2"></path>
+            <path d="M17 20 L21 25 L17 30 L13 25 Z" fill="#E3CE9B"></path>
+          </svg>
+          <span style="font-family:'Reem Kufi',sans-serif;font-size:15px;font-weight:500;letter-spacing:.14em;color:#E3CE9B">SHEIKHI · شيخي</span>
+        </div>
+        <h1 style="margin:0 0 14px;font-family:'Aref Ruqaa','Reem Kufi',serif;font-size:56px;line-height:1.18;font-weight:700;color:#FBF7EF">نظام التصميم — شيخي</h1>
+        <p style="margin:0;font-size:19px;line-height:1.75;color:rgba(251,247,239,.74);text-wrap:pretty">هوية تراث إسلامي معاصر لتطبيق طلب العلم الشرعي: كتب، دروس مرئية ومسموعة، اختبارات وشهادات. زخرفة هندسية مقيّدة، ورق عاجي، ذهب للحدود، والمحتوى هو البطل.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;color:rgba(251,247,239,.6);text-align:left" dir="ltr">
+        <span>v1.0 · RTL-first</span>
+        <span>Reem Kufi · Aref Ruqaa · Tajawal</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- gold rule -->
+  <div style="height:4px;background:linear-gradient(90deg,#C09A4E,#E3CE9B 50%,#C09A4E)"></div>
+
+  <div style="max-width:1240px;margin:0 auto;padding:0 48px">
+
+    <!-- ===== PALETTE ===== -->
+    <section style="padding:64px 0 0">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:8px">
+        <h2 style="margin:0;font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;color:var(--sk-primary,#1E4034)">لوحة الألوان</h2>
+        <span style="font-size:14px;color:#8B7A66" dir="ltr">01 / Palette</span>
+      </div>
+      <p style="margin:0 0 28px;font-size:16px;line-height:1.7;color:#6B5B4B;max-width:640px">اللون الأساسي متغيّر (token واحد) — الأخضر المخطوطي هو الافتراضي. الذهب للحدود والزخارف فقط، والنص بنّي داكن لا أسود.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:16px">
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:var(--sk-primary,#1E4034)"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">أساسي</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">primary · #1E4034</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#14291F"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">أساسي غامق</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">primary-900 · #14291F</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#2F5F4C"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">أساسي فاتح</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">primary-600 · #2F5F4C</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#EAF0EC"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">أساسي باهت</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">primary-50 · #EAF0EC</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:var(--sk-gold,#C09A4E)"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">ذهبي</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">gold · #C09A4E</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#E3CE9B"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">ذهبي فاتح</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">gold-300 · #E3CE9B</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#FBF7EF"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">ورق</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">paper · #FBF7EF</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#F1EADC"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">ورق غائر</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">paper-sunk · #F1EADC</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#E4D9C4"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">حدود</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">border · #E4D9C4</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#3B2E23"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">نص أساسي</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">ink · #3B2E23</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#6B5B4B"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">نص ثانوي</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">ink-muted · #6B5B4B</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:104px;background:#A2937F"></div>
+          <div style="padding:12px 14px 14px"><div style="font-size:15px;font-weight:700;color:#3B2E23">نص خفيف</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">ink-faint · #A2937F</div></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:16px;margin-top:16px">
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:64px;background:#2E6B4F"></div>
+          <div style="padding:11px 14px 13px"><div style="font-size:14.5px;font-weight:700;color:#3B2E23">نجاح · إتمام</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">success · #2E6B4F</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:64px;background:#9A6B23"></div>
+          <div style="padding:11px 14px 13px"><div style="font-size:14.5px;font-weight:700;color:#3B2E23">تنبيه</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">warning · #9A6B23</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:64px;background:#8A3A2E"></div>
+          <div style="padding:11px 14px 13px"><div style="font-size:14.5px;font-weight:700;color:#3B2E23">خطأ</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">danger · #8A3A2E</div></div>
+        </div>
+        <div style="border:1px solid #E4D9C4;border-radius:12px;overflow:hidden;background:#fff">
+          <div style="height:64px;background:#3D5A80"></div>
+          <div style="padding:11px 14px 13px"><div style="font-size:14.5px;font-weight:700;color:#3B2E23">معلومة</div><div style="font-size:12.5px;color:#8B7A66;margin-top:3px" dir="ltr">info · #3D5A80</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== DECORATIVE DIVIDER ===== -->
+    <div style="display:flex;align-items:center;gap:18px;margin:56px 0">
+      <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,#E4D9C4 30%,#E4D9C4)"></div>
+      <svg width="86" height="22" viewBox="0 0 86 22" fill="none" aria-hidden="true">
+        <path d="M43 1 L53 11 L43 21 L33 11 Z" stroke="#C09A4E" stroke-width="1.2"></path>
+        <path d="M43 6 L48 11 L43 16 L38 11 Z" fill="#C09A4E" opacity=".55"></path>
+        <path d="M23 11 L30 4 L30 18 Z M63 11 L56 4 L56 18 Z" stroke="#C09A4E" stroke-width="1.1"></path>
+        <circle cx="12" cy="11" r="3" stroke="#C09A4E" stroke-width="1.1"></circle>
+        <circle cx="74" cy="11" r="3" stroke="#C09A4E" stroke-width="1.1"></circle>
+      </svg>
+      <div style="flex:1;height:1px;background:linear-gradient(270deg,transparent,#E4D9C4 30%,#E4D9C4)"></div>
+    </div>
+
+    <!-- ===== TYPE SCALE ===== -->
+    <section>
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:8px">
+        <h2 style="margin:0;font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;color:var(--sk-primary,#1E4034)">سلّم الخطوط</h2>
+        <span style="font-size:14px;color:#8B7A66" dir="ltr">02 / Typography</span>
+      </div>
+      <p style="margin:0 0 28px;font-size:16px;line-height:1.7;color:#6B5B4B;max-width:680px">العناوين بـ Reem Kufi (والمناسبات الاحتفالية — أسماء الكتب والشهادات — بـ Aref Ruqaa). المتن بـ Tajawal بارتفاع سطر ‎1.8‎ للقراءة الطويلة.</p>
+
+      <div style="border:1px solid #E4D9C4;border-radius:16px;background:#fff;overflow:hidden">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:0;border-bottom:1px solid #F1EADC;padding:22px 26px;align-items:center">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">display / 56 / 700<br>Aref Ruqaa · lh 1.18</div>
+          <div style="font-family:'Aref Ruqaa',serif;font-size:56px;font-weight:700;line-height:1.18;color:#3B2E23">صحيح البخاري</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid #F1EADC;padding:20px 26px;align-items:center">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">h1 / 40 / 700<br>Reem Kufi · lh 1.3</div>
+          <div style="font-family:'Reem Kufi',sans-serif;font-size:40px;font-weight:700;line-height:1.3;color:#3B2E23">أصول الفقه — المستوى الأول</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid #F1EADC;padding:20px 26px;align-items:center">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">h2 / 32 / 700<br>Reem Kufi · lh 1.35</div>
+          <div style="font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;line-height:1.35;color:#3B2E23">الدرس الثالث: تعريف الحكم</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid #F1EADC;padding:20px 26px;align-items:center">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">h3 / 24 / 600<br>Reem Kufi · lh 1.4</div>
+          <div style="font-family:'Reem Kufi',sans-serif;font-size:24px;font-weight:600;line-height:1.4;color:#3B2E23">مسائل الباب</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid #F1EADC;padding:20px 26px">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">body-lg / 19 / 400<br>Tajawal · lh 1.85</div>
+          <div style="font-size:19px;font-weight:400;line-height:1.85;color:#3B2E23;max-width:620px;text-wrap:pretty">مقاس المتن الأساسي لصفحات الكتب وشروح الدروس. طوله المريح بين ‎60‎ و‎75‎ حرفًا في السطر، والفقرة لا تزيد على خمسة أسطر.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid #F1EADC;padding:20px 26px">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">body / 17 / 400<br>Tajawal · lh 1.8</div>
+          <div style="font-size:17px;line-height:1.8;color:#3B2E23;max-width:620px">النص العام في الواجهات: الوصف، التعليقات، وشرح الاختبار.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid #F1EADC;padding:18px 26px">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">small / 15 / 400<br>Tajawal · lh 1.7</div>
+          <div style="font-size:15px;line-height:1.7;color:#6B5B4B">نص مساعد: أسماء الشيوخ، مدة الدرس، عدد الأسئلة.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:200px 1fr;padding:18px 26px">
+          <div style="font-size:13px;color:#8B7A66;line-height:1.6" dir="ltr">caption / 13 / 500<br>letter-spacing .04em</div>
+          <div style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#8B7A66">تسميات، وسوم، وأرقام الصفحات</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SPACING ===== -->
+    <section style="padding-top:56px">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:8px">
+        <h2 style="margin:0;font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;color:var(--sk-primary,#1E4034)">سلّم المسافات</h2>
+        <span style="font-size:14px;color:#8B7A66" dir="ltr">03 / Spacing · 4pt base</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;border:1px solid #E4D9C4;border-radius:16px;background:#fff;padding:24px 26px;margin-top:20px">
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-1</span><span style="font-size:13px;color:#8B7A66" dir="ltr">4px</span><span style="height:14px;width:4px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-2</span><span style="font-size:13px;color:#8B7A66" dir="ltr">8px</span><span style="height:14px;width:8px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-3</span><span style="font-size:13px;color:#8B7A66" dir="ltr">12px</span><span style="height:14px;width:12px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-4</span><span style="font-size:13px;color:#8B7A66" dir="ltr">16px</span><span style="height:14px;width:16px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-5</span><span style="font-size:13px;color:#8B7A66" dir="ltr">24px</span><span style="height:14px;width:24px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-6</span><span style="font-size:13px;color:#8B7A66" dir="ltr">32px</span><span style="height:14px;width:32px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-7</span><span style="font-size:13px;color:#8B7A66" dir="ltr">48px</span><span style="height:14px;width:48px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-8</span><span style="font-size:13px;color:#8B7A66" dir="ltr">64px</span><span style="height:14px;width:64px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="display:grid;grid-template-columns:120px 90px 1fr;align-items:center;gap:16px"><span style="font-size:14px;font-weight:500;color:#3B2E23" dir="ltr">space-9</span><span style="font-size:13px;color:#8B7A66" dir="ltr">96px</span><span style="height:14px;width:96px;background:var(--sk-primary,#1E4034);border-radius:2px"></span></div>
+        <div style="margin-top:8px;padding-top:16px;border-top:1px solid #F1EADC;font-size:14.5px;color:#6B5B4B;line-height:1.7">هوامش الصفحة: ‎24px‎ على الجوال، ‎48px‎ على اللوح، ‎64px‎ على سطح المكتب. أنصاف الأقطار: ‎6 / 10 / 16 / 24‎ + قوس المحراب لرؤوس الكروت.</div>
+      </div>
+    </section>
+
+    <!-- ===== BUTTONS ===== -->
+    <section style="padding-top:56px">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:24px">
+        <h2 style="margin:0;font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;color:var(--sk-primary,#1E4034)">الأزرار</h2>
+        <span style="font-size:14px;color:#8B7A66" dir="ltr">04 / Buttons · 48px height</span>
+      </div>
+      <div style="border:1px solid #E4D9C4;border-radius:16px;background:#fff;padding:32px;display:flex;flex-wrap:wrap;gap:40px">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#8B7A66">أساسي</span>
+          <button type="button" style="font-family:'Reem Kufi',sans-serif;font-size:17px;font-weight:500;color:#FBF7EF;background:var(--sk-primary,#1E4034);border:1px solid #14291F;border-radius:10px;height:48px;padding:0 28px;cursor:pointer;box-shadow:0 1px 0 rgba(224,206,155,.35) inset;transition:background .18s" style-hover="background:#14291F">ابدأ الدرس</button>
+          <button type="button" style="font-family:'Reem Kufi',sans-serif;font-size:15px;font-weight:500;color:#FBF7EF;background:var(--sk-primary,#1E4034);border:1px solid #14291F;border-radius:8px;height:38px;padding:0 18px;cursor:pointer">حجم صغير</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#8B7A66">ثانوي</span>
+          <button type="button" style="font-family:'Reem Kufi',sans-serif;font-size:17px;font-weight:500;color:var(--sk-primary,#1E4034);background:#FBF7EF;border:1.5px solid var(--sk-gold,#C09A4E);border-radius:10px;height:48px;padding:0 28px;cursor:pointer;transition:background .18s" style-hover="background:#F6EEDC">أضف للمكتبة</button>
+          <button type="button" style="font-family:'Reem Kufi',sans-serif;font-size:17px;font-weight:500;color:#8A6A2F;background:transparent;border:none;border-radius:10px;height:48px;padding:0 12px;cursor:pointer;text-decoration:underline;text-decoration-color:#E3CE9B;text-underline-offset:6px">زر نصّي</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#8B7A66">معطّل</span>
+          <button type="button" disabled="disabled" style="font-family:'Reem Kufi',sans-serif;font-size:17px;font-weight:500;color:#A2937F;background:#F1EADC;border:1px solid #E4D9C4;border-radius:10px;height:48px;padding:0 28px;cursor:not-allowed">الاختبار مُقفل</button>
+          <span style="font-size:13.5px;color:#A2937F">أكمل ‎80٪‎ من الدروس لفتحه</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <span style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#8B7A66">أيقوني</span>
+          <div style="display:flex;gap:10px">
+            <button type="button" style="width:48px;height:48px;border-radius:10px;background:var(--sk-primary,#1E4034);border:none;cursor:pointer;display:grid;place-items:center">
+              <svg width="18" height="20" viewBox="0 0 18 20" fill="none"><path d="M16 10 L2 19 V1 Z" fill="#E3CE9B"></path></svg>
+            </button>
+            <button type="button" style="width:48px;height:48px;border-radius:10px;background:#FBF7EF;border:1.5px solid #E4D9C4;cursor:pointer;display:grid;place-items:center">
+              <svg width="18" height="20" viewBox="0 0 18 20" fill="none"><path d="M3 1 H15 V19 L9 14 L3 19 Z" stroke="#8A6A2F" stroke-width="1.5"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CARD + BADGES ===== -->
+    <section style="padding-top:56px">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:24px">
+        <h2 style="margin:0;font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;color:var(--sk-primary,#1E4034)">الكارت والشارات</h2>
+        <span style="font-size:14px;color:#8B7A66" dir="ltr">05 / Card &amp; Badge</span>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+
+        <!-- course card with mihrab head -->
+        <div style="width:340px;background:#fff;border:1px solid #E4D9C4;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(59,46,35,.05)">
+          <div style="position:relative;height:150px;background:var(--sk-primary,#1E4034);overflow:hidden">
+            <svg width="100%" height="100%" viewBox="0 0 340 150" preserveAspectRatio="none" style="position:absolute;inset:0;opacity:.16" aria-hidden="true">
+              <defs><pattern id="skArabesque" width="44" height="44" patternUnits="userSpaceOnUse">
+                <g fill="none" stroke="#E3CE9B" stroke-width="1"><path d="M22 0 L44 22 L22 44 L0 22 Z"></path><path d="M0 0 L22 22 L44 0 M0 44 L22 22 L44 44"></path></g>
+              </pattern></defs>
+              <rect width="340" height="150" fill="url(#skArabesque)"></rect>
+            </svg>
+            <svg width="112" height="126" viewBox="0 0 112 126" fill="none" style="position:absolute;bottom:-28px;right:24px" aria-hidden="true">
+              <path d="M56 4 C86 26 108 42 108 66 V124 H4 V66 C4 42 26 26 56 4 Z" stroke="#E3CE9B" stroke-width="1.4" opacity=".8"></path>
+              <path d="M56 26 C76 42 92 52 92 70 V124 H20 V70 C20 52 36 42 56 26 Z" stroke="#C09A4E" stroke-width="1.2" opacity=".7"></path>
+            </svg>
+            <div style="position:absolute;top:16px;right:20px;display:flex;gap:8px">
+              <span style="font-size:12.5px;font-weight:500;letter-spacing:.03em;color:#14291F;background:#E3CE9B;border-radius:999px;padding:5px 12px">فيديو</span>
+              <span style="font-size:12.5px;font-weight:500;color:#E3CE9B;border:1px solid rgba(227,206,155,.5);border-radius:999px;padding:5px 12px">مستوى ٢</span>
+            </div>
+          </div>
+          <div style="padding:22px 22px 24px">
+            <h3 style="margin:0 0 8px;font-family:'Reem Kufi',sans-serif;font-size:23px;font-weight:600;line-height:1.4;color:#3B2E23">شرح الأربعين النووية</h3>
+            <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#6B5B4B">الشيخ عبد الله المنصور · ‎١٢‎ درسًا · ‎٤‎ س ‎٣٠‎ د</p>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;border-top:1px solid #F1EADC">
+              <span style="font-size:13.5px;color:#8B7A66">أنجزت ‎٧‎ من ‎١٢‎</span>
+              <span style="font-family:'Reem Kufi',sans-serif;font-size:15px;font-weight:500;color:#8A6A2F">تابع →</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- book card, paper -->
+        <div style="width:300px;background:#FBF7EF;border:1px solid #E4D9C4;border-radius:16px;padding:24px;position:relative;overflow:hidden">
+          <svg width="120" height="120" viewBox="0 0 60 60" style="position:absolute;left:-18px;bottom:-18px;opacity:.12" aria-hidden="true">
+            <g fill="none" stroke="#1E4034" stroke-width="1"><path d="M30 2 L58 30 L30 58 L2 30 Z"></path><path d="M30 14 L46 30 L30 46 L14 30 Z"></path></g>
+          </svg>
+          <span style="display:inline-block;font-size:12.5px;font-weight:500;color:#8A6A2F;background:#F6EEDC;border:1px solid #E3CE9B;border-radius:6px;padding:4px 10px;margin-bottom:16px">كتاب</span>
+          <div style="font-family:'Aref Ruqaa',serif;font-size:30px;font-weight:700;line-height:1.35;color:#3B2E23;margin-bottom:10px">الآجُرُّومِيَّة</div>
+          <p style="margin:0;font-size:15px;line-height:1.75;color:#6B5B4B;position:relative">متن في النحو · ‎٦٤‎ صفحة · مع الشرح الصوتي</p>
+        </div>
+
+        <!-- badge board -->
+        <div style="width:300px;background:#fff;border:1px solid #E4D9C4;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:16px">
+          <span style="font-size:13px;font-weight:500;letter-spacing:.04em;color:#8B7A66">الشارات</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span style="font-size:13px;font-weight:500;color:#14291F;background:#E3CE9B;border-radius:999px;padding:6px 13px">جديد</span>
+            <span style="font-size:13px;font-weight:500;color:#FBF7EF;background:#2E6B4F;border-radius:999px;padding:6px 13px">مُجتاز</span>
+            <span style="font-size:13px;font-weight:500;color:#8A6A2F;background:#F6EEDC;border:1px solid #E3CE9B;border-radius:999px;padding:6px 13px">مُجاز</span>
+            <span style="font-size:13px;font-weight:500;color:#6B5B4B;background:#F1EADC;border-radius:999px;padding:6px 13px">مسودة</span>
+            <span style="font-size:13px;font-weight:500;color:#FBF7EF;background:#8A3A2E;border-radius:999px;padding:6px 13px">انتهت المدة</span>
+            <span style="font-size:13px;font-weight:500;color:#3D5A80;background:#EAEFF6;border-radius:999px;padding:6px 13px">صوتي</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding-top:14px;border-top:1px solid #F1EADC">
+            <span style="width:26px;height:26px;border-radius:999px;background:#2E6B4F;display:grid;place-items:center">
+              <svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 5 L4.5 8.5 L12 1" stroke="#FBF7EF" stroke-width="1.8"></path></svg>
+            </span>
+            <span style="font-size:14.5px;color:#3B2E23">شهادة إتمام صادرة</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== INPUT + PROGRESS ===== -->
+    <section style="padding-top:56px">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:24px">
+        <h2 style="margin:0;font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;color:var(--sk-primary,#1E4034)">الحقول والتقدّم</h2>
+        <span style="font-size:14px;color:#8B7A66" dir="ltr">06 / Input &amp; Progress</span>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+        <div style="width:400px;background:#fff;border:1px solid #E4D9C4;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="font-size:14.5px;font-weight:500;color:#3B2E23">اسم الطالب</label>
+            <input type="text" value="{{ nameVal }}" onChange="{{ onName }}" placeholder="اكتب اسمك الكامل" style="font-family:'Tajawal',sans-serif;font-size:16.5px;color:#3B2E23;background:#FBF7EF;border:1.5px solid #E4D9C4;border-radius:10px;height:48px;padding:0 14px;outline:none;transition:border-color .18s" style-focus="border-color:#C09A4E;background:#fff">
+            <span style="font-size:13px;color:#A2937F">يظهر على الشهادة كما تكتبه</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="font-size:14.5px;font-weight:500;color:#3B2E23">البحث في المتون</label>
+            <div style="display:flex;align-items:center;gap:10px;background:#FBF7EF;border:1.5px solid #E4D9C4;border-radius:10px;height:48px;padding:0 14px">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="7" cy="7" r="5.6" stroke="#A2937F" stroke-width="1.5"></circle><path d="M11 11 L16 16" stroke="#A2937F" stroke-width="1.5"></path></svg>
+              <span style="font-size:16.5px;color:#A2937F">ابحث عن باب أو حديث…</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="font-size:14.5px;font-weight:500;color:#8A3A2E">كود الالتحاق</label>
+            <div style="font-size:16.5px;color:#3B2E23;background:#FDF3F1;border:1.5px solid #8A3A2E;border-radius:10px;height:48px;padding:0 14px;display:flex;align-items:center" dir="ltr">SK-0000</div>
+            <span style="font-size:13px;color:#8A3A2E">الكود غير صحيح أو منتهي</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="font-size:14.5px;font-weight:500;color:#A2937F">الحلقة الدراسية</label>
+            <div style="font-size:16.5px;color:#A2937F;background:#F1EADC;border:1.5px solid #E4D9C4;border-radius:10px;height:48px;padding:0 14px;display:flex;align-items:center">تُحدَّد بعد القبول</div>
+          </div>
+        </div>
+
+        <div style="width:400px;display:flex;flex-direction:column;gap:24px">
+          <div style="background:#fff;border:1px solid #E4D9C4;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:24px">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><span style="font-size:14.5px;font-weight:500;color:#3B2E23">تقدّم المقرر</span><span style="font-size:14.5px;color:#8A6A2F">‎٥٨٪‎</span></div>
+              <div style="height:10px;background:#F1EADC;border-radius:999px;overflow:hidden;border:1px solid #E4D9C4">
+                <div style="width:58%;height:100%;background:linear-gradient(90deg,var(--sk-primary,#1E4034),#2F5F4C)"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><span style="font-size:14.5px;font-weight:500;color:#3B2E23">تقدّم ذهبي (الحفظ)</span><span style="font-size:14.5px;color:#8A6A2F">‎٣١٪‎</span></div>
+              <div style="height:10px;background:#F1EADC;border-radius:999px;overflow:hidden;border:1px solid #E4D9C4">
+                <div style="width:31%;height:100%;background:linear-gradient(90deg,#C09A4E,#E3CE9B)"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:14.5px;font-weight:500;color:#3B2E23;margin-bottom:12px">خطوات الاختبار</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="flex:1;height:6px;border-radius:999px;background:var(--sk-primary,#1E4034)"></span>
+                <span style="flex:1;height:6px;border-radius:999px;background:var(--sk-primary,#1E4034)"></span>
+                <span style="flex:1;height:6px;border-radius:999px;background:#C09A4E"></span>
+                <span style="flex:1;height:6px;border-radius:999px;background:#E4D9C4"></span>
+                <span style="flex:1;height:6px;border-radius:999px;background:#E4D9C4"></span>
+              </div>
+              <div style="font-size:13.5px;color:#8B7A66;margin-top:10px">السؤال ‎٣‎ من ‎٥‎</div>
+            </div>
+          </div>
+
+          <!-- pattern swatch -->
+          <div style="border:1px solid #E4D9C4;border-radius:16px;overflow:hidden;background:#FBF7EF">
+            <div style="position:relative;height:170px;background:#FBF7EF">
+              <svg width="100%" height="100%" viewBox="0 0 400 170" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;opacity:.16" aria-hidden="true">
+                <defs><pattern id="skGirihPaper" width="56" height="56" patternUnits="userSpaceOnUse">
+                  <g fill="none" stroke="#1E4034" stroke-width="1">
+                    <path d="M28 0 L56 28 L28 56 L0 28 Z"></path>
+                    <path d="M28 11 L45 28 L28 45 L11 28 Z"></path>
+                    <path d="M0 0 L11 28 L0 56 M56 0 L45 28 L56 56 M0 0 L28 11 L56 0 M0 56 L28 45 L56 56"></path>
+                  </g>
+                </pattern></defs>
+                <rect width="400" height="170" fill="url(#skGirihPaper)"></rect>
+              </svg>
+              <div style="position:relative;padding:24px">
+                <div style="font-family:'Reem Kufi',sans-serif;font-size:20px;font-weight:600;color:#3B2E23">خلفية girih</div>
+                <div style="font-size:14.5px;color:#6B5B4B;margin-top:6px;line-height:1.7">وحدة ‎56px‎ · حدّ ‎1px‎ · شفافية ‎‎0.08–0.16‎<br>لا تُستخدم أبدًا تحت متن قابل للقراءة.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TOKENS JSON ===== -->
+    <section style="padding-top:56px">
+      <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:24px">
+        <h2 style="margin:0;font-family:'Reem Kufi',sans-serif;font-size:32px;font-weight:700;color:var(--sk-primary,#1E4034)">التوكنز</h2>
+        <span style="font-size:14px;color:#8B7A66" dir="ltr">07 / design-tokens.json</span>
+      </div>
+      <pre dir="ltr" style="margin:0;background:#14291F;color:#E6DFCF;border:1px solid #C09A4E;border-radius:16px;padding:28px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.75;overflow:auto;max-height:560px;text-align:left">{
+  "$meta": { "name": "sheikhi", "direction": "rtl", "version": "1.0.0" },
+  "color": {
+    "primary":      { "900": "#14291F", "800": "#1E4034", "600": "#2F5F4C", "50": "#EAF0EC" },
+    "gold":         { "600": "#8A6A2F", "500": "#C09A4E", "300": "#E3CE9B", "50": "#F6EEDC" },
+    "paper":        { "base": "#FBF7EF", "sunk": "#F1EADC", "raised": "#FFFFFF" },
+    "border":       { "base": "#E4D9C4", "subtle": "#F1EADC", "gold": "#C09A4E" },
+    "ink":          { "base": "#3B2E23", "muted": "#6B5B4B", "faint": "#A2937F", "invert": "#FBF7EF" },
+    "state":        { "success": "#2E6B4F", "warning": "#9A6B23", "danger": "#8A3A2E", "info": "#3D5A80" }
+  },
+  "font": {
+    "family": {
+      "display": "'Aref Ruqaa', serif",
+      "heading": "'Reem Kufi', sans-serif",
+      "body":    "'Tajawal', 'IBM Plex Sans Arabic', sans-serif"
+    },
+    "size":   { "display": 56, "h1": 40, "h2": 32, "h3": 24, "body-lg": 19, "body": 17, "small": 15, "caption": 13 },
+    "weight": { "light": 300, "regular": 400, "medium": 500, "semibold": 600, "bold": 700 },
+    "lineHeight": { "display": 1.18, "heading": 1.35, "body": 1.8, "body-lg": 1.85, "tight": 1.4 },
+    "tracking": { "caption": "0.04em", "brand": "0.14em" }
+  },
+  "space": { "1": 4, "2": 8, "3": 12, "4": 16, "5": 24, "6": 32, "7": 48, "8": 64, "9": 96 },
+  "radius": { "sm": 6, "md": 10, "lg": 16, "xl": 24, "pill": 999, "arch": "mihrab-path" },
+  "size": { "control": { "sm": 38, "md": 48 }, "touchTarget": 44, "progressBar": 10 },
+  "border": { "width": { "hairline": 1, "control": 1.5, "accent": 4 } },
+  "shadow": { "card": "0 2px 10px rgba(59,46,35,0.05)", "raised": "0 6px 24px rgba(59,46,35,0.09)" },
+  "pattern": {
+    "girih":     { "unit": 56, "stroke": 1, "opacityOnPaper": 0.10, "opacityOnPrimary": 0.14 },
+    "arabesque": { "unit": 44, "stroke": 1, "opacityOnPrimary": 0.16 },
+    "rules":     ["no living beings", "decoration = frames, dividers, backgrounds only", "never under running text"]
+  },
+  "layout": { "pageMax": 1240, "gutter": { "mobile": 24, "tablet": 48, "desktop": 64 }, "readingMeasure": "60-75ch" },
+  "motion": { "duration": { "fast": 120, "base": 180, "slow": 320 }, "easing": "cubic-bezier(0.2,0.7,0.3,1)" }
+}</pre>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;primary&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#1E4034&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#1E4034&quot;,&quot;#1C3550&quot;,&quot;#3E2140&quot;,&quot;#4A2B18&quot;],&quot;section&quot;:&quot;الهوية&quot;},&quot;gold&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#C09A4E&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#C09A4E&quot;,&quot;#B08D5B&quot;,&quot;#A9822A&quot;],&quot;section&quot;:&quot;الهوية&quot;}}">
+class Component extends DCLogic {
+  state = { name: 'أحمد بن سالم' };
+  renderVals() {
+    return {
+      primary: this.props.primary ?? '#1E4034',
+      gold: this.props.gold ?? '#C09A4E',
+      nameVal: this.state.name,
+      onName: (e) => this.setState({ name: e.target.value })
+    };
+  }
+}
+</script>
+</body>
+</html>
