@@ -1,10 +1,23 @@
 // lib/features/auth/view/forgot_password_page.dart
+//
+// Heritage redesign (Auth Phase 1, screens 2c/2d). SheikhyAuthHeader band +
+// persistent info/danger SheikhyNotice + email field + primary CTA.
+// Server errors flip the notice to danger and mark the field red (design 2d).
+//
+// Visual-only migration: AuthCubit contract is unchanged — resetPassword(email)
+// → AuthPasswordResetSent → pushReplacement('/reset-sent'). No Bloc/Cubit/
+// Repository touched.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_auth_header.dart';
+import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/sheikhy_notice.dart';
+import '../../../core/widgets/sheikhy_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -16,8 +29,10 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+
+  String? _formError;
+  String? _emailError;
 
   @override
   void dispose() {
@@ -26,144 +41,139 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    context.read<AuthCubit>().resetPassword(_emailController.text.trim());
+    final email = _emailController.text.trim();
+
+    String? emailError;
+    if (email.isEmpty) {
+      emailError = 'أدخل بريدك الإلكتروني';
+    } else if (!email.contains('@')) {
+      emailError = 'صيغة البريد غير صحيحة';
+    }
+
+    setState(() {
+      _formError = null;
+      _emailError = emailError;
+    });
+
+    if (emailError != null) return;
+
+    context.read<AuthCubit>().resetPassword(email);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: colorScheme.error,
-              duration: const Duration(seconds: 4),
-            ),
-          );
+          setState(() {
+            _formError = state.message;
+            _emailError = 'البريد غير مسجّل لدينا';
+          });
         } else if (state is AuthPasswordResetSent) {
           if (!mounted) return;
-          context.pushReplacement(
-            '/reset-sent',
-            extra: state.email,
-          );
+          context.pushReplacement('/reset-sent', extra: state.email);
         }
       },
       child: Scaffold(
-        backgroundColor: colorScheme.surface,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_forward),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: AppSpacing.xxl),
-                // Lock icon circle
-                Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.lock_reset_outlined,
-                      size: 40,
-                      color: colorScheme.primary,
-                    ),
-                  ),
+        backgroundColor: AppColors.paper,
+        resizeToAvoidBottomInset: true,
+        body: Column(
+          children: [
+            SheikhyAuthHeader(
+              title: 'استعادة كلمة المرور',
+              subtitle: 'نرسل لك رمز تحقق على بريدك',
+              onBack: () => context.pop(),
+              backLabel: 'رجوع',
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.pageGutter,
+                  AppSpacing.s5,
+                  AppSpacing.pageGutter,
+                  AppSpacing.s5,
                 ),
-                const SizedBox(height: AppSpacing.xl),
-                Text(
-                  'نسيت كلمة المرور؟',
-                  style: textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('البريد الإلكتروني', style: textTheme.labelLarge),
-                      const SizedBox(height: AppSpacing.sm),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
-                          hintText: 'example@domain.com',
-                          suffixIcon: Icon(Icons.email_outlined),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'أدخل بريدك الإلكتروني';
-                          }
-                          if (!v.contains('@')) {
-                            return 'بريد إلكتروني غير صالح';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                BlocBuilder<AuthCubit, AuthState>(
-                  builder: (context, state) {
-                    return PrimaryButton(
-                      label: 'إرسال رابط إعادة التعيين',
-                      isLoading: state is AuthLoading,
-                      onPressed: _submit,
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('تذكرت كلمة المرور؟ ', style: textTheme.bodyMedium),
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Text(
-                        'سجل دخولك',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    SheikhyNotice(
+                      message: _formError ??
+                          'أدخل البريد المسجّل، وسيصلك رمز صالح لعشر دقائق',
+                      variant: _formError != null
+                          ? SheikhyNoticeVariant.danger
+                          : SheikhyNoticeVariant.info,
                     ),
+                    const SizedBox(height: AppSpacing.s5),
+                    SheikhyTextField(
+                      label: 'البريد الإلكتروني',
+                      controller: _emailController,
+                      hintText: 'talib@sheikhy.app',
+                      keyboardType: TextInputType.emailAddress,
+                      prefixIcon: const Icon(Icons.mail_outline),
+                      textInputAction: TextInputAction.done,
+                      errorText: _emailError,
+                      onChanged: (_) {
+                        if (_emailError != null || _formError != null) {
+                          setState(() {
+                            _emailError = null;
+                            _formError = null;
+                          });
+                        }
+                      },
+                      onSubmitted: (_) => _submit(),
+                    ),
+                    const SizedBox(height: AppSpacing.s5),
+                    BlocBuilder<AuthCubit, AuthState>(
+                      buildWhen: (prev, curr) =>
+                          curr is AuthLoading || prev is AuthLoading,
+                      builder: (context, state) {
+                        return SheikhyButton.primary(
+                          label: 'أرسل رمز التحقق',
+                          fullWidth: true,
+                          isLoading: state is AuthLoading,
+                          onPressed: _submit,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.s6),
+                    _BackToLoginFooter(onTap: () => context.pop()),
+                    SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
                   ],
                 ),
-                SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
-              ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackToLoginFooter extends StatelessWidget {
+  const _BackToLoginFooter({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'تذكرتها؟ ',
+          style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+        ),
+        InkWell(
+          onTap: onTap,
+          child: Text(
+            'عد لتسجيل الدخول',
+            style: AppTextStyles.small.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

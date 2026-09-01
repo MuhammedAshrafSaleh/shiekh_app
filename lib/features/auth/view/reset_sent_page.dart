@@ -1,4 +1,11 @@
 // lib/features/auth/view/reset_sent_page.dart
+//
+// Heritage redesign (Auth Phase 1, no numbered mockup). SheikhyAuthHeader band
+// + OrnamentDivider + gold-ring mail motif (CustomPainter) + email address +
+// primary "open mail app" CTA + resend row with 60-second countdown.
+//
+// Visual-only migration: AuthCubit contract unchanged. resetPassword(email) is
+// called on resend — same as before. No Bloc/Cubit/Repository touched.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -6,9 +13,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/ornament_divider.dart';
+import '../../../core/widgets/sheikhy_auth_header.dart';
+import '../../../core/widgets/sheikhy_button.dart';
 import '../cubit/auth_cubit.dart';
+import '../cubit/auth_state.dart';
 
 class ResetSentPage extends StatefulWidget {
   final String email;
@@ -20,8 +32,8 @@ class ResetSentPage extends StatefulWidget {
 }
 
 class _ResetSentPageState extends State<ResetSentPage> {
-  static const _cooldownSeconds = 45;
-  int _remaining = _cooldownSeconds;
+  static const int _cooldown = 60;
+  int _remaining = _cooldown;
   Timer? _timer;
 
   @override
@@ -30,8 +42,14 @@ class _ResetSentPageState extends State<ResetSentPage> {
     _startCountdown();
   }
 
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
   void _startCountdown() {
-    _remaining = _cooldownSeconds;
+    _remaining = _cooldown;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) {
@@ -40,18 +58,14 @@ class _ResetSentPageState extends State<ResetSentPage> {
       }
       setState(() {
         _remaining--;
-        if (_remaining <= 0) t.cancel();
+        if (_remaining <= 0) {
+          t.cancel();
+        }
       });
     });
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _openEmailApp() async {
+  Future<void> _openMailApp() async {
     final uri = Uri(scheme: 'mailto');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -66,157 +80,198 @@ class _ResetSentPageState extends State<ResetSentPage> {
   void _resend() {
     context.read<AuthCubit>().resetPassword(widget.email);
     _startCountdown();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('تم إعادة إرسال الرابط'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
-  String _formatTime(int seconds) {
-    final m = (seconds ~/ 60).toString().padLeft(2, '0');
-    final s = (seconds % 60).toString().padLeft(2, '0');
-    return '($m:$s)';
+  String _resendLabel() {
+    if (_remaining <= 0) return 'إعادة الإرسال';
+    final m = (_remaining ~/ 60).toString().padLeft(2, '0');
+    final s = (_remaining % 60).toString().padLeft(2, '0');
+    return 'إعادة الإرسال ($m:$s)';
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final canResend = _remaining <= 0;
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward),
-          onPressed: () => context.go('/login'),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Center(
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.mark_email_read_outlined,
-                    size: 48,
-                    color: colorScheme.primary,
-                  ),
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (_, curr) => curr is AuthError,
+      listener: (context, state) {
+        if (state is AuthError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message)),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.paper,
+        body: Column(
+          children: [
+            SheikhyAuthHeader(
+              title: 'تم إرسال الرابط',
+              subtitle: 'تحقق من بريدك الإلكتروني',
+              onBack: () => context.pop(),
+              backLabel: 'رجوع',
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.pageGutter,
+                  AppSpacing.s6,
+                  AppSpacing.pageGutter,
+                  AppSpacing.s5,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Text(
-                'تم إرسال الرابط بنجاح',
-                style: textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'لقد أرسلنا رابط تعيين كلمة المرور إلى بريدك الإلكتروني',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                widget.email,
-                style: textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'افتح بريدك الإلكتروني واضغط على الرابط لإعادة تعيين كلمة المرور، الرابط صالح لمدة محدودة.',
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              PrimaryButton(
-                label: 'افتح تطبيق البريد الإلكتروني',
-                onPressed: _openEmailApp,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              // Resend with cooldown
-              Center(
-                child: canResend
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('لم يصلك البريد؟ ', style: textTheme.bodyMedium),
-                          GestureDetector(
-                            onTap: _resend,
-                            child: Text(
-                              'إعادة الإرسال',
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Text.rich(
-                        TextSpan(
-                          text: 'لم يصلك البريد؟ ',
-                          style: textTheme.bodyMedium,
-                          children: [
-                            TextSpan(
-                              text: 'إعادة الإرسال ',
-                              style: textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurface.withValues(alpha: 0.4),
-                              ),
-                            ),
-                            TextSpan(
-                              text: _formatTime(_remaining),
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface.withValues(alpha: 0.4),
-                              ),
-                            ),
-                          ],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Center(
-                child: GestureDetector(
-                  onTap: () => context.go('/login'),
-                  child: Text(
-                    'العودة لتسجيل الدخول',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const OrnamentDivider(),
+                    const SizedBox(height: AppSpacing.s6),
+                    const Center(child: _MailMotif()),
+                    const SizedBox(height: AppSpacing.s6),
+                    Text(
+                      'تم إرسال الرابط بنجاح',
+                      style: AppTextStyles.h2.copyWith(color: AppColors.ink),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.s3),
+                    Text(
+                      'أرسلنا رابط تعيين كلمة المرور إلى',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.inkMuted,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.s1),
+                    Text(
+                      widget.email,
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.s3),
+                    Text(
+                      'افتح بريدك الإلكتروني واضغط على الرابط',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.inkFaint,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.s6),
+                    SheikhyButton.primary(
+                      label: 'افتح تطبيق البريد الإلكتروني',
+                      fullWidth: true,
+                      onPressed: _openMailApp,
+                    ),
+                    const SizedBox(height: AppSpacing.s4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'لم يصلك البريد؟ ',
+                          style: AppTextStyles.small.copyWith(
+                            color: AppColors.inkMuted,
+                          ),
+                        ),
+                        SheikhyButton.text(
+                          label: _resendLabel(),
+                          onPressed: canResend ? _resend : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.s4),
+                    Center(
+                      child: SheikhyButton.text(
+                        label: 'العودة لتسجيل الدخول',
+                        onPressed: () => context.go('/login'),
+                      ),
+                    ),
+                    SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
+                  ],
                 ),
               ),
-              const Spacer(),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// Gold double-ring with diamond cardinal marks and a mail icon at centre.
+/// Drawn entirely with CustomPainter — no raster assets.
+class _MailMotif extends StatelessWidget {
+  const _MailMotif();
+
+  static const double _size = 96;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: _size,
+      height: _size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(_size, _size),
+            painter: _GoldRingPainter(),
+          ),
+          const Icon(Icons.mail_outline, size: 34, color: AppColors.gold),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoldRingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final outerR = size.width / 2 - 2;
+    final innerR = outerR - 6;
+
+    final ringStroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = AppColors.gold
+      ..strokeWidth = 1.5;
+
+    final bgFill = Paint()
+      ..style = PaintingStyle.fill
+      ..color = AppColors.gold.withValues(alpha: 0.07);
+
+    // Faint fill between the two rings
+    canvas.drawCircle(Offset(cx, cy), outerR, bgFill);
+    // Outer ring
+    canvas.drawCircle(Offset(cx, cy), outerR, ringStroke);
+    // Inner ring
+    canvas.drawCircle(Offset(cx, cy), innerR, ringStroke);
+
+    // Small filled diamonds at the four cardinal points on the outer ring
+    final diamondFill = Paint()
+      ..style = PaintingStyle.fill
+      ..color = AppColors.gold;
+    const d = 3.5;
+
+    for (final pt in [
+      Offset(cx, cy - outerR),
+      Offset(cx, cy + outerR),
+      Offset(cx - outerR, cy),
+      Offset(cx + outerR, cy),
+    ]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(pt.dx, pt.dy - d)
+          ..lineTo(pt.dx + d, pt.dy)
+          ..lineTo(pt.dx, pt.dy + d)
+          ..lineTo(pt.dx - d, pt.dy)
+          ..close(),
+        diamondFill,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GoldRingPainter old) => false;
 }

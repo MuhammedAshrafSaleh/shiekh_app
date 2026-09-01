@@ -107,17 +107,20 @@ flutter_launcher_icons:
   min_sdk_android: 21
 
 flutter_native_splash:
-  color: "#1B5E20"
-  image: assets/app-icon.png
-  color_dark: "#1B5E20"
-  image_dark: assets/app-icon.png
+  # Solid manuscript green — matches the heritage Flutter splash background so
+  # there is no flash or jump when the native layer hands off to Flutter.
+  color: "#1E4034"
+  color_dark: "#1E4034"
   android_12:
-    color: "#1B5E20"
-    image: assets/app-icon.png
-    color_dark: "#1B5E20"
-    image_dark: assets/app-icon.png
+    color: "#1E4034"
+    color_dark: "#1E4034"
   fullscreen: false
 
 flutter:
   uses-material-design: true
   generate: true
+
+  assets:
+    # Per-deployment white-label sheikh photo (splash). Replace per sheikh.
+    # See MIGRATION_NOTES.md. Falls back to initials if the file is absent.
+    - assets/images/

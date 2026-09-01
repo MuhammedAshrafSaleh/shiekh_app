@@ -1,10 +1,27 @@
 // lib/features/auth/view/login_page.dart
+//
+// Heritage redesign (Auth Phase 1, screens 1b/1c). Header band + email +
+// password (with eye toggle + inline "نسيتها؟") + "remember me" + primary CTA +
+// "أو" divider + alternate sign-in + sign-up footer. Server/validation errors
+// surface as a top SheikhyNotice banner (design 1c) plus per-field errorText.
+//
+// Visual-only migration: the AuthCubit contract is unchanged — signIn(email,
+// password). "remember me" and "الدخول برمز الملفة" are rendered but not yet
+// wired (no backing cubit method) per the approved plan.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_auth_header.dart';
+import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/sheikhy_checkbox.dart';
+import '../../../core/widgets/sheikhy_labeled_divider.dart';
+import '../../../core/widgets/sheikhy_notice.dart';
+import '../../../core/widgets/sheikhy_password_field.dart';
+import '../../../core/widgets/sheikhy_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -16,10 +33,13 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+
+  bool _rememberMe = false;
+  String? _formError;
+  String? _emailError;
+  String? _passwordError;
 
   @override
   void dispose() {
@@ -29,179 +49,218 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    context.read<AuthCubit>().signIn(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    String? emailError;
+    String? passwordError;
+    if (email.isEmpty) {
+      emailError = 'أدخل بريدك الإلكتروني';
+    } else if (!email.contains('@')) {
+      emailError = 'صيغة البريد غير صحيحة';
+    }
+    if (password.isEmpty) {
+      passwordError = 'أدخل كلمة المرور';
+    }
+
+    setState(() {
+      _formError = null;
+      _emailError = emailError;
+      _passwordError = passwordError;
+    });
+
+    if (emailError != null || passwordError != null) return;
+    context.read<AuthCubit>().signIn(email: email, password: password);
+  }
+
+  void _comingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('هذه الميزة قيد التطوير'),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (prev, curr) => curr is AuthError,
       listener: (context, state) {
         if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: colorScheme.error,
-              duration: const Duration(seconds: 4),
-            ),
-          );
+          setState(() => _formError = state.message);
         }
       },
       child: Scaffold(
-        backgroundColor: colorScheme.surface,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Column(
-              children: [
-                const SizedBox(height: AppSpacing.xxl),
-                // Logo circle
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.local_florist_outlined,
-                    color: Colors.white,
-                    size: 36,
-                  ),
+        backgroundColor: AppColors.paper,
+        resizeToAvoidBottomInset: true,
+        body: Column(
+          children: [
+            const SheikhyAuthHeader(
+              title: 'أهلاً بعودتك',
+              subtitle: 'أكمل ما بدأته في مجالس العلم',
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.pageGutter,
+                  AppSpacing.s6,
+                  AppSpacing.pageGutter,
+                  AppSpacing.s5,
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'أهلاً بعودتك',
-                  style: textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'سجل دخولك لمتابعة دروسك',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('البريد الإلكتروني', style: textTheme.labelLarge),
-                      const SizedBox(height: AppSpacing.sm),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
-                          hintText: 'example@domain.com',
-                          suffixIcon: Icon(Icons.email_outlined),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'أدخل بريدك الإلكتروني';
-                          }
-                          if (!v.contains('@')) {
-                            return 'بريد إلكتروني غير صالح';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('كلمة المرور', style: textTheme.labelLarge),
-                          TextButton(
-                            onPressed: () => context.push('/forgot-password'),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              'نسيت كلمة المرور؟',
-                              style: textTheme.labelMedium?.copyWith(
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        textDirection: TextDirection.ltr,
-                        decoration: InputDecoration(
-                          hintText: '••••••••',
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                          ),
-                          prefixIcon: const Icon(Icons.lock_outlined),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return 'أدخل كلمة المرور';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                BlocBuilder<AuthCubit, AuthState>(
-                  builder: (context, state) {
-                    return PrimaryButton(
-                      label: 'تسجيل الدخول',
-                      isLoading: state is AuthLoading,
-                      onPressed: _submit,
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'ليس لديك حساب؟ ',
-                      style: textTheme.bodyMedium,
+                    if (_formError != null) ...[
+                      SheikhyNotice(message: _formError!),
+                      const SizedBox(height: AppSpacing.s5),
+                    ],
+                    SheikhyTextField(
+                      label: 'البريد الإلكتروني',
+                      controller: _emailController,
+                      hintText: 'example@domain.com',
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      prefixIcon: const Icon(Icons.mail_outline),
+                      errorText: _emailError,
+                      onChanged: (_) {
+                        if (_emailError != null) {
+                          setState(() => _emailError = null);
+                        }
+                      },
                     ),
-                    GestureDetector(
-                      onTap: () => context.push('/signup'),
-                      child: Text(
-                        'سجل الآن',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(height: AppSpacing.s4),
+                    _PasswordWithForgot(
+                      controller: _passwordController,
+                      errorText: _passwordError,
+                      onChanged: (_) {
+                        if (_passwordError != null) {
+                          setState(() => _passwordError = null);
+                        }
+                      },
+                      onForgot: () => context.push('/forgot-password'),
+                      onSubmitted: (_) => _submit(),
+                    ),
+                    const SizedBox(height: AppSpacing.s4),
+                    SheikhyCheckbox(
+                      value: _rememberMe,
+                      onChanged: (v) => setState(() => _rememberMe = v),
+                      label: Text(
+                        'ابقني مسجّلاً في هذا الجهاز',
+                        style: AppTextStyles.small.copyWith(
+                          color: AppColors.inkMuted,
                         ),
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.s5),
+                    BlocBuilder<AuthCubit, AuthState>(
+                      buildWhen: (prev, curr) =>
+                          curr is AuthLoading || prev is AuthLoading,
+                      builder: (context, state) {
+                        return SheikhyButton.primary(
+                          label: 'دخول',
+                          fullWidth: true,
+                          isLoading: state is AuthLoading,
+                          onPressed: _submit,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.s5),
+                    const SheikhyLabeledDivider(label: 'أو'),
+                    const SizedBox(height: AppSpacing.s5),
+                    SheikhyButton.secondary(
+                      label: 'الدخول برمز الملفة',
+                      fullWidth: true,
+                      onPressed: _comingSoon,
+                    ),
+                    const SizedBox(height: AppSpacing.s6),
+                    _SignupFooter(onTap: () => context.push('/signup')),
+                    SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
                   ],
                 ),
-                SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
-              ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Password field with the "نسيتها؟" link overlaid on its label line (the
+/// heritage fields bake in their own label, so the link is positioned over it).
+class _PasswordWithForgot extends StatelessWidget {
+  const _PasswordWithForgot({
+    required this.controller,
+    required this.errorText,
+    required this.onChanged,
+    required this.onForgot,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String? errorText;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onForgot;
+  final ValueChanged<String> onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        SheikhyPasswordField(
+          label: 'كلمة المرور',
+          controller: controller,
+          errorText: errorText,
+          textInputAction: TextInputAction.done,
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+        ),
+        PositionedDirectional(
+          top: 0,
+          end: 0,
+          child: InkWell(
+            onTap: onForgot,
+            child: Text(
+              'نسيتها؟',
+              style: AppTextStyles.small.copyWith(
+                color: AppColors.goldDeep,
+                decoration: TextDecoration.underline,
+                decorationColor: AppColors.goldLight,
+              ),
             ),
           ),
         ),
-      ),
+      ],
+    );
+  }
+}
+
+class _SignupFooter extends StatelessWidget {
+  const _SignupFooter({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'ليس لديك حساب؟ ',
+          style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+        ),
+        InkWell(
+          onTap: onTap,
+          child: Text(
+            'أنشئ حسابًا',
+            style: AppTextStyles.small.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

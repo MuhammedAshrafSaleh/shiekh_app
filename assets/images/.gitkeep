@@ -1,0 +1,3 @@
+# Place the per-deployment white-label sheikh photo here as `sheikh.png`.
+# The splash screen loads assets/images/sheikh.png and falls back to the
+# sheikh's initials if the file is not present. See MIGRATION_NOTES.md.

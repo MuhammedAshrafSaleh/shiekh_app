@@ -693,7 +693,31 @@ class _AdminShell extends StatelessWidget {
 class _AuthNotifier extends ChangeNotifier {
   final AuthCubit _cubit;
 
+  // Recorded at router-build time (≈ app startup). Used to enforce a minimum
+  // Flutter-splash display duration regardless of how fast auth resolves.
+  final DateTime _createdAt = DateTime.now();
+  static const int _minSplashMs = 2500;
+
   _AuthNotifier(this._cubit) {
-    _cubit.stream.listen((_) => notifyListeners());
+    _cubit.stream.listen(_onState);
+  }
+
+  void _onState(dynamic state) {
+    // Loading/initial states keep the splash showing — notify immediately so
+    // the redirect can re-evaluate and stay on /splash.
+    if (state is AuthInitial || state is AuthLoading) {
+      notifyListeners();
+      return;
+    }
+    // For any resolved state, wait out whatever is left of the minimum
+    // splash time so the heritage splash is visible for at least 2.5 s.
+    // Equivalent to: Future.wait([authResolved, Future.delayed(2500ms)]).
+    final elapsed = DateTime.now().difference(_createdAt).inMilliseconds;
+    final remaining = _minSplashMs - elapsed;
+    if (remaining <= 0) {
+      notifyListeners();
+    } else {
+      Future.delayed(Duration(milliseconds: remaining), notifyListeners);
+    }
   }
 }
