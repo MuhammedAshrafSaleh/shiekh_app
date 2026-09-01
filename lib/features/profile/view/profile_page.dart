@@ -131,6 +131,12 @@ class _ProfileView extends StatelessWidget {
               ),
               const Divider(height: 1, indent: AppSpacing.xl),
               _MenuItem(
+                icon: Icons.question_answer_outlined,
+                label: 'أسئلتي',
+                onTap: () => context.push('/my-questions'),
+              ),
+              const Divider(height: 1, indent: AppSpacing.xl),
+              _MenuItem(
                 icon: Icons.lock_outline,
                 label: 'تغيير كلمة المرور',
                 onTap: () => context.push('/profile/edit-password'),

@@ -50,6 +50,34 @@ class QaRepository {
     }
   }
 
+  Future<Either<Failure, List<StudentQuestionEntity>>> getMyQuestions() async {
+    final networkError = _checkNetwork<List<StudentQuestionEntity>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
+
+      final response = await _client
+          .from('student_questions')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(100);
+
+      final questions = (response as List)
+          .map((e) => StudentQuestionEntity.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      return Right(questions);
+    } on PostgrestException catch (e) {
+      _log.warning('getMyQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
   // CC-22: uses student_questions_public view (no user_id exposed)
   Future<Either<Failure, List<StudentQuestionEntity>>> getBookQuestions(
       String bookId) async {

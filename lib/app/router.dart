@@ -42,9 +42,11 @@ import '../features/profile/data/profile_repository.dart';
 import '../features/profile/view/change_password_page.dart';
 import '../features/profile/view/edit_profile_page.dart';
 import '../features/profile/view/profile_page.dart';
+import '../features/qa/cubit/my_questions_cubit.dart';
 import '../features/qa/cubit/qa_cubit.dart';
 import '../features/qa/data/qa_repository.dart';
 import '../features/qa/view/book_qa_page.dart';
+import '../features/qa/view/my_questions_page.dart';
 import '../features/sections/cubit/section_books_cubit.dart';
 import '../features/sections/cubit/sections_cubit.dart';
 import '../features/sections/data/section_repository.dart';
@@ -286,6 +288,16 @@ GoRouter buildRouter(AuthCubit authCubit) {
             ],
           ),
         ],
+      ),
+
+      // --- My Questions ---
+      GoRoute(
+        path: '/my-questions',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              MyQuestionsCubit(ctx.read<QaRepository>())..loadMyQuestions(),
+          child: const MyQuestionsPage(),
+        ),
       ),
 
       // --- Profile sub-routes (Tasks 5.1 / 5.2) ---
