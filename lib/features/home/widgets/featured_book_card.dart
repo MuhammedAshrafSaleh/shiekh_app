@@ -19,17 +19,77 @@ class FeaturedBookCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 180,
-        child: Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final percent = (item.progress.clamp(0.0, 1.0) * 100).round();
+    final started = item.completedLessons > 0;
+    final statusLabel = started ? 'مكتمل' : 'لم يبدأ بعد';
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
+          child: Row(
             children: [
               Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.book.title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        Text(
+                          '${item.totalLessons} درس',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Icon(
+                          Icons.play_circle_outline,
+                          size: 18,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Text(
+                          '$percent%',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          statusLabel,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    ProgressBar(value: item.progress),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 88,
+                  height: 112,
                   child: item.book.coverImageUrl != null
                       ? CachedNetworkImage(
                           imageUrl: item.book.coverImageUrl!,
@@ -47,24 +107,6 @@ class FeaturedBookCard extends StatelessWidget {
                           title: item.book.title,
                           theme: theme,
                         ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.book.title,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    ProgressBar(value: item.progress),
-                  ],
                 ),
               ),
             ],

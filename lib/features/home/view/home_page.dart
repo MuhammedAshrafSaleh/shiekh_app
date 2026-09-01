@@ -4,10 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
+import '../../../core/widgets/initials_avatar.dart';
+import '../../../features/auth/cubit/auth_cubit.dart';
+import '../../../features/auth/cubit/auth_state.dart';
 import '../../../models/banner_entity.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
@@ -17,13 +19,42 @@ import '../widgets/featured_book_card.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  /// Reads the signed-in student's first name from auth metadata.
+  String _studentName(BuildContext context) {
+    final state = context.read<AuthCubit>().state;
+    if (state is AuthAuthenticated) {
+      final full = state.user.userMetadata?['full_name'] as String?;
+      if (full != null && full.trim().isNotEmpty) {
+        return full.trim().split(RegExp(r'\s+')).first;
+      }
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final name = _studentName(context);
+    final greeting = name.isEmpty ? 'السلام عليكم' : 'السلام عليكم، $name';
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppConfig.sheikhName),
-        centerTitle: true,
         automaticallyImplyLeading: false,
+        titleSpacing: AppSpacing.md,
+        title: Row(
+          children: [
+            InitialsAvatar(name: name.isEmpty ? '؟' : name, radius: 20),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                greeting,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -75,40 +106,47 @@ class HomePage extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsetsDirectional.only(
                           start: AppSpacing.md,
+                          end: AppSpacing.sm,
                           top: AppSpacing.md,
                           bottom: AppSpacing.sm,
                         ),
-                        child: Text(
-                          'أهم الكتب',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                        child: Row(
+                          children: [
+                            Text(
+                              'الكتب والدورات',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () => context.go('/path'),
+                              child: const Text('عرض الكل'),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: 240,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsetsDirectional.symmetric(
-                            horizontal: AppSpacing.md,
-                          ),
-                          itemCount: state.data.featuredBooks.length,
-                          itemBuilder: (context, index) {
-                            final item = state.data.featuredBooks[index];
-                            return Padding(
-                              padding: const EdgeInsetsDirectional.only(
-                                end: AppSpacing.sm,
-                              ),
-                              child: FeaturedBookCard(
-                                item: item,
-                                onTap: () =>
-                                    context.go('/books/${item.book.id}'),
-                              ),
-                            );
-                          },
-                        ),
+                    SliverPadding(
+                      padding: const EdgeInsetsDirectional.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      sliver: SliverList.builder(
+                        itemCount: state.data.featuredBooks.length,
+                        itemBuilder: (context, index) {
+                          final item = state.data.featuredBooks[index];
+                          return Padding(
+                            padding: const EdgeInsetsDirectional.only(
+                              bottom: AppSpacing.sm,
+                            ),
+                            child: FeaturedBookCard(
+                              item: item,
+                              onTap: () =>
+                                  context.go('/books/${item.book.id}'),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],

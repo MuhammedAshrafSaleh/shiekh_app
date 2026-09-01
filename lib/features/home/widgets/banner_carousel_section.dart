@@ -26,8 +26,7 @@ class BannerCarouselSection extends StatelessWidget {
       },
       options: CarouselOptions(
         height: 180,
-        viewportFraction: 0.92,
-        enlargeCenterPage: true,
+        viewportFraction: 1.0,
         autoPlay: banners.length > 1,
         autoPlayInterval: const Duration(seconds: 4),
       ),
@@ -46,8 +45,14 @@ class _BannerItem extends StatelessWidget {
     final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsetsDirectional.symmetric(
+          horizontal: AppSpacing.md,
+        ),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: banner.imageUrl != null
             ? CachedNetworkImage(
                 imageUrl: banner.imageUrl!,
