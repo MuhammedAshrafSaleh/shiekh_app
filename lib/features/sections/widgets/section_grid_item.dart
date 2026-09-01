@@ -19,7 +19,9 @@ class SectionGridItem extends StatelessWidget {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go('/sections/${section.id}'),
+        onTap: () => context.push(
+          '/sections/${section.id}?name=${Uri.encodeComponent(section.name)}',
+        ),
         child: Padding(
           padding: const EdgeInsetsDirectional.all(AppSpacing.md),
           child: Column(

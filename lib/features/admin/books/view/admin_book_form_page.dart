@@ -2,6 +2,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_spacing.dart';
@@ -45,7 +46,12 @@ class _AdminBookFormPageState extends State<AdminBookFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AdminBookCubit, AdminBookState>(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && context.canPop()) context.pop();
+      },
+      child: BlocConsumer<AdminBookCubit, AdminBookState>(
       listener: (context, state) {
         if (state is AdminBookFormReady && !_initialized) {
           _initialized = true;
@@ -83,12 +89,15 @@ class _AdminBookFormPageState extends State<AdminBookFormPage> {
         }
       },
       builder: (context, state) {
-        if (state is AdminBookLoading) {
-          return Scaffold(
-            appBar: AppBar(title: Text(widget.isEdit ? 'تعديل الكتاب' : 'كتاب جديد')),
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
+          if (state is AdminBookLoading) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: const BackButton(),
+                title: Text(widget.isEdit ? 'تعديل الكتاب' : 'كتاب جديد'),
+              ),
+              body: const Center(child: CircularProgressIndicator()),
+            );
+          }
 
         final sections = state is AdminBookFormReady
             ? state.sections
@@ -99,6 +108,7 @@ class _AdminBookFormPageState extends State<AdminBookFormPage> {
 
         return Scaffold(
           appBar: AppBar(
+            leading: const BackButton(),
             title: Text(widget.isEdit ? 'تعديل الكتاب' : 'كتاب جديد'),
           ),
           body: SingleChildScrollView(
@@ -238,6 +248,7 @@ class _AdminBookFormPageState extends State<AdminBookFormPage> {
           ),
         );
       },
+      ),
     );
   }
 

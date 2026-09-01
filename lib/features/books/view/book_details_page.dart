@@ -30,29 +30,64 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BlocConsumer<BookDetailsCubit, BookDetailsState>(
-        listener: (context, state) {
-          if (state is BookDetailsLoaded) {
-            // Return from lesson page → refresh progress
-          }
-        },
-        builder: (context, state) {
-          return switch (state) {
-            BookDetailsInitial() || BookDetailsLoading() =>
-              const Center(child: CircularProgressIndicator()),
-            BookDetailsError(:final message) => ErrorState(
-                message: message,
-                onRetry: () =>
-                    context.read<BookDetailsCubit>().loadBook(widget.bookId),
-              ),
-            BookDetailsLoaded() => _BookDetailsView(
-                state: state,
-                bookId: widget.bookId,
-              ),
-            _ => const SizedBox.shrink(),
-          };
-        },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && context.canPop()) context.pop();
+      },
+      child: Scaffold(
+        body: BlocConsumer<BookDetailsCubit, BookDetailsState>(
+          listener: (context, state) {
+            if (state is BookDetailsLoaded) {
+              // Return from lesson page → refresh progress
+            }
+          },
+          builder: (context, state) {
+            return switch (state) {
+              BookDetailsInitial() || BookDetailsLoading() =>
+                CustomScrollView(
+                  slivers: [
+                    SliverAppBar(
+                      pinned: true,
+                      leading: const BackButton(),
+                      title: const Text('تفاصيل الكتاب'),
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ],
+                ),
+              BookDetailsError(:final message) => CustomScrollView(
+                  slivers: [
+                    SliverAppBar(
+                      pinned: true,
+                      leading: const BackButton(),
+                      title: const Text('تفاصيل الكتاب'),
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    SliverFillRemaining(
+                      child: ErrorState(
+                        message: message,
+                        onRetry: () => context
+                            .read<BookDetailsCubit>()
+                            .loadBook(widget.bookId),
+                      ),
+                    ),
+                  ],
+                ),
+              BookDetailsLoaded() => _BookDetailsView(
+                  state: state,
+                  bookId: widget.bookId,
+                ),
+              _ => const SizedBox.shrink(),
+            };
+          },
+        ),
       ),
     );
   }
@@ -74,6 +109,9 @@ class _BookDetailsView extends StatelessWidget {
         SliverAppBar(
           expandedHeight: 220,
           pinned: true,
+          leading: const BackButton(),
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.white,
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
               state.book.title,
@@ -98,13 +136,26 @@ class _BookDetailsView extends StatelessWidget {
                 : _DefaultCover(colorScheme: colorScheme),
           ),
           actions: [
-            // Q&A button (CC-10 anchor for book-level Q&A)
             IconButton(
-              icon: const Icon(Icons.question_answer_outlined),
+              icon: const Icon(
+                Icons.question_answer_outlined,
+                color: Colors.white,
+                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+              ),
               tooltip: 'الأسئلة والأجوبة',
-              onPressed: state.isEnrolled
-                  ? () => context.push('/books/$bookId/qa')
-                  : null,
+              onPressed: () {
+                if (!state.isEnrolled) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('سجّل في الكتاب أولاً للوصول إلى الأسئلة'),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                  return;
+                }
+                context.push('/books/$bookId/qa');
+              },
             ),
           ],
         ),

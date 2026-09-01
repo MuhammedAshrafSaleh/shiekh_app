@@ -14,8 +14,13 @@ import '../cubit/section_books_state.dart';
 
 class SectionBooksPage extends StatefulWidget {
   final String sectionId;
+  final String? sectionName;
 
-  const SectionBooksPage({super.key, required this.sectionId});
+  const SectionBooksPage({
+    super.key,
+    required this.sectionId,
+    this.sectionName,
+  });
 
   @override
   State<SectionBooksPage> createState() => _SectionBooksPageState();
@@ -44,7 +49,11 @@ class _SectionBooksPageState extends State<SectionBooksPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('كتب القسم'),
+        title: Text(
+          widget.sectionName?.isNotEmpty == true
+              ? widget.sectionName!
+              : 'كتب القسم',
+        ),
         centerTitle: true,
       ),
       body: BlocBuilder<SectionBooksCubit, SectionBooksState>(
@@ -97,8 +106,16 @@ class _SectionBooksPageState extends State<SectionBooksPage> {
                             icon: Icons.search_off,
                             message: 'لا توجد نتائج لـ "$_query"',
                           )
-                        : ListView.builder(
+                        : ListView.separated(
+                            padding: const EdgeInsetsDirectional.fromSTEB(
+                              AppSpacing.md,
+                              AppSpacing.sm,
+                              AppSpacing.md,
+                              AppSpacing.lg,
+                            ),
                             itemCount: filtered.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: AppSpacing.sm),
                             itemBuilder: (context, index) =>
                                 _BookListItem(item: filtered[index]),
                           ),
@@ -123,39 +140,103 @@ class _BookListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final book = item.book;
+    final hasProgress = item.isEnrolled && item.totalLessons > 0;
+    final percent = (item.progress * 100).round();
 
-    return ListTile(
-      contentPadding: const EdgeInsetsDirectional.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
-      ),
-      onTap: () => context.go('/books/${item.book.id}'),
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 52,
-          height: 64,
-          child: item.book.coverImageUrl != null
-              ? CachedNetworkImage(
-                  imageUrl: item.book.coverImageUrl!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) =>
-                      _Thumb(title: item.book.title, theme: theme),
-                  errorWidget: (_, _, _) =>
-                      _Thumb(title: item.book.title, theme: theme),
-                )
-              : _Thumb(title: item.book.title, theme: theme),
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: () => context.push('/books/${book.id}'),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 56,
+                  height: 76,
+                  child: book.coverImageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: book.coverImageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) =>
+                              _Thumb(title: book.title, theme: theme),
+                          errorWidget: (_, _, _) =>
+                              _Thumb(title: book.title, theme: theme),
+                        )
+                      : _Thumb(title: book.title, theme: theme),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book.title,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (book.description != null &&
+                        book.description!.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        book.description!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    if (hasProgress) ...[
+                      ProgressBar(value: item.progress),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '$percent% • ${item.completedLessons}/${item.totalLessons} درس',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ] else
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.menu_book_outlined,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            item.totalLessons > 0
+                                ? '${item.totalLessons} درس'
+                                : 'ابدأ التعلّم',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(top: AppSpacing.lg),
+                child: Icon(
+                  Icons.chevron_left,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      title: Text(
-        item.book.title,
-        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsetsDirectional.only(top: AppSpacing.xs),
-        child: ProgressBar(value: item.progress),
       ),
     );
   }
