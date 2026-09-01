@@ -10,6 +10,8 @@ import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../../features/auth/cubit/auth_cubit.dart';
 import '../../../features/auth/cubit/auth_state.dart';
+import '../../../features/notifications/cubit_notifs/notifications_cubit.dart';
+import '../../../features/notifications/cubit_notifs/notifications_state.dart';
 import '../../../models/banner_entity.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
@@ -56,10 +58,24 @@ class HomePage extends StatelessWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'الإشعارات',
-            onPressed: () => context.push('/notifications'),
+          BlocSelector<NotificationsCubit, NotificationsState, int>(
+            selector: (state) =>
+                state is NotificationsLoaded ? state.unreadCount : 0,
+            builder: (context, unreadCount) {
+              return IconButton(
+                icon: Badge(
+                  isLabelVisible: unreadCount > 0,
+                  label: unreadCount > 9
+                      ? const Text('9+')
+                      : Text('$unreadCount'),
+                  backgroundColor: Colors.red,
+                  textColor: Colors.white,
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                tooltip: 'الإشعارات',
+                onPressed: () => context.push('/notifications'),
+              );
+            },
           ),
         ],
       ),
@@ -143,7 +159,7 @@ class HomePage extends StatelessWidget {
                             child: FeaturedBookCard(
                               item: item,
                               onTap: () =>
-                                  context.go('/books/${item.book.id}'),
+                                  context.push('/books/${item.book.id}'),
                             ),
                           );
                         },
@@ -169,7 +185,7 @@ class HomePage extends StatelessWidget {
     BannerEntity banner,
   ) async {
     if (banner.linkedBookId != null) {
-      context.go('/books/${banner.linkedBookId}');
+      context.push('/books/${banner.linkedBookId}');
     } else if (banner.externalLink != null) {
       final uri = Uri.tryParse(banner.externalLink!);
       if (uri != null && await canLaunchUrl(uri)) {

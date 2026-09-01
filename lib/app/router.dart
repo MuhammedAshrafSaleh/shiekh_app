@@ -31,11 +31,6 @@ import '../features/lesson/cubit/lesson_cubit.dart';
 import '../features/lesson/data/lesson_repository.dart';
 import '../features/lesson/data/video_stream_repository.dart';
 import '../features/lesson/view/lesson_page.dart';
-import '../features/path/cubit/path_cubit.dart';
-import '../features/path/data/path_repository.dart';
-import '../features/path/view/path_page.dart';
-import '../features/notifications/cubit_notifs/notifications_cubit.dart';
-import '../features/notifications/data/notifications_repository.dart';
 import '../features/notifications/view/notifications_page.dart';
 import '../features/profile/cubit/profile_cubit.dart';
 import '../features/profile/data/profile_repository.dart';
@@ -191,8 +186,8 @@ GoRouter buildRouter(AuthCubit authCubit) {
             path: '/path',
             builder: (context, _) => BlocProvider(
               create: (ctx) =>
-                  PathCubit(ctx.read<PathRepository>())..loadPath(),
-              child: const PathPage(),
+                  SectionsCubit(ctx.read<SectionRepository>())..loadSections(),
+              child: const SectionsPage(),
             ),
           ),
           GoRoute(
@@ -216,22 +211,15 @@ GoRouter buildRouter(AuthCubit authCubit) {
 
       // --- Full-page routes (not in shell) ---
       GoRoute(
-        path: '/sections',
-        builder: (context, _) => BlocProvider(
-          create: (ctx) =>
-              SectionsCubit(ctx.read<SectionRepository>())..loadSections(),
-          child: const SectionsPage(),
-        ),
-      ),
-      GoRoute(
         path: '/sections/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
+          final sectionName = state.uri.queryParameters['name'];
           return BlocProvider(
             create: (ctx) =>
                 SectionBooksCubit(ctx.read<SectionRepository>())
                   ..loadBooks(id),
-            child: SectionBooksPage(sectionId: id),
+            child: SectionBooksPage(sectionId: id, sectionName: sectionName),
           );
         },
       ),
@@ -321,11 +309,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
       // --- Notifications (Task 5.3) ---
       GoRoute(
         path: '/notifications',
-        builder: (context, _) => BlocProvider(
-          create: (ctx) =>
-              NotificationsCubit(ctx.read<NotificationsRepository>()),
-          child: const NotificationsPage(),
-        ),
+        builder: (_, _) => const NotificationsPage(),
       ),
 
       // --- Certificate Detail (Task 4.6) ---

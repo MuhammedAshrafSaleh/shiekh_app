@@ -23,8 +23,8 @@ import '../features/home/data/home_repository.dart';
 import '../features/lesson/data/lesson_repository.dart';
 import '../features/lesson/data/video_stream_repository.dart';
 import '../features/notifications/cubit/connectivity_cubit.dart';
+import '../features/notifications/cubit_notifs/notifications_cubit.dart';
 import '../features/notifications/data/notifications_repository.dart';
-import '../features/path/data/path_repository.dart';
 import '../features/profile/data/profile_repository.dart';
 import '../features/qa/data/qa_repository.dart';
 import '../features/sections/data/section_repository.dart';
@@ -56,9 +56,6 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<HomeRepository>(
                 create: (_) => HomeRepository(supabase, connectivity),
-              ),
-              RepositoryProvider<PathRepository>(
-                create: (_) => PathRepository(supabase, connectivity),
               ),
               RepositoryProvider<SectionRepository>(
                 create: (_) => SectionRepository(supabase, connectivity),
@@ -128,9 +125,18 @@ class SheikhyProviders extends StatelessWidget {
                     AdminNotificationsRepository(supabase, connectivity),
               ),
             ],
-            child: BlocProvider<AuthCubit>(
-              create: (repoCtx) =>
-                  AuthCubit(repoCtx.read<AuthRepository>())..initialize(),
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<AuthCubit>(
+                  create: (repoCtx) =>
+                      AuthCubit(repoCtx.read<AuthRepository>())..initialize(),
+                ),
+                BlocProvider<NotificationsCubit>(
+                  create: (repoCtx) => NotificationsCubit(
+                    repoCtx.read<NotificationsRepository>(),
+                  ),
+                ),
+              ],
               child: const SheikhyApp(),
             ),
           );
