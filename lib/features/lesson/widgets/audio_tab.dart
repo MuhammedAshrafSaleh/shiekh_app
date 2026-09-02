@@ -398,16 +398,20 @@ class _AudioPlayer extends StatelessWidget {
         ? position.inSeconds / duration.inSeconds
         : 0.0;
 
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        AppSpacing.pageGutter,
-        AppSpacing.s6,
-        AppSpacing.pageGutter,
-        AppSpacing.s5,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.pageGutter,
+              AppSpacing.s6,
+              AppSpacing.pageGutter,
+              AppSpacing.s5,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
           // Large artwork circle
           Container(
             width: 180,
@@ -518,6 +522,9 @@ class _AudioPlayer extends StatelessWidget {
             ),
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }
