@@ -7,9 +7,13 @@ import 'package:flutter_heatmap_calendar/flutter_heatmap_calendar.dart';
 import 'package:printing/printing.dart';
 
 import '../../../core/config/app_config.dart';
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/error_state.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_empty_state.dart';
+import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
 import '../../../features/auth/cubit/auth_cubit.dart';
 import '../../../features/auth/cubit/auth_state.dart';
 import '../../../features/certificates/widgets/certificate_card.dart';
@@ -36,164 +40,109 @@ class _AchievementsPageState extends State<AchievementsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('إنجازاتي'),
-        automaticallyImplyLeading: false,
-      ),
-      body: BlocBuilder<AchievementsCubit, AchievementsState>(
-        builder: (context, state) {
-          return switch (state) {
-            AchievementsInitial() || AchievementsLoading() =>
-              const Center(child: CircularProgressIndicator()),
-            AchievementsError(:final message) => ErrorState(
-                message: message,
-                onRetry: () =>
-                    context.read<AchievementsCubit>().loadAchievements(),
-              ),
-            AchievementsLoaded() => _AchievementsView(
-                state: state,
-              ),
-            _ => const SizedBox.shrink(),
-          };
-        },
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SheikhyPageHeader(title: 'إنجازاتي'),
+          const Expanded(child: _Body()),
+        ],
       ),
     );
   }
 }
 
-class _AchievementsView extends StatelessWidget {
-  final AchievementsLoaded state;
-
-  const _AchievementsView({required this.state});
+class _Body extends StatelessWidget {
+  const _Body();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    const gold = Color(0xFFD4A017);
+    return BlocBuilder<AchievementsCubit, AchievementsState>(
+      builder: (context, state) {
+        return switch (state) {
+          AchievementsInitial() || AchievementsLoading() => const _LoadingView(),
+          AchievementsError(:final message) => SheikhyErrorState(
+              heading: 'تعذّر تحميل الإنجازات',
+              message: message,
+              onRetry: () =>
+                  context.read<AchievementsCubit>().loadAchievements(),
+            ),
+          AchievementsLoaded() => _LoadedView(state: state),
+          _ => const SizedBox.shrink(),
+        };
+      },
+    );
+  }
+}
 
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.goldLight),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          Text('جار تحميل المحتوى...', style: AppTextStyles.small),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadedView extends StatelessWidget {
+  const _LoadedView({required this.state});
+
+  final AchievementsLoaded state;
+
+  @override
+  Widget build(BuildContext context) {
     return RefreshIndicator(
+      color: AppColors.primary,
+      backgroundColor: AppColors.surface,
       onRefresh: () => context.read<AchievementsCubit>().loadAchievements(),
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.pageGutter,
+          AppSpacing.s4,
+          AppSpacing.pageGutter,
+          AppSpacing.s7,
+        ),
         children: [
-          // 3 stat cards
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  icon: Icons.check_circle_outline,
-                  value: '${state.data.completedLessons}',
-                  label: 'درس مكتمل',
-                  color: colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.emoji_events_outlined,
-                  value: '${state.data.certificateCount}',
-                  label: 'شهادة',
-                  color: gold,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.schedule_outlined,
-                  value: '${state.data.estimatedStudyHours}',
-                  label: 'ساعة دراسة',
-                  color: colorScheme.secondary,
-                ),
-              ),
-            ],
+          _StatRow(data: state.data),
+          const SizedBox(height: AppSpacing.s5),
+          _HeatmapSection(activityByDate: state.data.activityByDate),
+          const SizedBox(height: AppSpacing.s5),
+          _CertificatesSection(
+            certificates: state.certificates,
+            onDownload: (cert) => _downloadCertificate(context, cert),
           ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Activity Heatmap (plan M)
-          Text(
-            'النشاط الدراسي',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (state.data.activityByDate.isNotEmpty)
-            HeatMapCalendar(
-              datasets: state.data.activityByDate,
-              colorsets: {
-                1: colorScheme.primary.withValues(alpha: 0.25),
-                2: colorScheme.primary.withValues(alpha: 0.5),
-                3: colorScheme.primary.withValues(alpha: 0.75),
-                4: colorScheme.primary,
-              },
-              colorTipHelper: const [
-                Text('أقل', style: TextStyle(fontSize: 10)),
-                null,
-                null,
-                Text('أكثر', style: TextStyle(fontSize: 10)),
-              ],
-              textColor: colorScheme.onSurface,
-              defaultColor:
-                  colorScheme.surfaceContainerHighest,
-              showColorTip: true,
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Center(
-                child: Text(
-                  'ابدأ الدراسة لترى نشاطك هنا',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Certificates list
-          Text(
-            'شهاداتي',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (state.certificates.isEmpty)
-            const EmptyState(
-              icon: Icons.emoji_events_outlined,
-              message: 'لا توجد شهادات بعد\nأكمل اختباراً شاملاً للحصول على شهادة',
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: state.certificates.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final cert = state.certificates[index];
-                return CertificateCard(
-                  certificate: cert,
-                  bookTitle: cert.bookId, // replaced in detail page with real title
-                  onDownload: () =>
-                      _downloadCertificate(context, cert),
-                );
-              },
-            ),
         ],
       ),
     );
   }
 
   Future<void> _downloadCertificate(
-      BuildContext context, CertificateEntity cert) async {
+    BuildContext context,
+    CertificateEntity cert,
+  ) async {
     final authState = context.read<AuthCubit>().state;
     String studentName = '';
     if (authState is AuthAuthenticated) {
       final meta = authState.user.userMetadata;
-      studentName = (meta != null ? meta['full_name'] as String? : null) ?? '';
+      studentName =
+          (meta != null ? meta['full_name'] as String? : null) ?? '';
     }
-
     try {
       final bytes = await CertificatePdfGenerator.generate(
         certificate: cert,
@@ -208,12 +157,166 @@ class _AchievementsView extends StatelessWidget {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('حدث خطأ أثناء توليد الشهادة'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('حدث خطأ أثناء توليد الشهادة'),
+            backgroundColor: AppColors.danger,
           ),
         );
       }
     }
+  }
+}
+
+// ── Stat row ──────────────────────────────────────────────────────────────────
+
+class _StatRow extends StatelessWidget {
+  const _StatRow({required this.data});
+
+  final dynamic data; // AchievementsData
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // RTL order (right → left): hours | certificates | completed
+        Expanded(
+          child: StatCard(
+            icon: Icons.schedule_outlined,
+            value: data.estimatedStudyHours as int,
+            label: 'ساعة دراسة',
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s3),
+        Expanded(
+          child: StatCard(
+            icon: Icons.emoji_events_outlined,
+            value: data.certificateCount as int,
+            label: 'شهادة',
+            color: AppColors.goldDeep,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s3),
+        Expanded(
+          child: StatCard(
+            icon: Icons.check_circle_outline,
+            value: data.completedLessons as int,
+            label: 'درس مكتمل',
+            color: AppColors.primary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Heatmap section ───────────────────────────────────────────────────────────
+
+class _HeatmapSection extends StatelessWidget {
+  const _HeatmapSection({required this.activityByDate});
+
+  final Map<DateTime, int> activityByDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('النشاط الدراسي', style: AppTextStyles.h3),
+        const SizedBox(height: AppSpacing.s3),
+        Container(
+          decoration: AppDecorations.card,
+          padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
+          child: activityByDate.isNotEmpty
+              ? HeatMapCalendar(
+                  datasets: activityByDate,
+                  colorsets: {
+                    1: AppColors.primary.withValues(alpha: 0.25),
+                    2: AppColors.primary.withValues(alpha: 0.50),
+                    3: AppColors.primary.withValues(alpha: 0.75),
+                    4: AppColors.primary,
+                  },
+                  colorTipHelper: [
+                    Text(
+                      'أقل',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.inkFaint,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    null,
+                    null,
+                    Text(
+                      'أكثر',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.inkFaint,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
+                  textColor: AppColors.inkMuted,
+                  defaultColor: AppColors.paperSunk,
+                  showColorTip: true,
+                )
+              : Padding(
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    vertical: AppSpacing.s5,
+                  ),
+                  child: Center(
+                    child: Text(
+                      'ابدأ الدراسة لترى نشاطك هنا',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.inkMuted,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Certificates section ──────────────────────────────────────────────────────
+
+class _CertificatesSection extends StatelessWidget {
+  const _CertificatesSection({
+    required this.certificates,
+    required this.onDownload,
+  });
+
+  final List<CertificateEntity> certificates;
+  final void Function(CertificateEntity) onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('شهاداتي', style: AppTextStyles.h3),
+        const SizedBox(height: AppSpacing.s3),
+        if (certificates.isEmpty)
+          const SheikhyEmptyState(
+            icon: Icons.emoji_events_outlined,
+            heading: 'لا توجد شهادات بعد',
+            subtitle: 'أكمل اختباراً شاملاً للحصول على شهادة.',
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: certificates.length,
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s3),
+            itemBuilder: (context, index) {
+              final cert = certificates[index];
+              return CertificateCard(
+                certificate: cert,
+                onDownload: () => onDownload(cert),
+              );
+            },
+          ),
+      ],
+    );
   }
 }

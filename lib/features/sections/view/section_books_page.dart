@@ -3,24 +3,32 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/error_state.dart';
-import '../../../core/widgets/progress_bar.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_badge.dart';
+import '../../../core/widgets/sheikhy_empty_state.dart';
+import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
+import '../../../core/widgets/sheikhy_progress_bar.dart';
+import '../../../core/widgets/sheikhy_search_field.dart';
 import '../../../models/book_with_progress_entity.dart';
 import '../cubit/section_books_cubit.dart';
 import '../cubit/section_books_state.dart';
 
 class SectionBooksPage extends StatefulWidget {
-  final String sectionId;
-  final String? sectionName;
-
   const SectionBooksPage({
     super.key,
     required this.sectionId,
     this.sectionName,
   });
+
+  final String sectionId;
+  final String? sectionName;
 
   @override
   State<SectionBooksPage> createState() => _SectionBooksPageState();
@@ -36,205 +44,210 @@ class _SectionBooksPageState extends State<SectionBooksPage> {
     super.dispose();
   }
 
-  List<BookWithProgressEntity> _filterBooks(
-    List<BookWithProgressEntity> books,
-  ) {
+  List<BookWithProgressEntity> _filter(List<BookWithProgressEntity> books) {
     if (_query.isEmpty) return books;
-    return books
-        .where((b) => b.book.title.contains(_query))
-        .toList();
+    return books.where((b) => b.book.title.contains(_query)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final title =
+        widget.sectionName?.isNotEmpty == true ? widget.sectionName! : 'كتب القسم';
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.sectionName?.isNotEmpty == true
-              ? widget.sectionName!
-              : 'كتب القسم',
-        ),
-        centerTitle: true,
-      ),
-      body: BlocBuilder<SectionBooksCubit, SectionBooksState>(
-        builder: (context, state) {
-          if (state is SectionBooksLoading || state is SectionBooksInitial) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state is SectionBooksError) {
-            return ErrorState(
-              message: state.message,
-              onRetry: () => context
-                  .read<SectionBooksCubit>()
-                  .loadBooks(widget.sectionId),
-            );
-          }
-
-          if (state is SectionBooksEmpty) {
-            return const EmptyState(
-              icon: Icons.menu_book_outlined,
-              message: 'لا توجد كتب في هذا القسم بعد',
-            );
-          }
-
-          if (state is SectionBooksLoaded) {
-            final filtered = _filterBooks(state.books);
-
-            return RefreshIndicator(
-              onRefresh: () => context
-                  .read<SectionBooksCubit>()
-                  .loadBooks(widget.sectionId),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsetsDirectional.all(AppSpacing.md),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'بحث في الكتب...',
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                      onChanged: (value) {
-                        setState(() => _query = value);
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? EmptyState(
-                            icon: Icons.search_off,
-                            message: 'لا توجد نتائج لـ "$_query"',
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsetsDirectional.fromSTEB(
-                              AppSpacing.md,
-                              AppSpacing.sm,
-                              AppSpacing.md,
-                              AppSpacing.lg,
-                            ),
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: AppSpacing.sm),
-                            itemBuilder: (context, index) =>
-                                _BookListItem(item: filtered[index]),
-                          ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SheikhyPageHeader(title: title, showBack: true),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.pageGutter,
+              AppSpacing.s4,
+              AppSpacing.pageGutter,
+              AppSpacing.s3,
+            ),
+            child: SheikhySearchField(
+              controller: _searchController,
+              hintText: 'بحث في الكتب...',
+              onChanged: (v) => setState(() => _query = v),
+            ),
+          ),
+          Expanded(child: _Body(sectionId: widget.sectionId, filter: _filter)),
+        ],
       ),
     );
   }
 }
 
-class _BookListItem extends StatelessWidget {
-  final BookWithProgressEntity item;
+class _Body extends StatelessWidget {
+  const _Body({required this.sectionId, required this.filter});
 
-  const _BookListItem({required this.item});
+  final String sectionId;
+  final List<BookWithProgressEntity> Function(List<BookWithProgressEntity>)
+      filter;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return BlocBuilder<SectionBooksCubit, SectionBooksState>(
+      builder: (context, state) {
+        if (state is SectionBooksInitial || state is SectionBooksLoading) {
+          return const _LoadingView();
+        }
+        if (state is SectionBooksError) {
+          return SheikhyErrorState(
+            heading: 'تعذّر تحميل الكتب',
+            message: state.message,
+            onRetry: () =>
+                context.read<SectionBooksCubit>().loadBooks(sectionId),
+          );
+        }
+        if (state is SectionBooksEmpty) {
+          return const SheikhyEmptyState(
+            icon: Icons.menu_book_outlined,
+            heading: 'لا توجد كتب بعد',
+            subtitle: 'لم تُضَف كتب لهذا القسم بعد.',
+          );
+        }
+        if (state is SectionBooksLoaded) {
+          return _LoadedView(
+            state: state,
+            sectionId: sectionId,
+            filter: filter,
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.goldLight),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          Text('جار تحميل المحتوى...', style: AppTextStyles.small),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadedView extends StatelessWidget {
+  const _LoadedView({
+    required this.state,
+    required this.sectionId,
+    required this.filter,
+  });
+
+  final SectionBooksLoaded state;
+  final String sectionId;
+  final List<BookWithProgressEntity> Function(List<BookWithProgressEntity>)
+      filter;
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = filter(state.books);
+
+    if (filtered.isEmpty) {
+      return const SheikhyEmptyState(
+        icon: Icons.search_off_outlined,
+        heading: 'لا توجد نتائج',
+        subtitle: 'جرّب كلمة بحث مختلفة.',
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      backgroundColor: AppColors.surface,
+      onRefresh: () =>
+          context.read<SectionBooksCubit>().loadBooks(sectionId),
+      child: ListView.separated(
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.pageGutter,
+          AppSpacing.s1,
+          AppSpacing.pageGutter,
+          AppSpacing.s7,
+        ),
+        itemCount: filtered.length,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s3),
+        itemBuilder: (context, index) =>
+            _BookListItem(item: filtered[index]),
+      ),
+    );
+  }
+}
+
+// ── Book list item ────────────────────────────────────────────────────────────
+
+class _BookListItem extends StatelessWidget {
+  const _BookListItem({required this.item});
+
+  final BookWithProgressEntity item;
+
+  String _toArabic(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final book = item.book;
     final hasProgress = item.isEnrolled && item.totalLessons > 0;
-    final percent = (item.progress * 100).round();
+    final pct = (item.progress.clamp(0.0, 1.0) * 100).round();
 
-    return Card(
+    return Container(
+      decoration: AppDecorations.card,
       clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () => context.push('/books/${book.id}'),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 56,
-                  height: 76,
-                  child: book.coverImageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: book.coverImageUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (_, _) =>
-                              _Thumb(title: book.title, theme: theme),
-                          errorWidget: (_, _, _) =>
-                              _Thumb(title: book.title, theme: theme),
-                        )
-                      : _Thumb(title: book.title, theme: theme),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: AppRadii.rLg,
+          onTap: () => context.push('/books/${book.id}'),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Cover(title: book.title, imageUrl: book.coverImageUrl),
+                const SizedBox(width: AppSpacing.s4),
+                Expanded(
+                  child: _Info(
+                    item: item,
+                    hasProgress: hasProgress,
+                    pct: pct,
+                    toArabic: _toArabic,
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      book.title,
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (book.description != null &&
-                        book.description!.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        book.description!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                    if (hasProgress) ...[
-                      ProgressBar(value: item.progress),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        '$percent% • ${item.completedLessons}/${item.totalLessons} درس',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ] else
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.menu_book_outlined,
-                            size: 16,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Text(
-                            item.totalLessons > 0
-                                ? '${item.totalLessons} درس'
-                                : 'ابدأ التعلّم',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
+                const SizedBox(width: AppSpacing.s2),
+                const Padding(
+                  padding: EdgeInsetsDirectional.only(top: AppSpacing.s2),
+                  child: Icon(
+                    Icons.chevron_left,
+                    size: 20,
+                    color: AppColors.inkFaint,
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsetsDirectional.only(top: AppSpacing.lg),
-                child: Icon(
-                  Icons.chevron_left,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -242,25 +255,130 @@ class _BookListItem extends StatelessWidget {
   }
 }
 
-class _Thumb extends StatelessWidget {
-  final String title;
-  final ThemeData theme;
+class _Cover extends StatelessWidget {
+  const _Cover({required this.title, required this.imageUrl});
 
-  const _Thumb({required this.title, required this.theme});
+  final String title;
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: AppRadii.rMd,
+      child: SizedBox(
+        width: 56,
+        height: 76,
+        child: imageUrl != null
+            ? CachedNetworkImage(
+                imageUrl: imageUrl!,
+                fit: BoxFit.cover,
+                placeholder: (_, _) => _CoverPlaceholder(title: title),
+                errorWidget: (_, _, _) => _CoverPlaceholder(title: title),
+              )
+            : _CoverPlaceholder(title: title),
+      ),
+    );
+  }
+}
+
+class _CoverPlaceholder extends StatelessWidget {
+  const _CoverPlaceholder({required this.title});
+
+  final String title;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: theme.colorScheme.secondaryContainer,
-      child: Center(
-        child: Text(
-          title.isNotEmpty ? title[0] : '؟',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.onSecondaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
+      color: AppColors.primary,
+      alignment: Alignment.center,
+      child: Text(
+        title.isNotEmpty ? title.characters.first : '؟',
+        style: GoogleFonts.reemKufi(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: AppColors.inkInvert,
         ),
       ),
+    );
+  }
+}
+
+class _Info extends StatelessWidget {
+  const _Info({
+    required this.item,
+    required this.hasProgress,
+    required this.pct,
+    required this.toArabic,
+  });
+
+  final BookWithProgressEntity item;
+  final bool hasProgress;
+  final int pct;
+  final String Function(int) toArabic;
+
+  @override
+  Widget build(BuildContext context) {
+    final book = item.book;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          book.title,
+          style: GoogleFonts.arefRuqaa(
+            fontSize: 19,
+            fontWeight: FontWeight.w400,
+            height: 1.4,
+            color: AppColors.ink,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (book.description != null && book.description!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.s1),
+          Text(
+            book.description!,
+            style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+        const SizedBox(height: AppSpacing.s3),
+        if (hasProgress) ...[
+          SheikhyProgressBar(value: item.progress),
+          const SizedBox(height: AppSpacing.s1),
+          Text(
+            '${toArabic(pct)}٪ • ${toArabic(item.completedLessons)} من ${toArabic(item.totalLessons)} درساً',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.inkMuted,
+              letterSpacing: 0,
+            ),
+          ),
+        ] else ...[
+          Row(
+            children: [
+              const Icon(Icons.menu_book_outlined,
+                  size: 14, color: AppColors.inkFaint),
+              const SizedBox(width: AppSpacing.s1),
+              Text(
+                item.totalLessons > 0
+                    ? '${toArabic(item.totalLessons)} دروس'
+                    : 'ابدأ',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.inkFaint,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s3),
+              const SheikhyBadge(
+                variant: SheikhyBadgeVariant.certified,
+                label: 'ابدأ التعلّم',
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

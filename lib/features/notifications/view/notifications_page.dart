@@ -4,9 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/error_state.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_empty_state.dart';
+import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
 import '../../../models/notification_entity.dart';
 import '../cubit_notifs/notifications_cubit.dart';
 import '../cubit_notifs/notifications_state.dart';
@@ -28,195 +33,286 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الإشعارات'),
-        actions: [
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           BlocBuilder<NotificationsCubit, NotificationsState>(
             buildWhen: (prev, curr) =>
                 curr is NotificationsLoaded || curr is NotificationsEmpty,
             builder: (context, state) {
-              final hasUnread = state is NotificationsLoaded &&
-                  state.unreadCount > 0;
-              if (!hasUnread) return const SizedBox.shrink();
-              return TextButton(
-                onPressed: () =>
-                    context.read<NotificationsCubit>().markAllRead(),
-                child: const Text('تحديد الكل كمقروء'),
+              final hasUnread =
+                  state is NotificationsLoaded && state.unreadCount > 0;
+              return SheikhyPageHeader(
+                title: 'الإشعارات',
+                showBack: true,
+                action: hasUnread
+                    ? TextButton(
+                        onPressed: () =>
+                            context.read<NotificationsCubit>().markAllRead(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsetsDirectional.symmetric(
+                            horizontal: AppSpacing.s2,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          'تحديد الكل كمقروء',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.goldLight,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      )
+                    : null,
               );
             },
           ),
+          const Expanded(child: _Body()),
         ],
       ),
-      body: BlocBuilder<NotificationsCubit, NotificationsState>(
-        builder: (context, state) {
-          return switch (state) {
-            NotificationsInitial() || NotificationsLoading() =>
-              const Center(child: CircularProgressIndicator()),
-            NotificationsError(:final message) => ErrorState(
-                message: message,
-                onRetry: () =>
-                    context.read<NotificationsCubit>().loadNotifications(),
-              ),
-            NotificationsEmpty() => const EmptyState(
-                icon: Icons.notifications_none,
-                message: 'لا توجد إشعارات بعد',
-              ),
-            NotificationsLoaded(:final notifications) =>
-              RefreshIndicator(
-                onRefresh: () =>
-                    context.read<NotificationsCubit>().loadNotifications(),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  itemCount: notifications.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, index) => _NotificationCard(
-                    notification: notifications[index],
-                    onTap: () => _handleTap(context, notifications[index]),
-                  ),
+    );
+  }
+}
+
+class _Body extends StatelessWidget {
+  const _Body();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<NotificationsCubit, NotificationsState>(
+      builder: (context, state) {
+        return switch (state) {
+          NotificationsInitial() ||
+          NotificationsLoading() =>
+            const _LoadingView(),
+          NotificationsError(:final message) => SheikhyErrorState(
+              heading: 'تعذّر تحميل الإشعارات',
+              message: message,
+              onRetry: () =>
+                  context.read<NotificationsCubit>().loadNotifications(),
+            ),
+          NotificationsEmpty() => const SheikhyEmptyState(
+              icon: Icons.notifications_none_outlined,
+              heading: 'لا توجد إشعارات بعد',
+              subtitle: 'ستُخطَر هنا بالدروس والمتون والشهادات.',
+            ),
+          NotificationsLoaded(:final notifications) => RefreshIndicator(
+              color: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              onRefresh: () =>
+                  context.read<NotificationsCubit>().loadNotifications(),
+              child: ListView.separated(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.pageGutter,
+                  AppSpacing.s3,
+                  AppSpacing.pageGutter,
+                  AppSpacing.s7,
+                ),
+                itemCount: notifications.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: AppSpacing.s3),
+                itemBuilder: (context, index) => _NotificationCard(
+                  notification: notifications[index],
+                  onTap: () => _handleTap(context, notifications[index]),
                 ),
               ),
-            _ => const SizedBox.shrink(),
-          };
-        },
-      ),
+            ),
+          _ => const SizedBox.shrink(),
+        };
+      },
     );
   }
 
   void _handleTap(BuildContext context, NotificationEntity notif) {
     context.read<NotificationsCubit>().markRead(notif.id);
-
     final link = notif.linkUrl;
     if (link == null || link.isEmpty) return;
-
-    // Deep-link: /books/:id  →  context.push
-    // External: http(s)://   → url_launcher
     if (link.startsWith('/')) {
       context.push(link);
     } else {
       final uri = Uri.tryParse(link);
-      if (uri != null) {
-        launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 }
 
-class _NotificationCard extends StatelessWidget {
-  final NotificationEntity notification;
-  final VoidCallback onTap;
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
 
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.goldLight),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          Text('جار تحميل المحتوى...', style: AppTextStyles.small),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Notification card ─────────────────────────────────────────────────────────
+
+class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
     required this.notification,
     required this.onTap,
   });
 
+  final NotificationEntity notification;
+  final VoidCallback onTap;
+
+  String _relativeTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    String ar(int n) {
+      const w = '0123456789';
+      const a = '٠١٢٣٤٥٦٧٨٩';
+      return n.toString().split('').map((c) {
+        final i = w.indexOf(c);
+        return i >= 0 ? a[i] : c;
+      }).join();
+    }
+
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inMinutes < 60) return 'منذ ${ar(diff.inMinutes)} دقيقة';
+    if (diff.inHours < 24) return 'منذ ${ar(diff.inHours)} ساعة';
+    if (diff.inDays < 7) return 'منذ ${ar(diff.inDays)} يوم';
+    return '${ar(dt.day)}/${ar(dt.month)}/${ar(dt.year)}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isUnread = !notification.isRead;
+    final typeColor = _NotifIcon.colorFor(notification.type);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: isUnread
-              ? colorScheme.primaryContainer.withValues(alpha: 0.25)
-              : colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isUnread
-                ? colorScheme.primary.withValues(alpha: 0.3)
-                : colorScheme.outlineVariant,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: isUnread
+            ? AppColors.primaryTint.withValues(alpha: 0.5)
+            : AppColors.surface,
+        borderRadius: AppRadii.rLg,
+        border: BorderDirectional(
+          top: BorderSide(color: AppColors.border, width: AppBorders.hairline),
+          bottom:
+              BorderSide(color: AppColors.border, width: AppBorders.hairline),
+          end: BorderSide(color: AppColors.border, width: AppBorders.hairline),
+          start: BorderSide(
+            color: isUnread ? typeColor : AppColors.border,
+            width: isUnread ? AppBorders.accent : AppBorders.hairline,
           ),
         ),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Type icon
-            _NotifIcon(type: notification.type),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        boxShadow: AppShadows.card,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: AppRadii.rLg,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _NotifIcon(type: notification.type),
+                const SizedBox(width: AppSpacing.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          notification.title,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: isUnread
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              notification.title,
+                              style: AppTextStyles.small.copyWith(
+                                color: AppColors.ink,
+                                fontWeight: isUnread
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                height: 1.4,
+                              ),
+                            ),
                           ),
+                          if (isUnread) ...[
+                            const SizedBox(width: AppSpacing.s2),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.s1),
+                      Text(
+                        notification.body,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.inkMuted,
+                          letterSpacing: 0,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: AppSpacing.s1),
+                      Text(
+                        _relativeTime(notification.sendAt),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.inkFaint,
+                          letterSpacing: 0,
                         ),
                       ),
-                      if (isUnread)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    notification.body,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    _formatDate(notification.sendAt),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.45),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
-
-  String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inHours < 24) return 'منذ ${diff.inHours} ساعة';
-    if (diff.inDays < 7) return 'منذ ${diff.inDays} يوم';
-    return '${dt.day}/${dt.month}/${dt.year}';
-  }
 }
 
 class _NotifIcon extends StatelessWidget {
-  final String type;
   const _NotifIcon({required this.type});
+
+  final String type;
+
+  static Color colorFor(String type) => switch (type) {
+        'live_stream' => AppColors.danger,
+        'new_lesson' => AppColors.primary,
+        'reminder' => AppColors.warning,
+        'achievement' => AppColors.goldDeep,
+        _ => AppColors.primary,
+      };
+
+  static IconData iconFor(String type) => switch (type) {
+        'live_stream' => Icons.live_tv_outlined,
+        'new_lesson' => Icons.play_circle_outline,
+        'reminder' => Icons.alarm_outlined,
+        'achievement' => Icons.emoji_events_outlined,
+        _ => Icons.notifications_outlined,
+      };
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final (icon, color) = switch (type) {
-      'live_stream' => (Icons.live_tv_outlined, Colors.red),
-      'new_lesson' => (Icons.play_circle_outline, colorScheme.primary),
-      'reminder' => (Icons.alarm_outlined, Colors.orange),
-      'achievement' => (Icons.emoji_events_outlined, const Color(0xFFD4A017)),
-      _ => (Icons.notifications_outlined, colorScheme.primary),
-    };
-
+    final color = colorFor(type);
     return Container(
       width: 40,
       height: 40,
@@ -224,7 +320,7 @@ class _NotifIcon extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: color, size: 20),
+      child: Icon(iconFor(type), color: color, size: 20),
     );
   }
 }

@@ -31,6 +31,12 @@ permanent.
 | `signup_page.dart` | `AppSpacing` (constants), `PrimaryButton` | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `AppRadii`, all Sheikhy* widgets |
 | `forgot_password_page.dart` | `AppSpacing` (constants), `PrimaryButton` | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, all Sheikhy* widgets |
 | `reset_sent_page.dart` | `AppSpacing` (constants), `PrimaryButton` | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `OrnamentDivider`, `SheikhyAuthHeader`, `SheikhyButton` |
+| `home_page.dart` + `featured_book_card.dart` + `banner_carousel_section.dart` | `AppSpacing` (constants), `EmptyState`, `ErrorState`, `InitialsAvatar`, `ProgressBar` (legacy) | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `SheikhyHomeHeader`, `SheikhyHorizontalBookCard`, `SheikhyEmptyState`, `SheikhyErrorState`, `SheikhyProgressBar`, `SheikhyBadge` |
+| `sections_page.dart` + `section_grid_item.dart` | `AppSpacing` (constants), `EmptyState`, `ErrorState` | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `AppDecorations`, `SheikhyPageHeader`, `SheikhyEmptyState`, `SheikhyErrorState` |
+| `section_books_page.dart` | `AppSpacing` (constants), `EmptyState`, `ErrorState`, `ProgressBar` (legacy), Material theme colors | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `AppDecorations`, `SheikhyPageHeader`, `SheikhySearchField`, `SheikhyProgressBar`, `SheikhyBadge`, `SheikhyEmptyState`, `SheikhyErrorState` |
+| `achievements_page.dart` + `stat_card.dart` + `certificate_card.dart` | `AppSpacing` (constants), `EmptyState`, `ErrorState`, Material theme/colorScheme, hardcoded gold hex | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `AppDecorations`, `SheikhyPageHeader`, `SheikhyEmptyState`, `SheikhyErrorState`. `StatCard` now takes `int value` (was `String`) and renders Arabic-Indic. `CertificateCard` drops `bookTitle` UUID hack — shows 'شهادة إتمام' when title absent. |
+| `notifications_page.dart` | `AppSpacing` (constants), `EmptyState`, `ErrorState`, Material `colorScheme`, any hardcoded color refs | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `AppDecorations`, `AppBorders`, `AppShadows`, `SheikhyPageHeader` (with new `action:` slot for "تحديد الكل كمقروء"), `SheikhyEmptyState`, `SheikhyErrorState`. `_NotificationCard` uses `BorderDirectional` for RTL-aware start accent (3 px, type-colored when unread). Arabic-Indic relative timestamps via inline `ar()` helper. `SheikhyPageHeader.action` conditionally rendered only when `unreadCount > 0`. |
+| `profile_page.dart` | `AppSpacing` (constants), `EmptyState`, `ErrorState`, `InitialsAvatar`, Material `colorScheme`, `ThemeCubit`, `AppConfig` refs | `AppColors`, `AppSpacing` (theme), `AppTextStyles`, `AppDecorations`, `AppBorders`, `SheikhyPageHeader`, `SheikhyEmptyState`, `SheikhyErrorState`. `_AvatarSection` derives initials from `ProfileStats.fullName`. `_StatsCard` shows enrolled/completed/certificates with Arabic-Indic numerals. `_ActionsSection`: change-password → `/profile/edit-password`; logout → `AlertDialog` → `AuthCubit.signOut()`. Q&A action omitted (no standalone student Q&A route). |
 
 ## New heritage widgets (Auth Phase 1)
 
@@ -51,6 +57,36 @@ existing theme tokens/decorations:
 - `SheikhyLabeledDivider` (`sheikhy_labeled_divider.dart`) — divider with a
   centered text label ("أو"), used on Login (1b) and Reset (2c). Distinct from
   `OrnamentDivider`, which centers a gold SVG motif rather than text.
+
+## New heritage widgets (Home Phase)
+
+Added to `lib/core/widgets/` for the home-screen migration:
+
+- `SheikhyHomeHeader` (`sheikhy_home_header.dart`) — primary green header band
+  (girih pattern + SafeArea + avatar + greeting + notification bell). Replaces
+  the Material `AppBar` on the home screen.
+- `SheikhyHorizontalBookCard` (`sheikhy_horizontal_book_card.dart`) — compact
+  horizontal book card (cover thumbnail + title + lesson meta + status badge +
+  `SheikhyProgressBar`). Used in the featured-books list; accepts primitive
+  props so `FeaturedBookCard` wraps it with `BookWithProgressEntity` mapping.
+- `SheikhyEmptyState` (`sheikhy_empty_state.dart`) — heritage empty-state:
+  icon in a rounded `paperSunk` box + Reem Kufi heading + Tajawal subtitle.
+  Reusable across all screens.
+- `SheikhyErrorState` (`sheikhy_error_state.dart`) — heritage error-state:
+  danger-bordered rounded box + warning icon + Reem Kufi heading + body message
+  + optional technical detail + `SheikhyButton` retry. Reusable across all
+  screens.
+
+## New heritage widgets (Sections Phase)
+
+- `SheikhyPageHeader` (`sheikhy_page_header.dart`) — compact green header band
+  (girih + SafeArea + centered Reem Kufi title). `showBack: bool = false` adds
+  an RTL-aware back arrow at the end edge. Reused by Sections, Achievements,
+  Notifications, Profile, and all sub-pages (SectionBooks, etc.).
+- `SheikhySearchField` (`sheikhy_search_field.dart`) — heritage search input
+  (white surface, `AppRadii.rLg`, gold focus border, search icon prefix, no
+  label). Props: `controller`, `onChanged`, `hintText`. Used on any list
+  screen that needs local filtering.
 
 ## White-label assets
 

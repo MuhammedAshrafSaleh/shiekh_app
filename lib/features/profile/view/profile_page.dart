@@ -2,13 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/config/app_config.dart';
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/error_state.dart';
-import '../../../core/widgets/initials_avatar.dart';
-import '../../../features/auth/cubit/auth_cubit.dart';
-import '../../../core/theme/theme_cubit.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+// import '../../../core/theme/theme_cubit.dart'; // re-enable with _ThemeModeRow
+import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
+import '../../auth/cubit/auth_cubit.dart';
 import '../cubit/profile_cubit.dart';
 import '../cubit/profile_state.dart';
 import '../data/profile_repository.dart';
@@ -30,171 +34,268 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('حسابي'),
-        automaticallyImplyLeading: false,
-      ),
-      body: BlocBuilder<ProfileCubit, ProfileState>(
-        builder: (context, state) {
-          return switch (state) {
-            ProfileInitial() || ProfileLoading() =>
-              const Center(child: CircularProgressIndicator()),
-            ProfileError(:final message) => ErrorState(
-                message: message,
-                onRetry: () => context.read<ProfileCubit>().loadProfile(),
-              ),
-            ProfileLoaded() => RefreshIndicator(
-                onRefresh: () => context.read<ProfileCubit>().loadProfile(),
-                child: _ProfileView(stats: state.stats),
-              ),
-            _ => const SizedBox.shrink(),
-          };
-        },
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: const [
+          SheikhyPageHeader(title: 'حسابي'),
+          Expanded(child: _Body()),
+        ],
       ),
     );
   }
 }
 
-class _ProfileView extends StatelessWidget {
-  final ProfileStats stats;
-  const _ProfileView({required this.stats});
+class _Body extends StatelessWidget {
+  const _Body();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    return BlocBuilder<ProfileCubit, ProfileState>(
+      builder: (context, state) {
+        if (state is ProfileInitial || state is ProfileLoading) {
+          return const _LoadingView();
+        }
+        if (state is ProfileError) {
+          return SheikhyErrorState(
+            heading: 'تعذّر تحميل الملف الشخصي',
+            message: state.message,
+            onRetry: () => context.read<ProfileCubit>().loadProfile(),
+          );
+        }
+        if (state is ProfileLoaded) {
+          return _LoadedView(stats: state.stats);
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
 
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
-        // Avatar + name + email
-        Column(
-          children: [
-            const SizedBox(height: AppSpacing.md),
-            InitialsAvatar(name: stats.fullName, radius: 40),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              stats.fullName,
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.goldLight),
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              stats.email,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          Text('جار تحميل المحتوى...', style: AppTextStyles.small),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Loaded view ───────────────────────────────────────────────────────────────
+
+class _LoadedView extends StatelessWidget {
+  const _LoadedView({required this.stats});
+
+  final ProfileStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.pageGutter,
+        AppSpacing.s5,
+        AppSpacing.pageGutter,
+        AppSpacing.s9,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _AvatarSection(stats: stats),
+          const SizedBox(height: AppSpacing.s5),
+          _StatsRow(stats: stats),
+          const SizedBox(height: AppSpacing.s5),
+          _ActionsList(stats: stats),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
+
+class _AvatarSection extends StatelessWidget {
+  const _AvatarSection({required this.stats});
+
+  final ProfileStats stats;
+
+  String get _initials {
+    final words = stats.fullName.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty) return '؟';
+    if (words.length == 1) return words.first.characters.first;
+    return words.first.characters.first + words.last.characters.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 40,
+          backgroundColor: AppColors.goldSoft,
+          child: Text(
+            _initials,
+            style: GoogleFonts.arefRuqaa(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: AppColors.goldDeep,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s3),
+        Text(
+          stats.fullName,
+          style: GoogleFonts.arefRuqaa(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            height: 1.3,
+            color: AppColors.ink,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppSpacing.s1),
+        Text(
+          stats.email,
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.inkMuted,
+            letterSpacing: 0,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Stats row ─────────────────────────────────────────────────────────────────
+
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({required this.stats});
+
+  final ProfileStats stats;
+
+  String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: AppDecorations.card,
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            // RTL: كتاب مسجّل (start/right)
+            Expanded(
+              child: _StatCell(
+                icon: Icons.menu_book_outlined,
+                value: _ar(stats.enrolledBooks),
+                label: 'كتاب مسجّل',
+                color: AppColors.inkMuted,
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const _VerticalDivider(),
+            // Center: درس مكتمل (highlighted gold)
+            Expanded(
+              child: _StatCell(
+                icon: Icons.check_circle_outline,
+                value: _ar(stats.completedLessons),
+                label: 'درس مكتمل',
+                color: AppColors.goldDeep,
+                highlighted: true,
+              ),
+            ),
+            const _VerticalDivider(),
+            // RTL: شهادة (end/left)
+            Expanded(
+              child: _StatCell(
+                icon: Icons.workspace_premium_outlined,
+                value: _ar(stats.certificates),
+                label: 'شهادة',
+                color: AppColors.inkMuted,
+              ),
+            ),
           ],
         ),
-
-        // 3 stats row — colors mirror إنجازاتي: primary / gold / secondary
-        Builder(builder: (context) {
-          final cs = Theme.of(context).colorScheme;
-          const gold = Color(0xFFD4A017);
-          return Row(
-            children: [
-              _StatChip(
-                label: 'كتاب مسجّل',
-                value: '${stats.enrolledBooks}',
-                icon: Icons.menu_book_outlined,
-                color: cs.primary,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _StatChip(
-                label: 'درس مكتمل',
-                value: '${stats.completedLessons}',
-                icon: Icons.check_circle_outline,
-                color: gold,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _StatChip(
-                label: 'شهادة',
-                value: '${stats.certificates}',
-                icon: Icons.emoji_events_outlined,
-                color: cs.secondary,
-              ),
-            ],
-          );
-        }),
-        const SizedBox(height: AppSpacing.lg),
-
-        // Menu list
-        Card(
-          child: Column(
-            children: [
-              _MenuItem(
-                icon: Icons.emoji_events_outlined,
-                label: 'شهاداتي',
-                onTap: () => context.push('/achievements'),
-              ),
-              const Divider(height: 1, indent: AppSpacing.xl),
-              _MenuItem(
-                icon: Icons.question_answer_outlined,
-                label: 'أسئلتي',
-                onTap: () => context.push('/my-questions'),
-              ),
-              const Divider(height: 1, indent: AppSpacing.xl),
-              _MenuItem(
-                icon: Icons.lock_outline,
-                label: 'تغيير كلمة المرور',
-                onTap: () => context.push('/profile/edit-password'),
-              ),
-              const Divider(height: 1, indent: AppSpacing.xl),
-              _DarkModeMenuItem(),
-              const Divider(height: 1, indent: AppSpacing.xl),
-              _MenuItem(
-                icon: Icons.info_outline,
-                label: 'عن التطبيق',
-                onTap: () => _showAboutDialog(context),
-              ),
-              const Divider(height: 1, indent: AppSpacing.xl),
-              _MenuItem(
-                icon: Icons.logout,
-                label: 'تسجيل الخروج',
-                color: colorScheme.error,
-                onTap: () => _confirmSignOut(context),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-      ],
+      ),
     );
   }
+}
 
-  void _showAboutDialog(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: AppConfig.sheikhName,
-      applicationVersion: '1.0.0',
-      children: const [
-        Text('تطبيق تعليمي إسلامي لمتابعة دروس الشيخ وأخذ الاختبارات والحصول على الشهادات.'),
-      ],
-    );
-  }
+class _StatCell extends StatelessWidget {
+  const _StatCell({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+    this.highlighted = false,
+  });
 
-  void _confirmSignOut(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              context.read<AuthCubit>().signOut();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final valueColor = highlighted ? AppColors.goldDeep : AppColors.ink;
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.symmetric(
+        vertical: AppSpacing.s4,
+        horizontal: AppSpacing.s2,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
             ),
-            child: const Text('تسجيل الخروج'),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(height: AppSpacing.s2),
+          Text(
+            value,
+            style: GoogleFonts.reemKufi(
+              fontSize: highlighted ? 26 : 22,
+              fontWeight: FontWeight.w700,
+              color: valueColor,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.inkMuted,
+              letterSpacing: 0,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -202,54 +303,168 @@ class _ProfileView extends StatelessWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
+class _VerticalDivider extends StatelessWidget {
+  const _VerticalDivider();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Card(
+    return Container(
+      width: AppBorders.hairline,
+      color: AppColors.border,
+    );
+  }
+}
+
+// ── Actions list ──────────────────────────────────────────────────────────────
+
+class _ActionsList extends StatelessWidget {
+  const _ActionsList({required this.stats});
+
+  final ProfileStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: AppDecorations.card,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _ActionRow(
+            icon: Icons.workspace_premium_outlined,
+            label: 'شهاداتي',
+            onTap: () => context.go('/achievements'),
+          ),
+          const _RowDivider(),
+          _ActionRow(
+            icon: Icons.chat_bubble_outline,
+            label: 'أسئلتي',
+            onTap: () => context.push('/my-questions'),
+          ),
+          const _RowDivider(),
+          _ActionRow(
+            icon: Icons.lock_outline,
+            label: 'تغيير كلمة المرور',
+            onTap: () => context.push('/profile/edit-password'),
+          ),
+          const _RowDivider(),
+          // _ThemeModeRow(), // hidden — dark mode toggle not active in v1
+          const _RowDivider(),
+          _ActionRow(
+            icon: Icons.info_outline,
+            label: 'عن التطبيق',
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('عن التطبيق — قريباً'),
+                backgroundColor: AppColors.primary,
+                duration: const Duration(seconds: 2),
+              ),
+            ),
+          ),
+          const _RowDivider(),
+          _ActionRow(
+            icon: Icons.logout,
+            label: 'تسجيل الخروج',
+            color: AppColors.danger,
+            onTap: () => _confirmSignOut(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmSignOut(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.rLg),
+        title: Text(
+          'تسجيل الخروج',
+          style: GoogleFonts.reemKufi(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          'هل تريد تسجيل الخروج من حسابك؟',
+          style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(
+              'إلغاء',
+              style: AppTextStyles.buttonLabel.copyWith(
+                color: AppColors.inkMuted,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s2),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: AppColors.inkInvert,
+              shape: RoundedRectangleBorder(borderRadius: AppRadii.rMd),
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: AppSpacing.s5,
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<AuthCubit>().signOut();
+            },
+            child: Text('خروج', style: AppTextStyles.buttonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? AppColors.ink;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: AppSpacing.s4,
+          ),
+          child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.12),
-                ),
-                child: Icon(icon, color: color, size: 26),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                value,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 2),
+              // RTL: icon is first child = rightmost (start)
+              Icon(icon, color: c, size: 20),
+              const SizedBox(width: AppSpacing.s3),
               Text(
                 label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                style: AppTextStyles.small.copyWith(
+                  color: c,
+                  fontWeight: FontWeight.w500,
                 ),
-                textAlign: TextAlign.center,
               ),
+              const Spacer(),
+              // Chevron is last child = leftmost (end) in RTL
+              Icon(Icons.chevron_left, color: AppColors.inkFaint, size: 20),
             ],
           ),
         ),
@@ -258,51 +473,47 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _MenuItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? color;
-  final VoidCallback onTap;
+// class _ThemeModeRow extends StatelessWidget {
+//   const _ThemeModeRow();
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Padding(
+//       padding: const EdgeInsetsDirectional.symmetric(
+//         horizontal: AppSpacing.s4,
+//         vertical: AppSpacing.s3,
+//       ),
+//       child: Row(
+//         children: [
+//           Icon(Icons.dark_mode_outlined, color: AppColors.ink, size: 20),
+//           const SizedBox(width: AppSpacing.s3),
+//           Text('الوضع الليلي', style: AppTextStyles.small),
+//           const Spacer(),
+//           BlocBuilder<ThemeCubit, ThemeMode>(
+//             builder: (context, mode) => Switch(
+//               value: mode == ThemeMode.dark,
+//               onChanged: (_) => context.read<ThemeCubit>().toggle(),
+//               activeThumbColor: AppColors.primary,
+//               activeTrackColor: AppColors.primaryTint,
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
-  const _MenuItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
+class _RowDivider extends StatelessWidget {
+  const _RowDivider();
 
   @override
   Widget build(BuildContext context) {
-    final effective = color ?? Theme.of(context).colorScheme.onSurface;
-    return ListTile(
-      leading: Icon(icon, color: effective),
-      title: Text(label, style: TextStyle(color: effective)),
-      trailing: Icon(
-        Icons.arrow_forward_ios,
-        size: 14,
-        color: effective.withValues(alpha: 0.5),
-      ),
-      onTap: onTap,
-    );
-  }
-}
-
-class _DarkModeMenuItem extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, mode) {
-        return ListTile(
-          leading: Icon(
-            mode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
-          ),
-          title: const Text('الوضع الليلي'),
-          trailing: Switch(
-            value: mode == ThemeMode.dark,
-            onChanged: (_) => context.read<ThemeCubit>().toggle(),
-          ),
-        );
-      },
+    return const Divider(
+      height: 1,
+      thickness: AppBorders.hairline,
+      color: AppColors.border,
+      indent: AppSpacing.s4,
+      endIndent: AppSpacing.s4,
     );
   }
 }
