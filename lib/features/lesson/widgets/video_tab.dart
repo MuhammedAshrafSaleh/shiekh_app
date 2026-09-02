@@ -8,8 +8,12 @@ import 'package:logging/logging.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
-import '../../../core/constants/app_spacing.dart';
 import '../../../core/errors/failures.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_button.dart';
 import '../cubit/lesson_cubit.dart';
 import '../data/video_stream_repository.dart';
 
@@ -110,7 +114,7 @@ class _VideoTabState extends State<VideoTab> {
       controller.addListener(_onTick);
       _positionTimer = Timer.periodic(
         const Duration(seconds: 15),
-        (_) => _savePosition(),
+        (p1) => _savePosition(),
       );
     }
 
@@ -156,16 +160,11 @@ class _VideoTabState extends State<VideoTab> {
 
   @override
   Widget build(BuildContext context) {
-    switch (_status) {
-      case _Status.loading:
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacing.lg),
-            child: CircularProgressIndicator(),
-          ),
-        );
-      case _Status.error:
-        return _VideoMessage(
+    return switch (_status) {
+      _Status.loading => Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      _Status.error => _VideoMessage(
           icon: _invalidUrl
               ? Icons.videocam_off_outlined
               : Icons.smart_display_outlined,
@@ -173,9 +172,8 @@ class _VideoTabState extends State<VideoTab> {
               ? 'رابط الفيديو غير صحيح، تواصل مع الإدارة'
               : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
           onOpenYoutube: _invalidUrl ? null : _openInYoutube,
-        );
-      case _Status.ready:
-        return Column(
+        ),
+      _Status.ready => Column(
           children: [
             AspectRatio(
               aspectRatio: 16 / 9,
@@ -183,8 +181,8 @@ class _VideoTabState extends State<VideoTab> {
             ),
             const Expanded(child: SizedBox()),
           ],
-        );
-    }
+        ),
+    };
   }
 }
 
@@ -202,39 +200,40 @@ class _VideoMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsetsDirectional.all(AppSpacing.pageGutter),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 56,
-            color: Theme.of(context).colorScheme.error,
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: AppColors.dangerBg,
+              borderRadius: AppRadii.rLg,
+              border: Border.all(color: AppColors.danger, width: 1.5),
+            ),
+            child: Icon(icon, size: 40, color: AppColors.danger),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.s5),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
           ),
           if (onOpenYoutube != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            FilledButton.icon(
+            const SizedBox(height: AppSpacing.s5),
+            SheikhyButton.primary(
+              label: 'افتح في يوتيوب',
               icon: const Icon(Icons.open_in_new),
-              label: const Text('افتح في يوتيوب'),
+              fullWidth: true,
               onPressed: onOpenYoutube,
             ),
           ],
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.s3),
           Text(
             'يمكنك الاستمرار عبر التبويبات الأخرى',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.55),
-                ),
+            style: AppTextStyles.small.copyWith(color: AppColors.inkFaint),
           ),
         ],
       ),
