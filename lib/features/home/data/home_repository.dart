@@ -87,21 +87,34 @@ class HomeRepository {
       }
 
       final Map<String, int> completedByBook = {};
-      if (userId != null && lessonIdToBookId.isNotEmpty) {
-        final allLessonIds = lessonIdToBookId.keys.toList();
-        final progressRaw = await _client
-            .from('lesson_progress')
-            .select('lesson_id')
-            .eq('user_id', userId)
-            .eq('completed', true)
-            .inFilter('lesson_id', allLessonIds);
+      final Set<String> enrolledBookIds = {};
+      if (userId != null) {
+        if (lessonIdToBookId.isNotEmpty) {
+          final allLessonIds = lessonIdToBookId.keys.toList();
+          final progressRaw = await _client
+              .from('lesson_progress')
+              .select('lesson_id')
+              .eq('user_id', userId)
+              .eq('completed', true)
+              .inFilter('lesson_id', allLessonIds);
 
-        for (final row in (progressRaw as List)) {
-          final lessonId = row['lesson_id'] as String;
-          final bookId = lessonIdToBookId[lessonId];
-          if (bookId != null) {
-            completedByBook[bookId] = (completedByBook[bookId] ?? 0) + 1;
+          for (final row in (progressRaw as List)) {
+            final lessonId = row['lesson_id'] as String;
+            final bookId = lessonIdToBookId[lessonId];
+            if (bookId != null) {
+              completedByBook[bookId] = (completedByBook[bookId] ?? 0) + 1;
+            }
           }
+        }
+
+        final enrollmentsRaw = await _client
+            .from('enrollments')
+            .select('book_id')
+            .eq('user_id', userId)
+            .inFilter('book_id', bookIds);
+
+        for (final row in (enrollmentsRaw as List)) {
+          enrolledBookIds.add(row['book_id'] as String);
         }
       }
 
@@ -113,7 +126,7 @@ class HomeRepository {
           totalLessons: total,
           completedLessons: completed,
           progress: completed / (total > 0 ? total : 1),
-          isEnrolled: false,
+          isEnrolled: enrolledBookIds.contains(book.id),
         );
       }).toList();
 

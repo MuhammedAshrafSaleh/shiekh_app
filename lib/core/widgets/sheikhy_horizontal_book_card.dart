@@ -24,6 +24,7 @@ class SheikhyHorizontalBookCard extends StatelessWidget {
     required this.progress,
     required this.onTap,
     this.coverImageUrl,
+    this.isEnrolled = false,
   });
 
   final String title;
@@ -32,6 +33,7 @@ class SheikhyHorizontalBookCard extends StatelessWidget {
   final double progress;
   final VoidCallback onTap;
   final String? coverImageUrl;
+  final bool isEnrolled;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +58,7 @@ class SheikhyHorizontalBookCard extends StatelessWidget {
                     totalLessons: totalLessons,
                     completedLessons: completedLessons,
                     progress: progress,
+                    isEnrolled: isEnrolled,
                   ),
                 ),
               ],
@@ -126,12 +129,14 @@ class _InfoColumn extends StatelessWidget {
     required this.totalLessons,
     required this.completedLessons,
     required this.progress,
+    required this.isEnrolled,
   });
 
   final String title;
   final int totalLessons;
   final int completedLessons;
   final double progress;
+  final bool isEnrolled;
 
   SheikhyBadge get _statusBadge {
     if (totalLessons > 0 && completedLessons >= totalLessons) {
@@ -139,6 +144,9 @@ class _InfoColumn extends StatelessWidget {
     }
     if (completedLessons > 0) {
       return const SheikhyBadge(variant: SheikhyBadgeVariant.isNew, label: 'جارٍ');
+    }
+    if (isEnrolled) {
+      return const SheikhyBadge(variant: SheikhyBadgeVariant.isNew, label: 'مسجّل');
     }
     return const SheikhyBadge(variant: SheikhyBadgeVariant.draft, label: 'لم يبدأ');
   }

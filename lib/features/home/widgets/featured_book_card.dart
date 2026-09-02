@@ -24,6 +24,7 @@ class FeaturedBookCard extends StatelessWidget {
       completedLessons: item.completedLessons,
       progress: item.progress,
       coverImageUrl: item.book.coverImageUrl,
+      isEnrolled: item.isEnrolled,
       onTap: onTap,
     );
   }
