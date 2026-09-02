@@ -2,8 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/error_state.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/sheikhy_empty_state.dart';
+import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
 import '../cubit/my_questions_cubit.dart';
 import '../cubit/my_questions_state.dart';
 import '../widgets/question_card.dart';
@@ -14,34 +17,84 @@ class MyQuestionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('أسئلتي')),
-      body: BlocBuilder<MyQuestionsCubit, MyQuestionsState>(
-        builder: (context, state) {
-          return switch (state) {
-            MyQuestionsInitial() || MyQuestionsLoading() =>
-              const Center(child: CircularProgressIndicator()),
-            MyQuestionsError(:final message) => ErrorState(
-                message: message,
-                onRetry: () =>
-                    context.read<MyQuestionsCubit>().loadMyQuestions(),
-              ),
-            MyQuestionsEmpty() => const EmptyState(
-                icon: Icons.question_answer_outlined,
-                message: 'لم تطرح أي أسئلة بعد',
-              ),
-            MyQuestionsLoaded(:final questions) => RefreshIndicator(
-                onRefresh: () =>
-                    context.read<MyQuestionsCubit>().loadMyQuestions(),
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: questions.length,
-                  itemBuilder: (_, index) =>
-                      QuestionCard(question: questions[index]),
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: const [
+          SheikhyPageHeader(title: 'أسئلتي', showBack: true),
+          Expanded(child: _Body()),
+        ],
+      ),
+    );
+  }
+}
+
+class _Body extends StatelessWidget {
+  const _Body();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<MyQuestionsCubit, MyQuestionsState>(
+      builder: (context, state) {
+        return switch (state) {
+          MyQuestionsInitial() || MyQuestionsLoading() => const _LoadingView(),
+          MyQuestionsError(:final message) => SheikhyErrorState(
+              heading: 'تعذّر تحميل الأسئلة',
+              message: message,
+              onRetry: () =>
+                  context.read<MyQuestionsCubit>().loadMyQuestions(),
+            ),
+          MyQuestionsEmpty() => const SheikhyEmptyState(
+              icon: Icons.question_answer_outlined,
+              heading: 'لا توجد أسئلة بعد',
+              subtitle: 'يمكنك طرح سؤالك من صفحة الكتاب.',
+            ),
+          MyQuestionsLoaded(:final questions) => RefreshIndicator(
+              color: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              onRefresh: () =>
+                  context.read<MyQuestionsCubit>().loadMyQuestions(),
+              child: ListView.separated(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.pageGutter,
+                  AppSpacing.s3,
+                  AppSpacing.pageGutter,
+                  AppSpacing.s7,
                 ),
+                itemCount: questions.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: AppSpacing.s3),
+                itemBuilder: (_, index) =>
+                    QuestionCard(question: questions[index]),
               ),
-            _ => const SizedBox.shrink(),
-          };
-        },
+            ),
+          _ => const SizedBox.shrink(),
+        };
+      },
+    );
+  }
+}
+
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.goldLight),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          const Text('جار تحميل الأسئلة...'),
+        ],
       ),
     );
   }

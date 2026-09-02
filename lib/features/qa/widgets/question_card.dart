@@ -1,89 +1,88 @@
 // lib/features/qa/widgets/question_card.dart
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_spacing.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../models/student_question_entity.dart';
 
 class QuestionCard extends StatelessWidget {
+  const QuestionCard({super.key, required this.question});
+
   final StudentQuestionEntity question;
 
-  const QuestionCard({super.key, required this.question});
+  String _formatDate(DateTime date) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    String ar(int n) => n.toString().split('').map((c) {
+          final i = w.indexOf(c);
+          return i >= 0 ? a[i] : c;
+        }).join();
+    return '${ar(date.day)}/${ar(date.month)}/${ar(date.year)}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final answered = question.isAnswered;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
-      ),
+    return Container(
+      decoration: AppDecorations.card,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status badge
+            // Header row: status badge + date
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: question.isAnswered
-                        ? colorScheme.primaryContainer
-                        : colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(AppSpacing.xs),
-                  ),
-                  child: Text(
-                    question.isAnswered ? 'تمت الإجابة' : 'قيد المراجعة',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: question.isAnswered
-                          ? colorScheme.primary
-                          : colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
+                _StatusBadge(answered: answered),
                 const Spacer(),
                 Text(
                   _formatDate(question.createdAt),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.45),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.inkFaint,
+                    letterSpacing: 0,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.s3),
 
             // Question text
             Text(
               question.questionText,
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.ink,
+                height: 1.6,
+              ),
             ),
 
-            // Answer (if answered)
-            if (question.isAnswered && question.answerText != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Divider(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
-              const SizedBox(height: AppSpacing.sm),
+            // Answer section
+            if (answered && question.answerText != null) ...[
+              const SizedBox(height: AppSpacing.s3),
+              const Divider(
+                height: 1,
+                thickness: AppBorders.hairline,
+                color: AppColors.border,
+              ),
+              const SizedBox(height: AppSpacing.s3),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
                     Icons.record_voice_over_outlined,
                     size: 18,
-                    color: colorScheme.primary,
+                    color: AppColors.primary,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
+                  const SizedBox(width: AppSpacing.s2),
                   Expanded(
                     child: Text(
                       question.answerText!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.8),
-                        height: 1.5,
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.inkMuted,
+                        height: 1.6,
                       ),
                     ),
                   ),
@@ -95,8 +94,38 @@ class QuestionCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.answered});
+
+  final bool answered;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = answered
+        ? AppColors.primary.withValues(alpha: 0.10)
+        : AppColors.gold.withValues(alpha: 0.12);
+    final fg = answered ? AppColors.primary : AppColors.goldDeep;
+    final label = answered ? 'تمت الإجابة' : 'قيد المراجعة';
+
+    return Container(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.s3,
+        vertical: AppSpacing.s1,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.s2),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0,
+        ),
+      ),
+    );
   }
 }
