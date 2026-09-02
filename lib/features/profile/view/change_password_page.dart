@@ -2,8 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
+import '../../../core/widgets/sheikhy_password_field.dart';
 import '../cubit/profile_cubit.dart';
 import '../cubit/profile_state.dart';
 
@@ -15,14 +19,13 @@ class ChangePasswordPage extends StatefulWidget {
 }
 
 class _ChangePasswordPageState extends State<ChangePasswordPage> {
-  final _formKey = GlobalKey<FormState>();
   final _currentPwCtrl = TextEditingController();
   final _newPwCtrl = TextEditingController();
   final _confirmPwCtrl = TextEditingController();
 
-  bool _showCurrent = false;
-  bool _showNew = false;
-  bool _showConfirm = false;
+  String? _errorCurrent;
+  String? _errorNew;
+  String? _errorConfirm;
 
   @override
   void dispose() {
@@ -32,19 +35,45 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     super.dispose();
   }
 
+  bool _validate() {
+    String? ec;
+    String? en;
+    String? ef;
+
+    if (_currentPwCtrl.text.isEmpty) {
+      ec = 'أدخل كلمة المرور الحالية';
+    }
+    if (_newPwCtrl.text.length < 6) {
+      en = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    }
+    if (_confirmPwCtrl.text != _newPwCtrl.text) {
+      ef = 'كلمتا المرور غير متطابقتين';
+    }
+
+    setState(() {
+      _errorCurrent = ec;
+      _errorNew = en;
+      _errorConfirm = ef;
+    });
+
+    return ec == null && en == null && ef == null;
+  }
+
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!_validate()) return;
+
     final success = await context.read<ProfileCubit>().changePassword(
           currentPassword: _currentPwCtrl.text,
           newPassword: _newPwCtrl.text,
         );
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           success ? 'تم تغيير كلمة المرور بنجاح' : 'فشل تغيير كلمة المرور',
         ),
-        backgroundColor: success ? Colors.green : Colors.red,
+        backgroundColor: success ? AppColors.primary : AppColors.danger,
         duration: Duration(seconds: success ? 3 : 4),
       ),
     );
@@ -54,102 +83,96 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تغيير كلمة المرور')),
-      body: BlocBuilder<ProfileCubit, ProfileState>(
-        builder: (context, state) {
-          final isUpdating = state is ProfileUpdating;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            restorationId: 'change_password_scroll',
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _currentPwCtrl,
-                    obscureText: !_showCurrent,
-                    decoration: InputDecoration(
-                      labelText: 'كلمة المرور الحالية',
-
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(_showCurrent
-                            ? Icons.visibility_off
-                            : Icons.visibility),
-                        onPressed: () =>
-                            setState(() => _showCurrent = !_showCurrent),
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SheikhyPageHeader(title: 'تغيير كلمة المرور', showBack: true),
+          Expanded(
+            child: BlocBuilder<ProfileCubit, ProfileState>(
+              builder: (context, state) {
+                final isUpdating = state is ProfileUpdating;
+                return SingleChildScrollView(
+                  padding: const EdgeInsetsDirectional.fromSTEB(
+                    AppSpacing.pageGutter,
+                    AppSpacing.s6,
+                    AppSpacing.pageGutter,
+                    AppSpacing.s9,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Hint text
+                      Text(
+                        'أدخل كلمة مرورك الحالية ثم اختر كلمة مرور جديدة.',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.inkMuted,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    textInputAction: TextInputAction.next,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'أدخل كلمة المرور الحالية';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextFormField(
-                    controller: _newPwCtrl,
-                    obscureText: !_showNew,
-                    decoration: InputDecoration(
-                      labelText: 'كلمة المرور الجديدة',
+                      const SizedBox(height: AppSpacing.s6),
 
-                      prefixIcon: const Icon(Icons.lock_reset),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                            _showNew ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () =>
-                            setState(() => _showNew = !_showNew),
+                      SheikhyPasswordField(
+                        label: 'كلمة المرور الحالية',
+                        controller: _currentPwCtrl,
+                        hintText: '••••••••',
+                        errorText: _errorCurrent,
+                        textInputAction: TextInputAction.next,
+                        onChanged: (_) {
+                          if (_errorCurrent != null) {
+                            setState(() => _errorCurrent = null);
+                          }
+                        },
                       ),
-                    ),
-                    textInputAction: TextInputAction.next,
-                    validator: (v) {
-                      if (v == null || v.length < 6) {
-                        return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextFormField(
-                    controller: _confirmPwCtrl,
-                    obscureText: !_showConfirm,
-                    decoration: InputDecoration(
-                      labelText: 'تأكيد كلمة المرور الجديدة',
+                      const SizedBox(height: AppSpacing.s5),
 
-                      prefixIcon: const Icon(Icons.lock_reset),
-                      suffixIcon: IconButton(
-                        icon: Icon(_showConfirm
-                            ? Icons.visibility_off
-                            : Icons.visibility),
-                        onPressed: () =>
-                            setState(() => _showConfirm = !_showConfirm),
+                      SheikhyPasswordField(
+                        label: 'كلمة المرور الجديدة',
+                        controller: _newPwCtrl,
+                        hintText: '••••••••',
+                        errorText: _errorNew,
+                        prefixIcon: const Icon(Icons.lock_reset),
+                        textInputAction: TextInputAction.next,
+                        onChanged: (_) {
+                          if (_errorNew != null) {
+                            setState(() => _errorNew = null);
+                          }
+                        },
                       ),
-                    ),
-                    textInputAction: TextInputAction.done,
-                    validator: (v) {
-                      if (v != _newPwCtrl.text) {
-                        return 'كلمتا المرور غير متطابقتين';
-                      }
-                      return null;
-                    },
+                      const SizedBox(height: AppSpacing.s5),
+
+                      SheikhyPasswordField(
+                        label: 'تأكيد كلمة المرور الجديدة',
+                        controller: _confirmPwCtrl,
+                        hintText: '••••••••',
+                        errorText: _errorConfirm,
+                        prefixIcon: const Icon(Icons.lock_reset),
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) {
+                          if (_errorConfirm != null) {
+                            setState(() => _errorConfirm = null);
+                          }
+                        },
+                        onSubmitted: (_) => _submit(),
+                      ),
+                      const SizedBox(height: AppSpacing.s7),
+
+                      SheikhyButton.primary(
+                        label: 'حفظ كلمة المرور',
+                        isLoading: isUpdating,
+                        onPressed: isUpdating ? null : _submit,
+                        fullWidth: true,
+                      ),
+                      SizedBox(
+                        height: MediaQuery.viewInsetsOf(context).bottom,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  PrimaryButton(
-                    label: 'حفظ كلمة المرور',
-                    isLoading: isUpdating,
-                    onPressed: _submit,
-                  ),
-                  SizedBox(
-                    height: MediaQuery.viewInsetsOf(context).bottom,
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
