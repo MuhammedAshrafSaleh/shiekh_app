@@ -159,8 +159,8 @@ class _PlaceholderBanner extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: AppColors.primary),
-        GirihBackground(color: AppColors.goldLight, opacity: 0.14),
+        const ColoredBox(color: AppColors.paperSunk),
+        GirihBackground(color: AppColors.primary, opacity: 0.09),
         if (banner.linkedBookId != null)
           PositionedDirectional(
             top: AppSpacing.s4,
@@ -177,7 +177,7 @@ class _PlaceholderBanner extends StatelessWidget {
             ),
             child: Text(
               banner.title,
-              style: AppTextStyles.h3.copyWith(color: AppColors.goldLight),
+              style: AppTextStyles.h3.copyWith(color: AppColors.ink),
               textAlign: TextAlign.center,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,

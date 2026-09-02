@@ -103,15 +103,15 @@ class _Placeholder extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: AppColors.primary),
-        GirihBackground(color: AppColors.goldLight, opacity: 0.14),
+        const ColoredBox(color: AppColors.paperSunk),
+        GirihBackground(color: AppColors.primary, opacity: 0.09),
         Center(
           child: Text(
             title.isNotEmpty ? title.characters.first : '؟',
             style: GoogleFonts.arefRuqaa(
               fontSize: 36,
               fontWeight: FontWeight.w700,
-              color: AppColors.gold,
+              color: AppColors.primary,
             ),
           ),
         ),
