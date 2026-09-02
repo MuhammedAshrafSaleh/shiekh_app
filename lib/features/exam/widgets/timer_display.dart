@@ -1,6 +1,8 @@
 // lib/features/exam/widgets/timer_display.dart
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/media_duration.dart';
+
 class TimerDisplay extends StatelessWidget {
   final int secondsRemaining;
 
@@ -9,10 +11,7 @@ class TimerDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUrgent = secondsRemaining <= 60;
-    final minutes = secondsRemaining ~/ 60;
-    final seconds = secondsRemaining % 60;
-    final formatted =
-        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final formatted = formatMediaDuration(Duration(seconds: secondsRemaining));
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -34,6 +33,7 @@ class TimerDisplay extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             formatted,
+            textDirection: TextDirection.ltr,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: isUrgent ? Colors.red : null,
                   fontWeight: FontWeight.bold,
