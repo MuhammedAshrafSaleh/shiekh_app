@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/girih_background.dart';
 import '../../../core/widgets/sheikhy_badge.dart';
 import '../../../models/banner_entity.dart';
 
@@ -158,6 +159,8 @@ class _PlaceholderBanner extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
+        ColoredBox(color: AppColors.primary),
+        GirihBackground(color: AppColors.goldLight, opacity: 0.14),
         if (banner.linkedBookId != null)
           PositionedDirectional(
             top: AppSpacing.s4,
@@ -174,7 +177,7 @@ class _PlaceholderBanner extends StatelessWidget {
             ),
             child: Text(
               banner.title,
-              style: AppTextStyles.h3,
+              style: AppTextStyles.h3.copyWith(color: AppColors.goldLight),
               textAlign: TextAlign.center,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,

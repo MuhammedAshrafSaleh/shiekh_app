@@ -11,6 +11,7 @@ import '../theme/app_decorations.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'girih_background.dart';
 import 'sheikhy_badge.dart';
 import 'sheikhy_progress_bar.dart';
 
@@ -99,17 +100,22 @@ class _Placeholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.primaryTint,
-      alignment: Alignment.center,
-      child: Text(
-        title.isNotEmpty ? title.characters.first : '؟',
-        style: GoogleFonts.reemKufi(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(color: AppColors.primary),
+        GirihBackground(color: AppColors.goldLight, opacity: 0.14),
+        Center(
+          child: Text(
+            title.isNotEmpty ? title.characters.first : '؟',
+            style: GoogleFonts.arefRuqaa(
+              fontSize: 36,
+              fontWeight: FontWeight.w700,
+              color: AppColors.gold,
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
