@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../lesson/data/lesson_repository.dart';
 import '../../qa/cubit/qa_cubit.dart';
@@ -81,6 +83,10 @@ class _LessonView extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xl)),
+      ),
       builder: (_) => BlocProvider(
         create: (ctx) => AskQuestionCubit(ctx.read<QaRepository>()),
         child: AskQuestionSheet(
@@ -224,6 +230,18 @@ class _NextLessonBar extends StatelessWidget {
         ),
         child: Row(
           children: [
+            FilledButton.icon(
+              onPressed: state.nextLessonId != null
+                  ? () {
+                      context.read<LessonCubit>().markVideoWatched();
+                      context.pushReplacement(
+                          '/lessons/${state.nextLessonId}?bookId=$bookId');
+                    }
+                  : null,
+              icon: const Icon(Icons.chevron_right, size: 20),
+              label: const Text('الدرس التالي'),
+            ),
+            const Spacer(),
             if (state.isCompleted) ...[
               const Icon(Icons.check_circle, color: Colors.green, size: 20),
               const SizedBox(width: AppSpacing.sm),
@@ -234,18 +252,6 @@ class _NextLessonBar extends StatelessWidget {
                     ),
               ),
             ],
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: state.nextLessonId != null
-                  ? () {
-                      context.read<LessonCubit>().markVideoWatched();
-                      context.pushReplacement(
-                          '/lessons/${state.nextLessonId}?bookId=$bookId');
-                    }
-                  : null,
-              icon: const Icon(Icons.chevron_left, size: 20),
-              label: const Text('الدرس التالي'),
-            ),
           ],
         ),
       ),
@@ -272,7 +278,7 @@ class _LessonAppBarBottom extends StatelessWidget implements PreferredSizeWidget
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             IconButton(
               icon: const Icon(Icons.question_answer_outlined),

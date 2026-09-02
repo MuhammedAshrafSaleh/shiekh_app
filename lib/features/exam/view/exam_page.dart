@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart' as hs;
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/mcq_option_card.dart';
@@ -222,6 +226,10 @@ class _IntroView extends StatelessWidget {
   void _showPastAttempts(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xl)),
+      ),
       builder: (ctx) => _PastAttemptsSheet(attempts: state.pastAttempts),
     );
   }
@@ -296,10 +304,17 @@ class _PastAttemptsSheet extends StatelessWidget {
   final List<FinalExamAttemptEntity> attempts;
   const _PastAttemptsSheet({required this.attempts});
 
+  String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final dateFormat = DateFormat('yyyy/MM/dd HH:mm', 'ar');
 
     return DraggableScrollableSheet(
@@ -307,43 +322,102 @@ class _PastAttemptsSheet extends StatelessWidget {
       expand: false,
       builder: (ctx, scroll) => Column(
         children: [
+          // Drag handle + title
           Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Text('المحاولات السابقة',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              hs.AppSpacing.pageGutter,
+              hs.AppSpacing.s3,
+              hs.AppSpacing.pageGutter,
+              hs.AppSpacing.s3,
+            ),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: hs.AppSpacing.s3),
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: AppRadii.rPill,
+                    ),
+                  ),
+                ),
+                Text(
+                  'المحاولات السابقة',
+                  style: AppTextStyles.h3,
+                ),
+              ],
+            ),
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, color: AppColors.border),
           Expanded(
             child: ListView.separated(
               controller: scroll,
               itemCount: attempts.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
+              separatorBuilder: (_, _) =>
+                  const Divider(height: 1, color: AppColors.border),
               itemBuilder: (_, i) {
                 final a = attempts[i];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: a.passed
-                        ? colorScheme.primaryContainer
-                        : colorScheme.errorContainer,
-                    child: Text(
-                      '${a.attemptNumber}',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: a.passed
-                            ? colorScheme.onPrimaryContainer
-                            : colorScheme.onErrorContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                final passed = a.passed;
+                final accentColor =
+                    passed ? AppColors.primary : AppColors.danger;
+                return Padding(
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: hs.AppSpacing.pageGutter,
+                    vertical: hs.AppSpacing.s3,
                   ),
-                  title: Text('${a.scorePercentage}٪ — '
-                      '${a.passed ? "ناجح" : "راسب"}'),
-                  subtitle: a.submittedAt != null
-                      ? Text(dateFormat.format(a.submittedAt!.toLocal()))
-                      : null,
-                  trailing: Icon(
-                    a.passed ? Icons.check_circle : Icons.cancel,
-                    color: a.passed ? Colors.green : colorScheme.error,
+                  child: Row(
+                    children: [
+                      // Attempt number circle
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _ar(a.attemptNumber),
+                            style: AppTextStyles.small.copyWith(
+                              color: accentColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: hs.AppSpacing.s3),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_ar(a.scorePercentage)}٪ — ${passed ? "ناجح" : "راسب"}',
+                              style: AppTextStyles.small.copyWith(
+                                color: AppColors.ink,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (a.submittedAt != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                dateFormat.format(a.submittedAt!.toLocal()),
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.inkFaint,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        passed ? Icons.check_circle : Icons.cancel,
+                        color: accentColor,
+                        size: 22,
+                      ),
+                    ],
                   ),
                 );
               },
