@@ -520,7 +520,15 @@ class _LessonActionBarState extends State<_LessonActionBar> {
       }
     } else {
       label = _activeCompletionLabel;
-      onPressed = () => context.read<LessonCubit>().markVideoWatched();
+      if (state.hasQuizQuestions && !state.quizAttempted) {
+        onPressed = () {
+          final quizIndex =
+              widget.tabs.indexWhere((t) => t.completionLabel == null);
+          if (quizIndex >= 0) _tabController?.animateTo(quizIndex);
+        };
+      } else {
+        onPressed = () => context.read<LessonCubit>().markVideoWatched();
+      }
     }
 
     return DecoratedBox(
