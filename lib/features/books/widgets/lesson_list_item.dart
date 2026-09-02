@@ -1,7 +1,9 @@
 // lib/features/books/widgets/lesson_list_item.dart
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_spacing.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../models/lesson_with_progress_entity.dart';
 
 class LessonListItem extends StatelessWidget {
@@ -18,51 +20,50 @@ class LessonListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isCompleted = item.isCompleted;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.sm),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm + 4,
+        padding: const EdgeInsetsDirectional.symmetric(
+          horizontal: AppSpacing.pageGutter,
+          vertical: AppSpacing.s3,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                _LessonStatusIcon(
-                  isCompleted: isCompleted,
-                  isEnrolled: isEnrolled,
-                  orderIndex: item.lesson.orderIndex,
-                  colorScheme: colorScheme,
-                ),
-                const Spacer(),
-                _MediaIcons(lesson: item.lesson),
-              ],
+            _LessonStatusIcon(
+              isCompleted: isCompleted,
+              isEnrolled: isEnrolled,
+              orderIndex: item.lesson.orderIndex,
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              item.lesson.title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: isEnrolled
-                    ? null
-                    : colorScheme.onSurface.withValues(alpha: 0.5),
+            const SizedBox(width: AppSpacing.s4),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.lesson.title,
+                    style: AppTextStyles.small.copyWith(
+                      color: isEnrolled ? AppColors.ink : AppColors.inkFaint,
+                      height: 1.5,
+                    ),
+                  ),
+                  if (!isEnrolled) ...[
+                    const SizedBox(height: AppSpacing.s1),
+                    Text(
+                      'يجب التسجيل في الكتاب أولاً',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.inkFaint,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (!isEnrolled) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'يجب التسجيل في الكتاب أولاً',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.45),
-                ),
-              ),
-            ],
+            const SizedBox(width: AppSpacing.s3),
+            _MediaIcons(lesson: item.lesson),
           ],
         ),
       ),
@@ -74,40 +75,59 @@ class _LessonStatusIcon extends StatelessWidget {
   final bool isCompleted;
   final bool isEnrolled;
   final int orderIndex;
-  final ColorScheme colorScheme;
 
   const _LessonStatusIcon({
     required this.isCompleted,
     required this.isEnrolled,
     required this.orderIndex,
-    required this.colorScheme,
   });
 
   @override
   Widget build(BuildContext context) {
     if (!isEnrolled) {
-      return Icon(
-        Icons.lock_outline,
-        color: colorScheme.onSurface.withValues(alpha: 0.35),
-        size: 22,
+      return Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.paperSunk,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Icon(
+          Icons.lock_outline,
+          size: 14,
+          color: AppColors.inkFaint,
+        ),
       );
     }
     if (isCompleted) {
-      return CircleAvatar(
-        radius: 14,
-        backgroundColor: colorScheme.primary,
-        child: const Icon(Icons.check, size: 16, color: Colors.white),
+      return Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.success,
+        ),
+        child: const Icon(Icons.check, size: 16, color: AppColors.inkInvert),
       );
     }
-    return CircleAvatar(
-      radius: 14,
-      backgroundColor: colorScheme.surfaceContainerHighest,
-      child: Text(
-        '$orderIndex',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-            ),
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.paperSunk,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Center(
+        child: Text(
+          '$orderIndex',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.inkMuted,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+        ),
       ),
     );
   }
@@ -120,23 +140,32 @@ class _MediaIcons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (lesson.hasVideo)
-          Icon(Icons.play_circle_outline, size: 16, color: color),
+          const Icon(
+            Icons.play_circle_outline,
+            size: 16,
+            color: AppColors.inkFaint,
+          ),
         if (lesson.hasAudio)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
-            child: Icon(Icons.headphones_outlined, size: 16, color: color),
+          const Padding(
+            padding: EdgeInsetsDirectional.only(start: AppSpacing.s1),
+            child: Icon(
+              Icons.headphones_outlined,
+              size: 16,
+              color: AppColors.inkFaint,
+            ),
           ),
         if (lesson.hasPdf)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4),
-            child: Icon(Icons.picture_as_pdf_outlined,
-                size: 16, color: color),
+          const Padding(
+            padding: EdgeInsetsDirectional.only(start: AppSpacing.s1),
+            child: Icon(
+              Icons.picture_as_pdf_outlined,
+              size: 16,
+              color: AppColors.inkFaint,
+            ),
           ),
       ],
     );
