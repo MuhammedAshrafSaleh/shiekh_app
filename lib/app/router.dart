@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_radii.dart';
+import '../core/theme/app_spacing.dart';
+import '../core/theme/app_text_styles.dart';
 import '../core/widgets/offline_banner.dart';
 import '../features/achievements/cubit/achievements_cubit.dart';
 import '../features/achievements/data/achievements_repository.dart';
@@ -589,8 +593,24 @@ class _StudentShell extends StatelessWidget {
     return 0;
   }
 
+  static const _routes = ['/home', '/path', '/achievements', '/profile'];
+  static const _labels = ['الرئيسية', 'مساري', 'إنجازاتي', 'حسابي'];
+  static const _icons = [
+    Icons.home_outlined,
+    Icons.route_outlined,
+    Icons.star_border_rounded,
+    Icons.person_outline_rounded,
+  ];
+  static const _activeIcons = [
+    Icons.home_rounded,
+    Icons.route_rounded,
+    Icons.star_rounded,
+    Icons.person_rounded,
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final selected = _selectedIndex(context);
     return Scaffold(
       body: Column(
         children: [
@@ -598,34 +618,100 @@ class _StudentShell extends StatelessWidget {
           Expanded(child: child),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex(context),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'الرئيسية',
+      bottomNavigationBar: _SheikhyBottomNav(
+        selectedIndex: selected,
+        labels: _labels,
+        icons: _icons,
+        activeIcons: _activeIcons,
+        onTap: (i) => context.go(_routes[i]),
+      ),
+    );
+  }
+}
+
+// --------------- Custom heritage bottom nav ---------------
+
+class _SheikhyBottomNav extends StatelessWidget {
+  final int selectedIndex;
+  final List<String> labels;
+  final List<IconData> icons;
+  final List<IconData> activeIcons;
+  final ValueChanged<int> onTap;
+
+  const _SheikhyBottomNav({
+    required this.selectedIndex,
+    required this.labels,
+    required this.icons,
+    required this.activeIcons,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          top: BorderSide(color: AppColors.border, width: 1),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 68,
+          child: Row(
+            children: List.generate(labels.length, (i) {
+              final isActive = i == selectedIndex;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(i),
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      padding: isActive
+                          ? const EdgeInsetsDirectional.symmetric(
+                              horizontal: AppSpacing.s4,
+                              vertical: AppSpacing.s2,
+                            )
+                          : EdgeInsets.zero,
+                      decoration: isActive
+                          ? BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: AppRadii.rLg,
+                            )
+                          : null,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isActive ? activeIcons[i] : icons[i],
+                            size: 24,
+                            color: isActive
+                                ? AppColors.inkInvert
+                                : AppColors.inkFaint,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            labels[i],
+                            style: AppTextStyles.caption.copyWith(
+                              color: isActive
+                                  ? AppColors.inkInvert
+                                  : AppColors.inkFaint,
+                              height: 1.1,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.route_outlined),
-            selectedIcon: Icon(Icons.route),
-            label: 'مساري',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.emoji_events_outlined),
-            selectedIcon: Icon(Icons.emoji_events),
-            label: 'إنجازاتي',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'حسابي',
-          ),
-        ],
-        onDestinationSelected: (i) {
-          const routes = ['/home', '/path', '/achievements', '/profile'];
-          context.go(routes[i]);
-        },
+        ),
       ),
     );
   }
