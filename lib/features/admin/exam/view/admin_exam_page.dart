@@ -308,10 +308,23 @@ class _QuestionsTab extends StatelessWidget {
             ),
           ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.xl + AppSpacing.lg,
+            ),
             itemCount: questions.length,
+            onReorderItem: (oldIndex, newIndex) {
+              final questionIds = questions.map((q) => q.id).toList();
+              final question = questionIds.removeAt(oldIndex);
+              if (newIndex > oldIndex) newIndex -= 1;
+              questionIds.insert(newIndex, question);
+              context.read<AdminExamCubit>().reorderQuestions(questionIds);
+            },
             itemBuilder: (context, i) => _ExamQuestionTile(
+              key: ValueKey(questions[i].id),
               question: questions[i],
               index: i + 1,
             ),
@@ -358,7 +371,11 @@ class _ExamQuestionTile extends StatelessWidget {
   final AdminFinalExamQuestionEntity question;
   final int index;
 
-  const _ExamQuestionTile({required this.question, required this.index});
+  const _ExamQuestionTile({
+    super.key,
+    required this.question,
+    required this.index,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +389,13 @@ class _ExamQuestionTile extends StatelessWidget {
           children: [
             Row(
               children: [
+                ReorderableDragStartListener(
+                  index: index - 1,
+                  child: Icon(Icons.drag_handle,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(width: AppSpacing.sm),
                 CircleAvatar(
                     radius: 12,
                     child: Text('$index',

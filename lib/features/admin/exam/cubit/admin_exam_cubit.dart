@@ -152,4 +152,31 @@ class AdminExamCubit extends Cubit<AdminExamState> {
     final result = await _repo.getBankQuestions(_bookId!);
     return result.fold((_) => [], (qs) => qs);
   }
+
+  Future<void> reorderQuestions(List<String> questionIds) async {
+    final current = state;
+    if (current is! AdminExamLoaded) return;
+
+    final updates = questionIds
+        .asMap()
+        .entries
+        .map((e) => (e.value, e.key))
+        .toList();
+
+    final result = await _repo.reorderQuestions(updates);
+    result.fold(
+      (f) => emit(AdminExamError(f.message)),
+      (_) {
+        final reorderedQuestions = questionIds
+            .asMap()
+            .entries
+            .map((e) => current.questions.firstWhere((q) => q.id == e.value))
+            .toList();
+        emit(AdminExamLoaded(
+          settings: current.settings,
+          questions: reorderedQuestions,
+        ));
+      },
+    );
+  }
 }

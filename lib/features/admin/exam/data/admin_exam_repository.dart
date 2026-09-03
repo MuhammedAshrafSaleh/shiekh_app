@@ -203,6 +203,27 @@ class AdminExamRepository {
     }
   }
 
+  Future<Either<Failure, Unit>> reorderQuestions(
+    List<(String id, int orderIndex)> updates,
+  ) async {
+    final net = _checkNetwork<Unit>();
+    if (net != null) return net;
+    try {
+      for (final (id, orderIndex) in updates) {
+        await _client
+            .from('final_exam_questions')
+            .update({'order_index': orderIndex})
+            .eq('id', id);
+      }
+      return const Right(unit);
+    } on PostgrestException catch (e) {
+      _log.warning('reorderQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
   /// Import quiz bank questions from all lessons of a book.
   Future<Either<Failure, List<AdminQuizQuestionEntity>>> getBankQuestions(
       String bookId) async {

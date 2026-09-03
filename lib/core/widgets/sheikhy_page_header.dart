@@ -16,6 +16,7 @@ class SheikhyPageHeader extends StatelessWidget {
     required this.title,
     this.showBack = false,
     this.action,
+    this.height = 56,
   });
 
   final String title;
@@ -24,6 +25,10 @@ class SheikhyPageHeader extends StatelessWidget {
   /// Optional widget placed at start (right in RTL) — e.g. a "mark all read"
   /// text button. Title padding widens automatically to avoid overlap.
   final Widget? action;
+
+  /// Content height below the status-bar SafeArea. Defaults to 56 (compact).
+  /// Use 72 for screens that deserve a slightly more prominent header.
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +45,7 @@ class SheikhyPageHeader extends StatelessWidget {
           SafeArea(
             bottom: false,
             child: SizedBox(
-              height: 56,
+              height: height,
               child: Stack(
                 alignment: Alignment.center,
                 children: [

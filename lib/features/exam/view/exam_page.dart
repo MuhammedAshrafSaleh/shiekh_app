@@ -2,16 +2,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart' as hs;
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/mcq_option_card.dart';
+import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/sheikhy_empty_state.dart';
+import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../../core/widgets/sheikhy_notice.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
 import '../../../models/final_exam_attempt_entity.dart';
 import '../bloc/exam_bloc.dart';
 import '../bloc/exam_event.dart';
@@ -39,7 +43,7 @@ class ExamPage extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.danger,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -47,9 +51,8 @@ class ExamPage extends StatelessWidget {
       },
       builder: (context, state) {
         return switch (state) {
-          ExamInitial() || ExamLoading() => Scaffold(
-              appBar: AppBar(title: Text(bookTitle)),
-              body: const Center(child: CircularProgressIndicator()),
+          ExamInitial() || ExamLoading() => _LoadingScaffold(
+              bookTitle: bookTitle,
             ),
           ExamMetaLoaded() => _IntroView(
               state: state,
@@ -59,21 +62,71 @@ class ExamPage extends StatelessWidget {
               state: state,
               bookTitle: bookTitle,
             ),
-          ExamCompleted() => const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
-          ExamError(:final message) => Scaffold(
-              appBar: AppBar(title: Text(bookTitle)),
-              body: ErrorState(
-                message: message,
-                onRetry: () => context
-                    .read<ExamBloc>()
-                    .add(ExamLoadRequested(bookId)),
+          ExamCompleted() => Scaffold(
+              backgroundColor: AppColors.paper,
+              body: const Center(
+                child: CircularProgressIndicator(),
               ),
+            ),
+          ExamError(:final message) => _ErrorScaffold(
+              bookId: bookId,
+              message: message,
             ),
           _ => const SizedBox.shrink(),
         };
       },
+    );
+  }
+}
+
+// ─── Loading scaffold ────────────────────────────────────────────────────────
+
+class _LoadingScaffold extends StatelessWidget {
+  final String bookTitle;
+  const _LoadingScaffold({required this.bookTitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.paper,
+      body: Column(
+        children: [
+          SheikhyPageHeader(title: bookTitle, showBack: true),
+          Expanded(
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Error scaffold ──────────────────────────────────────────────────────────
+
+class _ErrorScaffold extends StatelessWidget {
+  final String bookId;
+  final String message;
+  const _ErrorScaffold({required this.bookId, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.paper,
+      body: Column(
+        children: [
+          SheikhyPageHeader(title: 'الاختبار النهائي', showBack: true),
+          Expanded(
+            child: SheikhyErrorState(
+              heading: 'تعذّر تحميل الاختبار',
+              message: message,
+              onRetry: () =>
+                  context.read<ExamBloc>().add(ExamLoadRequested(bookId)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -86,139 +139,178 @@ class _IntroView extends StatelessWidget {
 
   const _IntroView({required this.state, required this.bookTitle});
 
+  String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final s = state.settings;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(bookTitle),
-        actions: [
-          if (state.pastAttempts.isNotEmpty)
-            TextButton(
-              onPressed: () => _showPastAttempts(context),
-              child: const Text('المحاولات السابقة'),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Exam icon
-              Center(
-                child: Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: colorScheme.primaryContainer,
-                  ),
-                  child: Icon(
-                    Icons.assignment_outlined,
-                    size: 48,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
+      backgroundColor: AppColors.paper,
+      body: Column(
+        children: [
+          SheikhyPageHeader(
+            title: 'الاختبار النهائي',
+            showBack: true,
+            height: 72,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsetsDirectional.fromSTEB(
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s6,
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s6 +
+                    MediaQuery.viewPaddingOf(context).bottom,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'الاختبار الشامل',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                bookTitle,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Stats row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _StatTile(
-                    icon: Icons.quiz_outlined,
-                    value: '${state.questionCount}',
-                    label: 'سؤال',
+                  // Icon
+                  Center(
+                    child: Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryTint,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.article_outlined,
+                        size: 40,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
-                  _StatTile(
+                  const SizedBox(height: hs.AppSpacing.s4),
+
+                  // Title
+                  Text(
+                    'الاختبار النهائي',
+                    style: GoogleFonts.arefRuqaa(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                      color: AppColors.ink,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: hs.AppSpacing.s1),
+
+                  // Book subtitle
+                  Text(
+                    bookTitle,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.inkMuted,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: hs.AppSpacing.s5),
+
+                  // Info cards
+                  _ExamInfoCard(
+                    icon: Icons.format_list_numbered_outlined,
+                    label: 'عدد الأسئلة',
+                    value: _ar(state.questionCount),
+                  ),
+                  const SizedBox(height: hs.AppSpacing.s3),
+                  _ExamInfoCard(
                     icon: Icons.timer_outlined,
-                    value: '${s.timeLimitMinutes}',
-                    label: 'دقيقة',
+                    label: 'الوقت المتاح',
+                    value: '${_ar(s.timeLimitMinutes)} دقيقة',
                   ),
-                  _StatTile(
-                    icon: Icons.percent,
-                    value: '${s.passingPercentage}%',
-                    label: 'للنجاح',
+                  const SizedBox(height: hs.AppSpacing.s3),
+                  _ExamInfoCard(
+                    icon: Icons.trending_up_outlined,
+                    label: 'نسبة النجاح',
+                    value: '٪${_ar(s.passingPercentage)}',
                   ),
-                  _StatTile(
-                    icon: Icons.repeat,
-                    value:
-                        '${s.maxAttempts - state.attemptsUsed}/${s.maxAttempts}',
-                    label: 'محاولات',
+                  const SizedBox(height: hs.AppSpacing.s5),
+
+                  // Lock notices
+                  if (!state.settings.isPublished) ...[
+                    SheikhyNotice(
+                      variant: SheikhyNoticeVariant.danger,
+                      message: 'الاختبار غير متاح حالياً',
+                    ),
+                    const SizedBox(height: hs.AppSpacing.s3),
+                  ],
+                  if (state.settings.isPublished && state.questionCount == 0) ...[
+                    SheikhyNotice(
+                      variant: SheikhyNoticeVariant.danger,
+                      message: 'لا توجد أسئلة في الاختبار بعد',
+                    ),
+                    const SizedBox(height: hs.AppSpacing.s3),
+                  ],
+                  if (state.attemptsExhausted) ...[
+                    SheikhyNotice(
+                      variant: SheikhyNoticeVariant.danger,
+                      message:
+                          'لقد استنفدت جميع محاولاتك المسموحة (${_ar(s.maxAttempts)}/${_ar(s.maxAttempts)})',
+                    ),
+                    const SizedBox(height: hs.AppSpacing.s3),
+                  ],
+
+                  // Last attempt summary
+                  if (state.pastAttempts.isNotEmpty &&
+                      !state.attemptsExhausted) ...[
+                    Text(
+                      'آخر محاولة: ${_ar(state.pastAttempts.last.scorePercentage)}٪'
+                      ' — ${state.pastAttempts.last.passed ? "ناجح ✓" : "راسب"}',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.inkMuted,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: hs.AppSpacing.s4),
+                  ],
+
+                  // Start button
+                  SheikhyButton.primary(
+                    fullWidth: true,
+                    isLoading: state.isStarting,
+                    onPressed: state.isLocked || state.isStarting
+                        ? null
+                        : () => context
+                            .read<ExamBloc>()
+                            .add(const ExamStartRequested()),
+                    label: state.attemptsUsed == 0
+                        ? 'ابدأ الاختبار الآن'
+                        : 'إعادة الاختبار',
+                    icon: const Icon(Icons.play_arrow_rounded),
+                  ),
+
+                  // Past attempts link
+                  if (state.pastAttempts.isNotEmpty) ...[
+                    const SizedBox(height: hs.AppSpacing.s3),
+                    Center(
+                      child: SheikhyButton.text(
+                        label: 'عرض محاولاتي السابقة',
+                        onPressed: () => _showPastAttempts(context),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: hs.AppSpacing.s5),
+
+                  // Connectivity notice
+                  SheikhyNotice(
+                    variant: SheikhyNoticeVariant.info,
+                    message:
+                        'تأكد من اتصالك بالإنترنت قبل البدء، ولن تتمكن من إيقاف الاختبار بعد البدء. سيتم احتساب الدرجة بمجرد انتهاء الوقت أو تسليم الإجابات.',
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Lock reasons
-              if (!state.settings.isPublished)
-                _WarningBanner(
-                    'الاختبار غير متاح حالياً',
-                    Icons.lock_outlined),
-              if (state.settings.isPublished && state.questionCount == 0)
-                _WarningBanner(
-                    'لا توجد أسئلة في الاختبار بعد',
-                    Icons.help_outline),
-              if (state.attemptsExhausted)
-                _WarningBanner(
-                    'لقد استنفدت جميع محاولاتك المسموحة (${s.maxAttempts}/${s.maxAttempts})',
-                    Icons.block_outlined),
-
-              if (state.isLocked) const SizedBox(height: AppSpacing.md),
-
-              // Past attempts summary
-              if (state.pastAttempts.isNotEmpty && !state.attemptsExhausted) ...[
-                Text(
-                  'آخر محاولة: ${state.pastAttempts.last.scorePercentage}%'
-                  ' — ${state.pastAttempts.last.passed ? "ناجح ✓" : "راسب"}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-
-              // Start button (CC-15/CC-16/CC-13)
-              FilledButton.icon(
-                onPressed: state.isLocked || state.isStarting
-                    ? null
-                    : () => context.read<ExamBloc>().add(const ExamStartRequested()),
-                icon: state.isStarting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.play_arrow),
-                label: Text(state.attemptsUsed == 0
-                    ? 'بدء الاختبار'
-                    : 'إعادة الاختبار'),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -235,63 +327,42 @@ class _IntroView extends StatelessWidget {
   }
 }
 
-class _StatTile extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
+// ─── Exam info card (local, exam-intro-specific) ──────────────────────────────
 
-  const _StatTile({
+class _ExamInfoCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ExamInfoCard({
     required this.icon,
-    required this.value,
     required this.label,
+    required this.value,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: theme.colorScheme.primary, size: 24),
-        const SizedBox(height: 4),
-        Text(value,
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold)),
-        Text(label,
-            style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-      ],
-    );
-  }
-}
-
-class _WarningBanner extends StatelessWidget {
-  final String message;
-  final IconData icon;
-
-  const _WarningBanner(this.message, this.icon);
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: hs.AppSpacing.s5,
+        vertical: hs.AppSpacing.s4,
       ),
+      decoration: AppDecorations.card,
       child: Row(
         children: [
-          Icon(icon,
-              color: colorScheme.onErrorContainer, size: 20),
-          const SizedBox(width: AppSpacing.sm),
+          Icon(icon, size: 22, color: AppColors.inkMuted),
+          const SizedBox(width: hs.AppSpacing.s4),
           Expanded(
             child: Text(
-              message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onErrorContainer,
-                  ),
+              label,
+              style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.h3.copyWith(
+              fontSize: 22,
+              color: AppColors.ink,
             ),
           ),
         ],
@@ -299,6 +370,8 @@ class _WarningBanner extends StatelessWidget {
     );
   }
 }
+
+// ─── Past attempts sheet ──────────────────────────────────────────────────────
 
 class _PastAttemptsSheet extends StatelessWidget {
   final List<FinalExamAttemptEntity> attempts;
@@ -322,7 +395,6 @@ class _PastAttemptsSheet extends StatelessWidget {
       expand: false,
       builder: (ctx, scroll) => Column(
         children: [
-          // Drag handle + title
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(
               hs.AppSpacing.pageGutter,
@@ -361,7 +433,7 @@ class _PastAttemptsSheet extends StatelessWidget {
                 final a = attempts[i];
                 final passed = a.passed;
                 final accentColor =
-                    passed ? AppColors.primary : AppColors.danger;
+                    passed ? AppColors.success : AppColors.danger;
                 return Padding(
                   padding: const EdgeInsetsDirectional.symmetric(
                     horizontal: hs.AppSpacing.pageGutter,
@@ -369,7 +441,6 @@ class _PastAttemptsSheet extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      // Attempt number circle
                       Container(
                         width: 40,
                         height: 40,
@@ -455,7 +526,7 @@ class _InProgressView extends StatelessWidget {
         actions: [
           // Question counter
           Padding(
-            padding: const EdgeInsetsDirectional.only(end: AppSpacing.md),
+            padding: const EdgeInsetsDirectional.only(end: hs.AppSpacing.s4),
             child: Center(
               child: Text(
                 '${state.currentIndex + 1} / ${state.questions.length}',
@@ -482,7 +553,7 @@ class _InProgressView extends StatelessWidget {
             // Question + choices
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.all(hs.AppSpacing.s4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -491,7 +562,7 @@ class _InProgressView extends StatelessWidget {
                       style: theme.textTheme.bodyLarge
                           ?.copyWith(fontWeight: FontWeight.w600, height: 1.5),
                     ),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: hs.AppSpacing.s4),
                     for (final choice in ['a', 'b', 'c', 'd'])
                       McqOptionCard(
                         label: _choiceLetter(choice),
@@ -513,7 +584,11 @@ class _InProgressView extends StatelessWidget {
             // Prev / Next / Submit
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+                hs.AppSpacing.s4,
+                hs.AppSpacing.s2,
+                hs.AppSpacing.s4,
+                hs.AppSpacing.s4,
+              ),
               child: Row(
                 children: [
                   OutlinedButton.icon(
@@ -559,7 +634,6 @@ class _InProgressView extends StatelessWidget {
     );
   }
 
-  // Task 4.4: submit confirm with unanswered warning
   void _confirmSubmit(BuildContext context) {
     final unanswered = state.unansweredCount;
     showDialog<void>(
@@ -597,17 +671,26 @@ class _InProgressView extends StatelessWidget {
   }
 }
 
-// Empty state for exam not found
+// ─── Exam not found ───────────────────────────────────────────────────────────
+
 class ExamNotFoundView extends StatelessWidget {
   const ExamNotFoundView({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الاختبار الشامل')),
-      body: const EmptyState(
-        icon: Icons.assignment_outlined,
-        message: 'الاختبار غير متاح حالياً',
+      backgroundColor: AppColors.paper,
+      body: Column(
+        children: const [
+          SheikhyPageHeader(title: 'الاختبار النهائي', showBack: true),
+          Expanded(
+            child: SheikhyEmptyState(
+              icon: Icons.assignment_outlined,
+              heading: 'الاختبار غير متاح',
+              subtitle: 'لا يوجد اختبار نهائي لهذا الكتاب حالياً',
+            ),
+          ),
+        ],
       ),
     );
   }
