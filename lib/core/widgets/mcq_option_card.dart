@@ -79,6 +79,13 @@ class McqOptionCard extends StatelessWidget {
             Expanded(
               child: Text(text, style: TextStyle(color: textColor)),
             ),
+            if (optionState == McqOptionState.correct) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Icon(Icons.check_circle, color: Colors.green, size: 20),
+            ] else if (optionState == McqOptionState.incorrect) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Icon(Icons.cancel, color: Colors.red, size: 20),
+            ],
           ],
         ),
       ),

@@ -2,9 +2,21 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../models/lesson_progress_entity.dart';
+import '../../../models/lesson_quiz_attempt_entity.dart';
 import '../data/lesson_repository.dart';
 import '../data/video_stream_repository.dart';
 import 'lesson_state.dart';
+
+// Fallback when getQuizMeta fails — treated as no quiz
+class _EmptyQuizMeta implements LessonQuizMeta {
+  const _EmptyQuizMeta();
+  @override
+  int get questionCount => 0;
+  @override
+  int get attemptsUsed => 0;
+  @override
+  List<LessonQuizAttemptEntity> get pastAttempts => const [];
+}
 
 class LessonCubit extends Cubit<LessonState> {
   final LessonRepository _repo;
@@ -23,11 +35,12 @@ class LessonCubit extends Cubit<LessonState> {
     final lesson = lessonResult.getOrElse(() => throw StateError(''));
 
     final progressResult = await _repo.getLessonProgress(lessonId);
-    final quizResult = await _repo.getQuizQuestions(lessonId);
+    final quizMetaResult = await _repo.getQuizMeta(lessonId);
     final nextResult = await _repo.getNextLesson(bookId, lesson.orderIndex);
 
     final progress = progressResult.getOrElse(() => null);
-    final hasQuiz = quizResult.fold((_) => false, (q) => q.isNotEmpty);
+    final quizMeta = quizMetaResult.getOrElse(
+        () => const _EmptyQuizMeta());
     final nextLesson = nextResult.getOrElse(() => null);
 
     // Prefetch the video stream URL so the player is ready by the time the
@@ -39,7 +52,10 @@ class LessonCubit extends Cubit<LessonState> {
     emit(LessonLoaded(
       lesson: lesson,
       progress: progress,
-      hasQuizQuestions: hasQuiz,
+      hasQuizQuestions: quizMeta.questionCount > 0,
+      quizQuestionCount: quizMeta.questionCount,
+      quizAttemptsUsed: quizMeta.attemptsUsed,
+      pastAttempts: quizMeta.pastAttempts,
       nextLessonId: nextLesson?.id,
     ));
   }
@@ -70,11 +86,15 @@ class LessonCubit extends Cubit<LessonState> {
   }
 
   // Called from quiz tab after grading (rule L)
-  Future<void> markQuizAttempted() async {
+  Future<void> markQuizAttempted(
+      int attemptsUsed, LessonQuizAttemptEntity newAttempt) async {
     final current = state;
     if (current is! LessonLoaded) return;
 
-    final updated = current.copyWith(quizAttempted: true);
+    final updated = current.copyWith(
+      quizAttemptsUsed: attemptsUsed,
+      pastAttempts: [...current.pastAttempts, newAttempt],
+    );
     emit(updated);
 
     final hasVideoProgress = current.progress != null &&

@@ -9,18 +9,79 @@ import '../../../core/errors/failures.dart';
 import '../../../features/notifications/cubit/connectivity_cubit.dart';
 import '../../../models/lesson_entity.dart';
 import '../../../models/lesson_progress_entity.dart';
+import '../../../models/lesson_quiz_attempt_entity.dart';
 import '../../../models/quiz_question_entity.dart';
 
 class QuizGradeResult {
   final int correct;
   final int total;
   final int percentage;
+  final int attemptsUsed;
 
   const QuizGradeResult({
     required this.correct,
     required this.total,
     required this.percentage,
+    required this.attemptsUsed,
   });
+}
+
+class LessonQuizMeta {
+  final int questionCount;
+  final int attemptsUsed;
+  final List<LessonQuizAttemptEntity> pastAttempts;
+
+  const LessonQuizMeta({
+    required this.questionCount,
+    required this.attemptsUsed,
+    required this.pastAttempts,
+  });
+}
+
+class QuizReviewQuestion {
+  final String id;
+  final String questionText;
+  final String choiceA;
+  final String choiceB;
+  final String choiceC;
+  final String choiceD;
+  final String correctChoice;
+  final String? userAnswer;
+  final bool isCorrect;
+
+  const QuizReviewQuestion({
+    required this.id,
+    required this.questionText,
+    required this.choiceA,
+    required this.choiceB,
+    required this.choiceC,
+    required this.choiceD,
+    required this.correctChoice,
+    required this.userAnswer,
+    required this.isCorrect,
+  });
+
+  factory QuizReviewQuestion.fromJson(Map<String, dynamic> json) {
+    return QuizReviewQuestion(
+      id: json['id'] as String,
+      questionText: json['question_text'] as String,
+      choiceA: json['choice_a'] as String,
+      choiceB: json['choice_b'] as String,
+      choiceC: json['choice_c'] as String,
+      choiceD: json['choice_d'] as String,
+      correctChoice: json['correct_choice'] as String,
+      userAnswer: json['user_answer'] as String?,
+      isCorrect: json['is_correct'] as bool,
+    );
+  }
+
+  String choiceText(String key) => switch (key) {
+        'a' => choiceA,
+        'b' => choiceB,
+        'c' => choiceC,
+        'd' => choiceD,
+        _ => '',
+      };
 }
 
 class LessonRepository {
@@ -145,7 +206,111 @@ class LessonRepository {
     }
   }
 
-  // Server-side grading (CC-18)
+  Future<Either<Failure, LessonQuizMeta>> getQuizMeta(String lessonId) async {
+    final networkError = _checkNetwork<LessonQuizMeta>();
+    if (networkError != null) return networkError;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+
+      final questionsResponse = await _client
+          .from('lesson_quiz_questions_student')
+          .select('id')
+          .eq('lesson_id', lessonId)
+          .limit(50);
+
+      final questionCount = (questionsResponse as List).length;
+
+      List<LessonQuizAttemptEntity> pastAttempts = [];
+      if (userId != null) {
+        final attemptsResponse = await _client
+            .from('lesson_quiz_attempts')
+            .select()
+            .eq('user_id', userId)
+            .eq('lesson_id', lessonId)
+            .order('attempt_number')
+            .limit(2);
+
+        pastAttempts = (attemptsResponse as List)
+            .map((e) => LessonQuizAttemptEntity.fromJson(
+                e as Map<String, dynamic>))
+            .toList();
+      }
+
+      return Right(LessonQuizMeta(
+        questionCount: questionCount,
+        attemptsUsed: pastAttempts.length,
+        pastAttempts: pastAttempts,
+      ));
+    } on PostgrestException catch (e) {
+      _log.warning('getQuizMeta: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, QuizGradeResult>> submitQuiz(
+    String lessonId,
+    Map<String, String> answers,
+  ) async {
+    final networkError = _checkNetwork<QuizGradeResult>();
+    if (networkError != null) return networkError;
+
+    try {
+      final response = await _client.rpc('submit_lesson_quiz', params: {
+        'p_lesson_id': lessonId,
+        'p_answers': answers,
+      });
+
+      final data = response as Map<String, dynamic>;
+      return Right(QuizGradeResult(
+        correct: data['correct'] as int,
+        total: data['total'] as int,
+        percentage: data['percentage'] as int,
+        attemptsUsed: data['attempts_used'] as int,
+      ));
+    } on PostgrestException catch (e) {
+      _log.warning('submitQuiz: ${e.message}');
+      if (e.message.contains('attempts_exhausted')) {
+        return Left(const AttemptsExhaustedFailure());
+      }
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, List<QuizReviewQuestion>>> getQuizReview(
+    String lessonId, {
+    int? attemptNumber,
+  }) async {
+    final networkError = _checkNetwork<List<QuizReviewQuestion>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final params = <String, dynamic>{'p_lesson_id': lessonId};
+      if (attemptNumber != null) params['p_attempt_number'] = attemptNumber;
+      final response =
+          await _client.rpc('get_lesson_quiz_review', params: params);
+
+      final data = response as Map<String, dynamic>;
+      final questions = (data['questions'] as List)
+          .map((e) => QuizReviewQuestion.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return Right(questions);
+    } on PostgrestException catch (e) {
+      _log.warning('getQuizReview: ${e.message}');
+      if (e.message.contains('no_attempt_found')) {
+        return Left(ServerFailure('لا توجد محاولة مسجلة'));
+      }
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  // Server-side grading (CC-18) — admin preview only, no attempt stored
   Future<Either<Failure, QuizGradeResult>> gradeQuiz(
     String lessonId,
     Map<String, String> answers,
@@ -164,6 +329,7 @@ class LessonRepository {
         correct: data['correct'] as int,
         total: data['total'] as int,
         percentage: data['percentage'] as int,
+        attemptsUsed: 0,
       ));
     } on PostgrestException catch (e) {
       _log.warning('gradeQuiz: ${e.message}');

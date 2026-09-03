@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../models/lesson_entity.dart';
 import '../../../models/lesson_progress_entity.dart';
+import '../../../models/lesson_quiz_attempt_entity.dart';
 
 abstract class LessonState extends Equatable {
   const LessonState();
@@ -18,7 +19,9 @@ class LessonLoaded extends LessonState {
   final LessonEntity lesson;
   final LessonProgressEntity? progress;
   final bool hasQuizQuestions;
-  final bool quizAttempted;
+  final int quizQuestionCount;
+  final int quizAttemptsUsed;
+  final List<LessonQuizAttemptEntity> pastAttempts;
   final String? nextLessonId;
   final bool isSavingProgress;
 
@@ -26,7 +29,9 @@ class LessonLoaded extends LessonState {
     required this.lesson,
     this.progress,
     required this.hasQuizQuestions,
-    this.quizAttempted = false,
+    this.quizQuestionCount = 0,
+    this.quizAttemptsUsed = 0,
+    this.pastAttempts = const [],
     this.nextLessonId,
     this.isSavingProgress = false,
   });
@@ -34,7 +39,9 @@ class LessonLoaded extends LessonState {
   LessonLoaded copyWith({
     LessonProgressEntity? progress,
     bool? hasQuizQuestions,
-    bool? quizAttempted,
+    int? quizQuestionCount,
+    int? quizAttemptsUsed,
+    List<LessonQuizAttemptEntity>? pastAttempts,
     String? nextLessonId,
     bool? isSavingProgress,
   }) {
@@ -42,7 +49,9 @@ class LessonLoaded extends LessonState {
       lesson: lesson,
       progress: progress ?? this.progress,
       hasQuizQuestions: hasQuizQuestions ?? this.hasQuizQuestions,
-      quizAttempted: quizAttempted ?? this.quizAttempted,
+      quizQuestionCount: quizQuestionCount ?? this.quizQuestionCount,
+      quizAttemptsUsed: quizAttemptsUsed ?? this.quizAttemptsUsed,
+      pastAttempts: pastAttempts ?? this.pastAttempts,
       nextLessonId: nextLessonId ?? this.nextLessonId,
       isSavingProgress: isSavingProgress ?? this.isSavingProgress,
     );
@@ -50,13 +59,17 @@ class LessonLoaded extends LessonState {
 
   bool get isCompleted => progress?.completed ?? false;
   int get lastPositionSeconds => progress?.lastPositionSeconds ?? 0;
+  bool get quizAttempted => quizAttemptsUsed > 0;
+  bool get quizExhausted => quizAttemptsUsed >= 2;
 
   @override
   List<Object?> get props => [
         lesson,
         progress,
         hasQuizQuestions,
-        quizAttempted,
+        quizQuestionCount,
+        quizAttemptsUsed,
+        pastAttempts,
         nextLessonId,
         isSavingProgress,
       ];

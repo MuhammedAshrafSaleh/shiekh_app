@@ -53,8 +53,10 @@ create policy "questions_select_admin" on public.student_questions
 -- ============================================================
 
 -- 3a. Lesson quiz questions WITHOUT correct_choice (CC-18)
+-- security_invoker = false: view runs as owner so it can read the admin-only
+-- base table; the view itself is the security boundary (no correct_choice).
 create or replace view public.lesson_quiz_questions_student
-  with (security_invoker = true)
+  with (security_invoker = false)
 as
 select
   q.id,
@@ -75,8 +77,9 @@ where l.status = 'published';
 grant select on public.lesson_quiz_questions_student to authenticated;
 
 -- 3b. Final exam questions WITHOUT correct_choice (CC-18)
+-- security_invoker = false: same reason as above.
 create or replace view public.final_exam_questions_student
-  with (security_invoker = true)
+  with (security_invoker = false)
 as
 select
   q.id,
@@ -315,6 +318,161 @@ $$;
 
 revoke all on function public.submit_final_exam(uuid, jsonb, timestamptz) from public;
 grant execute on function public.submit_final_exam(uuid, jsonb, timestamptz) to authenticated;
+
+-- ============================================================
+-- SECTION 6: lesson_quiz_attempts table + submit_lesson_quiz RPC
+-- ============================================================
+
+create table if not exists public.lesson_quiz_attempts (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references public.users(id) on delete cascade,
+  lesson_id        uuid not null references public.lessons(id) on delete cascade,
+  attempt_number   int  not null,
+  score_percentage int  not null,
+  passed           boolean not null,
+  answers          jsonb not null default '{}',
+  submitted_at     timestamptz not null default now(),
+  unique (user_id, lesson_id, attempt_number)
+);
+
+alter table public.lesson_quiz_attempts enable row level security;
+
+create policy "quiz_attempts_student_select" on public.lesson_quiz_attempts
+  for select using (auth.uid() = user_id or public.is_admin());
+
+create policy "quiz_attempts_no_direct_insert" on public.lesson_quiz_attempts
+  for insert with check (false);
+
+create or replace function public.submit_lesson_quiz(
+  p_lesson_id  uuid,
+  p_answers    jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_user_id        uuid := auth.uid();
+  v_attempt_count  int;
+  v_attempt_number int;
+  v_total          int;
+  v_correct        int := 0;
+  v_score_pct      int;
+  v_passed         boolean;
+  v_row            record;
+  v_answer         text;
+  v_max_attempts   constant int := 2;
+begin
+  if v_user_id is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select count(*) into v_attempt_count
+  from public.lesson_quiz_attempts
+  where user_id = v_user_id and lesson_id = p_lesson_id;
+
+  if v_attempt_count >= v_max_attempts then
+    raise exception 'attempts_exhausted';
+  end if;
+
+  v_attempt_number := v_attempt_count + 1;
+
+  select count(*) into v_total
+  from public.lesson_quiz_questions where lesson_id = p_lesson_id;
+
+  for v_row in
+    select id, correct_choice from public.lesson_quiz_questions
+    where lesson_id = p_lesson_id
+  loop
+    v_answer := p_answers ->> (v_row.id::text);
+    if v_answer is not null and v_answer = v_row.correct_choice then
+      v_correct := v_correct + 1;
+    end if;
+  end loop;
+
+  v_score_pct := case when v_total > 0
+                      then round((v_correct::numeric / v_total) * 100)
+                      else 0 end;
+  v_passed    := v_score_pct >= 60;
+
+  insert into public.lesson_quiz_attempts
+    (user_id, lesson_id, attempt_number, score_percentage, passed, answers)
+  values
+    (v_user_id, p_lesson_id, v_attempt_number, v_score_pct, v_passed, p_answers);
+
+  return jsonb_build_object(
+    'correct',        v_correct,
+    'total',          v_total,
+    'percentage',     v_score_pct,
+    'passed',         v_passed,
+    'attempt_number', v_attempt_number,
+    'attempts_used',  v_attempt_number
+  );
+end;
+$$;
+
+revoke all on function public.submit_lesson_quiz(uuid, jsonb) from public;
+grant execute on function public.submit_lesson_quiz(uuid, jsonb) to authenticated;
+
+-- ============================================================
+-- SECTION 7: get_lesson_quiz_review RPC
+-- ============================================================
+
+create or replace function public.get_lesson_quiz_review(
+  p_lesson_id      uuid,
+  p_attempt_number int default null
+)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_user_id        uuid := auth.uid();
+  v_answers        jsonb;
+  v_attempt_number int;
+begin
+  if v_user_id is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select attempt_number, answers
+    into v_attempt_number, v_answers
+    from public.lesson_quiz_attempts
+   where user_id = v_user_id
+     and lesson_id = p_lesson_id
+     and (p_attempt_number is null or attempt_number = p_attempt_number)
+   order by attempt_number desc
+   limit 1;
+
+  if not found then
+    raise exception 'no_attempt_found';
+  end if;
+
+  return (
+    select jsonb_build_object(
+      'attempt_number', v_attempt_number,
+      'questions', jsonb_agg(
+        jsonb_build_object(
+          'id',             q.id,
+          'question_text',  q.question_text,
+          'choice_a',       q.choice_a,
+          'choice_b',       q.choice_b,
+          'choice_c',       q.choice_c,
+          'choice_d',       q.choice_d,
+          'correct_choice', q.correct_choice,
+          'user_answer',    v_answers ->> (q.id::text),
+          'is_correct',     (v_answers ->> (q.id::text)) = q.correct_choice
+        ) order by q.order_index
+      )
+    )
+    from public.lesson_quiz_questions q
+   where q.lesson_id = p_lesson_id
+  );
+end;
+$$;
+
+revoke all on function public.get_lesson_quiz_review(uuid, int) from public;
+grant execute on function public.get_lesson_quiz_review(uuid, int) to authenticated;
 
 -- ============================================================
 -- End of companion migration 0001_app_support.sql
