@@ -338,6 +338,13 @@ class _BookListItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
+              icon: const Icon(Icons.quiz_outlined),
+              onPressed: () => context.push(
+                '/admin/books/${book.id}/exam?title=${Uri.encodeComponent(book.title)}',
+              ),
+              tooltip: 'الاختبار النهائي',
+            ),
+            IconButton(
               icon: const Icon(Icons.edit_outlined),
               onPressed: () =>
                   context.push('/admin/books/${book.id}/edit'),

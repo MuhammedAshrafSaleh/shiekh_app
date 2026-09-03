@@ -258,23 +258,29 @@ class _QuestionsTab extends StatelessWidget {
         Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(
               AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'الأسئلة (${questions.length})',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const Spacer(),
-              TextButton.icon(
-                icon: const Icon(Icons.download_outlined, size: 16),
-                label: const Text('استيراد من البنك'),
-                onPressed: () => _showBankImport(context),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              FilledButton.icon(
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('إضافة سؤال'),
-                onPressed: () => _showQuestionDialog(context),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.download_outlined, size: 16),
+                    label: const Text('استيراد من البنك'),
+                    onPressed: () => _showBankImport(context),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('إضافة سؤال'),
+                    onPressed: () => _showQuestionDialog(context),
+                  ),
+                ],
               ),
             ],
           ),
