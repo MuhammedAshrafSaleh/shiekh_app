@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/girih_background.dart';
@@ -325,33 +326,83 @@ class _BookDetailsView extends StatelessWidget {
   }
 
   void _showEnrollDialog(BuildContext context) {
-    showDialog<void>(
+    _showEnrollConfirmDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('التسجيل في الكتاب', style: AppTextStyles.h3),
-        content: Text(
-          'هل تريد التسجيل في كتاب "${state.book.title}"؟ ستتمكّن من الوصول إلى جميع دروسه.',
-          style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
-        ),
-        actions: [
-          SheikhyButton.secondary(
-            label: 'إلغاء',
-            size: SheikhyButtonSize.sm,
-            onPressed: () => dialogCtx.pop(),
-          ),
-          SheikhyButton.primary(
-            label: 'تسجيل',
-            size: SheikhyButtonSize.sm,
-            onPressed: () {
-              dialogCtx.pop();
-              context.read<BookDetailsCubit>().enroll(bookId);
-            },
-          ),
-        ],
-      ),
+      bookTitle: state.book.title,
+      onConfirm: () => context.read<BookDetailsCubit>().enroll(bookId),
     );
   }
+}
+
+// ── Shared enrollment confirmation dialog ─────────────────────────────────────
+
+void _showEnrollConfirmDialog({
+  required BuildContext context,
+  required String bookTitle,
+  required VoidCallback onConfirm,
+}) {
+  showDialog<void>(
+    context: context,
+    barrierColor: AppColors.ink.withValues(alpha: 0.5),
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.rXl),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pageGutter,
+        vertical: AppSpacing.s8,
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.s5),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.primaryTint,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.how_to_reg_outlined,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            Text(
+              'التسجيل في الكتاب',
+              style: AppTextStyles.h3,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s2),
+            Text(
+              'هل تريد التسجيل في كتاب "$bookTitle"؟ ستتمكّن من الوصول إلى جميع دروسه.',
+              style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s5),
+            SheikhyButton.primary(
+              fullWidth: true,
+              label: 'تسجيل',
+              icon: const Icon(Icons.how_to_reg_outlined),
+              onPressed: () {
+                dialogCtx.pop();
+                onConfirm();
+              },
+            ),
+            const SizedBox(height: AppSpacing.s2),
+            SheikhyButton.secondary(
+              fullWidth: true,
+              label: 'إلغاء',
+              onPressed: () => dialogCtx.pop(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 // ── Heritage SliverAppBar header ──────────────────────────────────────────────
@@ -554,32 +605,10 @@ class _ActionButton extends StatelessWidget {
   }
 
   void _showEnrollDialog(BuildContext context) {
-    final cubit = context.read<BookDetailsCubit>();
-    showDialog<void>(
+    _showEnrollConfirmDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('التسجيل في الكتاب', style: AppTextStyles.h3),
-        content: Text(
-          'هل تريد التسجيل في كتاب "${state.book.title}"؟ ستتمكّن من الوصول إلى جميع دروسه.',
-          style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
-        ),
-        actions: [
-          SheikhyButton.secondary(
-            label: 'إلغاء',
-            size: SheikhyButtonSize.sm,
-            onPressed: () => dialogCtx.pop(),
-          ),
-          SheikhyButton.primary(
-            label: 'تسجيل',
-            size: SheikhyButtonSize.sm,
-            onPressed: () {
-              dialogCtx.pop();
-              cubit.enroll(bookId);
-            },
-          ),
-        ],
-      ),
+      bookTitle: state.book.title,
+      onConfirm: () => context.read<BookDetailsCubit>().enroll(bookId),
     );
   }
 }
