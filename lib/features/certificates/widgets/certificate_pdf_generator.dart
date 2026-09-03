@@ -1,6 +1,7 @@
 // lib/features/certificates/widgets/certificate_pdf_generator.dart
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../../models/certificate_entity.dart';
 
@@ -11,11 +12,12 @@ class CertificatePdfGenerator {
     required String bookTitle,
     required String sheikhName,
   }) async {
+    // Cairo is Arabic-capable; Helvetica cannot shape Arabic and renders garbage.
+    final base = await PdfGoogleFonts.cairoRegular();
+    final bold = await PdfGoogleFonts.cairoBold();
+
     final pdf = pw.Document(
-      theme: pw.ThemeData.withFont(
-        base: pw.Font.helvetica(),
-        bold: pw.Font.helveticaBold(),
-      ),
+      theme: pw.ThemeData.withFont(base: base, bold: bold),
     );
 
     final issuedDate =
@@ -43,7 +45,7 @@ class CertificatePdfGenerator {
                 pw.Text(
                   'شهادة إتمام',
                   style: pw.TextStyle(
-                    font: pw.Font.helveticaBold(),
+                    fontWeight: pw.FontWeight.bold,
                     fontSize: 36,
                     color: const PdfColor.fromInt(0xFF1B5E20),
                   ),
@@ -52,10 +54,9 @@ class CertificatePdfGenerator {
                 pw.SizedBox(height: 8),
                 pw.Text(
                   'Certificate of Completion',
-                  style: pw.TextStyle(
-                    font: pw.Font.helvetica(),
+                  style: const pw.TextStyle(
                     fontSize: 16,
-                    color: const PdfColor.fromInt(0xFF555555),
+                    color: PdfColor.fromInt(0xFF555555),
                   ),
                 ),
                 pw.SizedBox(height: 24),
@@ -67,10 +68,9 @@ class CertificatePdfGenerator {
                 pw.SizedBox(height: 24),
                 pw.Text(
                   'يُشهد بأن الطالب/ة',
-                  style: pw.TextStyle(
-                    font: pw.Font.helvetica(),
+                  style: const pw.TextStyle(
                     fontSize: 14,
-                    color: const PdfColor.fromInt(0xFF555555),
+                    color: PdfColor.fromInt(0xFF555555),
                   ),
                   textDirection: pw.TextDirection.rtl,
                 ),
@@ -78,7 +78,7 @@ class CertificatePdfGenerator {
                 pw.Text(
                   studentName,
                   style: pw.TextStyle(
-                    font: pw.Font.helveticaBold(),
+                    fontWeight: pw.FontWeight.bold,
                     fontSize: 28,
                     color: const PdfColor.fromInt(0xFF1B5E20),
                   ),
@@ -87,10 +87,9 @@ class CertificatePdfGenerator {
                 pw.SizedBox(height: 16),
                 pw.Text(
                   'قد أتمّ/ت دراسة كتاب',
-                  style: pw.TextStyle(
-                    font: pw.Font.helvetica(),
+                  style: const pw.TextStyle(
                     fontSize: 14,
-                    color: const PdfColor.fromInt(0xFF555555),
+                    color: PdfColor.fromInt(0xFF555555),
                   ),
                   textDirection: pw.TextDirection.rtl,
                 ),
@@ -98,7 +97,7 @@ class CertificatePdfGenerator {
                 pw.Text(
                   bookTitle,
                   style: pw.TextStyle(
-                    font: pw.Font.helveticaBold(),
+                    fontWeight: pw.FontWeight.bold,
                     fontSize: 22,
                     color: const PdfColor.fromInt(0xFF1B5E20),
                   ),
@@ -110,17 +109,16 @@ class CertificatePdfGenerator {
                   children: [
                     pw.Text(
                       'بدرجة  ',
-                      style: pw.TextStyle(
-                        font: pw.Font.helvetica(),
+                      style: const pw.TextStyle(
                         fontSize: 14,
-                        color: const PdfColor.fromInt(0xFF555555),
+                        color: PdfColor.fromInt(0xFF555555),
                       ),
                       textDirection: pw.TextDirection.rtl,
                     ),
                     pw.Text(
                       '${certificate.finalScore}٪',
                       style: pw.TextStyle(
-                        font: pw.Font.helveticaBold(),
+                        fontWeight: pw.FontWeight.bold,
                         fontSize: 18,
                         color: const PdfColor.fromInt(0xFFD4A017),
                       ),
@@ -130,7 +128,7 @@ class CertificatePdfGenerator {
                       pw.Text(
                         '  (${certificate.gradeLabel})',
                         style: pw.TextStyle(
-                          font: pw.Font.helveticaBold(),
+                          fontWeight: pw.FontWeight.bold,
                           fontSize: 16,
                           color: const PdfColor.fromInt(0xFFD4A017),
                         ),
@@ -154,17 +152,16 @@ class CertificatePdfGenerator {
                       children: [
                         pw.Text(
                           'تاريخ الإصدار',
-                          style: pw.TextStyle(
-                            font: pw.Font.helvetica(),
+                          style: const pw.TextStyle(
                             fontSize: 11,
-                            color: const PdfColor.fromInt(0xFF888888),
+                            color: PdfColor.fromInt(0xFF888888),
                           ),
                           textDirection: pw.TextDirection.rtl,
                         ),
                         pw.Text(
                           issuedDate,
                           style: pw.TextStyle(
-                            font: pw.Font.helveticaBold(),
+                            fontWeight: pw.FontWeight.bold,
                             fontSize: 13,
                           ),
                           textDirection: pw.TextDirection.rtl,
@@ -176,17 +173,16 @@ class CertificatePdfGenerator {
                       children: [
                         pw.Text(
                           'بإشراف',
-                          style: pw.TextStyle(
-                            font: pw.Font.helvetica(),
+                          style: const pw.TextStyle(
                             fontSize: 11,
-                            color: const PdfColor.fromInt(0xFF888888),
+                            color: PdfColor.fromInt(0xFF888888),
                           ),
                           textDirection: pw.TextDirection.rtl,
                         ),
                         pw.Text(
                           sheikhName,
                           style: pw.TextStyle(
-                            font: pw.Font.helveticaBold(),
+                            fontWeight: pw.FontWeight.bold,
                             fontSize: 13,
                           ),
                           textDirection: pw.TextDirection.rtl,

@@ -11,6 +11,10 @@ class CertificateEntity extends Equatable {
   final DateTime issuedAt;
   final String? pdfUrl;
 
+  /// Human-readable book name, populated from a joined `books(title)` relation.
+  /// Not a persisted certificates column; null when the join is absent.
+  final String? bookTitle;
+
   const CertificateEntity({
     required this.id,
     required this.userId,
@@ -20,6 +24,7 @@ class CertificateEntity extends Equatable {
     this.gradeLabel,
     required this.issuedAt,
     this.pdfUrl,
+    this.bookTitle,
   });
 
   factory CertificateEntity.fromJson(Map<String, dynamic> json) {
@@ -32,6 +37,7 @@ class CertificateEntity extends Equatable {
       gradeLabel: json['grade_label'] as String?,
       issuedAt: DateTime.parse(json['issued_at'] as String),
       pdfUrl: json['pdf_url'] as String?,
+      bookTitle: (json['books'] as Map<String, dynamic>?)?['title'] as String?,
     );
   }
 
@@ -45,5 +51,6 @@ class CertificateEntity extends Equatable {
         gradeLabel,
         issuedAt,
         pdfUrl,
+        bookTitle,
       ];
 }

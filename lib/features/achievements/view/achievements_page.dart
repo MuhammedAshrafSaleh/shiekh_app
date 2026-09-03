@@ -143,16 +143,17 @@ class _LoadedView extends StatelessWidget {
       studentName =
           (meta != null ? meta['full_name'] as String? : null) ?? '';
     }
+    final bookTitle = cert.bookTitle?.trim() ?? '';
     try {
       final bytes = await CertificatePdfGenerator.generate(
         certificate: cert,
         studentName: studentName,
-        bookTitle: cert.bookId,
+        bookTitle: bookTitle,
         sheikhName: AppConfig.sheikhName,
       );
       await Printing.sharePdf(
         bytes: Uint8List.fromList(bytes),
-        filename: 'شهادة.pdf',
+        filename: bookTitle.isEmpty ? 'شهادة.pdf' : 'شهادة $bookTitle.pdf',
       );
     } catch (_) {
       if (context.mounted) {
@@ -301,6 +302,7 @@ class _CertificatesSection extends StatelessWidget {
               final cert = certificates[index];
               return CertificateCard(
                 certificate: cert,
+                bookTitle: cert.bookTitle,
                 onDownload: () => onDownload(cert),
               );
             },

@@ -126,7 +126,7 @@ class AchievementsRepository {
 
       final response = await _client
           .from('certificates')
-          .select()
+          .select('*, books(title)')
           .eq('user_id', userId)
           .order('issued_at', ascending: false)
           .limit(50);
