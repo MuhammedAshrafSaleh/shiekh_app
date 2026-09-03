@@ -93,15 +93,17 @@ class AdminDashboardRepository {
     final net = _checkNetwork<void>();
     if (net != null) return net;
     try {
+      // Unlink banners that reference this book (nullable FK, no CASCADE).
+      await _client
+          .from('home_banners')
+          .update({'linked_book_id': null}).eq('linked_book_id', bookId);
+      // Delete lessons explicitly; quiz questions and lesson progress
+      // cascade automatically via DB FK constraints.
+      await _client.from('lessons').delete().eq('book_id', bookId);
       await _client.from('books').delete().eq('id', bookId);
       return const Right(null);
     } on PostgrestException catch (e) {
       _log.warning('deleteBook: ${e.message}');
-      // Foreign key violations indicate related data exists
-      if (e.code == '23503') {
-        return Left(DeleteRestrictedFailure(
-            'لا يمكن حذف الكتاب لأنه يحتوي على بيانات مرتبطة (دروس، تسجيلات، أو شهادات)'));
-      }
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

@@ -24,6 +24,8 @@ class AdminDashboardLoaded extends AdminDashboardState {
   List<Object?> get props => [stats, books];
 }
 
+class AdminDashboardDeleteSuccess extends AdminDashboardState {}
+
 class AdminDashboardError extends AdminDashboardState {
   final String message;
   const AdminDashboardError(this.message);

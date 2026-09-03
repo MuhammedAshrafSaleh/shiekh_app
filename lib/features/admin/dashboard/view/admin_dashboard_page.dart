@@ -26,6 +26,12 @@ class AdminDashboardPage extends StatelessWidget {
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ));
+        } else if (state is AdminDashboardDeleteSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تم حذف الكتاب بنجاح'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ));
         }
       },
       builder: (context, state) {

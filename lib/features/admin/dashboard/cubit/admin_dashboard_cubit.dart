@@ -37,7 +37,10 @@ class AdminDashboardCubit extends Cubit<AdminDashboardState> {
     final result = await _repo.deleteBook(bookId);
     result.fold(
       (failure) => emit(AdminDashboardError(failure.message)),
-      (_) => load(),
+      (_) {
+        emit(AdminDashboardDeleteSuccess());
+        load();
+      },
     );
   }
 }
