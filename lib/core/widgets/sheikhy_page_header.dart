@@ -22,7 +22,7 @@ class SheikhyPageHeader extends StatelessWidget {
   final String title;
   final bool showBack;
 
-  /// Optional widget placed at start (right in RTL) — e.g. a "mark all read"
+  /// Optional widget placed at end (left in RTL) — e.g. a "mark all read"
   /// text button. Title padding widens automatically to avoid overlap.
   final Widget? action;
 
@@ -68,9 +68,10 @@ class SheikhyPageHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  // Back arrow at START (= right edge in RTL)
                   if (showBack)
                     PositionedDirectional(
-                      end: AppSpacing.s2,
+                      start: AppSpacing.s2,
                       child: IconButton(
                         icon: const Icon(
                           Icons.arrow_forward_ios,
@@ -81,9 +82,10 @@ class SheikhyPageHeader extends StatelessWidget {
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ),
+                  // Secondary action at END (= left edge in RTL)
                   if (action != null)
                     PositionedDirectional(
-                      start: AppSpacing.s2,
+                      end: AppSpacing.s2,
                       child: action!,
                     ),
                 ],
