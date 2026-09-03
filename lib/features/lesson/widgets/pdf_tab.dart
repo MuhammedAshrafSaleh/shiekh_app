@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfx/pdfx.dart';
+import 'package:printing/printing.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/drive_url.dart';
@@ -19,8 +20,10 @@ class PdfTab extends StatefulWidget {
 
 class _PdfTabState extends State<PdfTab> {
   PdfControllerPinch? _controller;
+  Uint8List? _pdfBytes;
   bool _hasError = false;
   bool _isLoading = true;
+  bool _isSharing = false;
 
   @override
   void initState() {
@@ -52,6 +55,7 @@ class _PdfTabState extends State<PdfTab> {
         _controller?.dispose();
         setState(() {
           _controller = controller;
+          _pdfBytes = uint8Bytes;
           _isLoading = false;
         });
       } else {
@@ -59,6 +63,26 @@ class _PdfTabState extends State<PdfTab> {
       }
     } catch (_) {
       if (mounted) setState(() { _hasError = true; _isLoading = false; });
+    }
+  }
+
+  Future<void> _sharePdf() async {
+    final bytes = _pdfBytes;
+    if (bytes == null || _isSharing) return;
+    setState(() => _isSharing = true);
+    try {
+      await Printing.sharePdf(bytes: bytes, filename: 'lesson.pdf');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذّر مشاركة الملف'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
     }
   }
 
@@ -75,14 +99,34 @@ class _PdfTabState extends State<PdfTab> {
       return _PdfError(onRetry: _loadPdf);
     }
 
-    return PdfViewPinch(
-      controller: _controller!,
-      builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
-        options: const DefaultBuilderOptions(),
-        errorBuilder: (ctx, err) => _PdfError(onRetry: _loadPdf),
-        pageLoaderBuilder: (_) =>
-            const Center(child: CircularProgressIndicator()),
-      ),
+    return Stack(
+      children: [
+        PdfViewPinch(
+          controller: _controller!,
+          builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
+            options: const DefaultBuilderOptions(),
+            errorBuilder: (ctx, err) => _PdfError(onRetry: _loadPdf),
+            pageLoaderBuilder: (_) =>
+                const Center(child: CircularProgressIndicator()),
+          ),
+        ),
+        if (_pdfBytes != null)
+          PositionedDirectional(
+            end: AppSpacing.md,
+            bottom: AppSpacing.md,
+            child: FloatingActionButton(
+              onPressed: _isSharing ? null : _sharePdf,
+              tooltip: 'تحميل أو مشاركة الملف',
+              child: _isSharing
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.ios_share),
+            ),
+          ),
+      ],
     );
   }
 }
