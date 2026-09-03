@@ -1,20 +1,63 @@
 // lib/features/exam/view/exam_result_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../models/certificate_entity.dart';
 import '../bloc/exam_state.dart';
+import '../data/exam_repository.dart';
+import '../widgets/exam_review_list.dart';
 
-class ExamResultPage extends StatelessWidget {
+class ExamResultPage extends StatefulWidget {
   final ExamCompleted examCompleted;
 
   const ExamResultPage({super.key, required this.examCompleted});
 
   @override
+  State<ExamResultPage> createState() => _ExamResultPageState();
+}
+
+class _ExamResultPageState extends State<ExamResultPage> {
+  List<ExamReviewQuestion>? _reviewQuestions;
+  bool _reviewLoading = true;
+  bool _reviewFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReview();
+  }
+
+  Future<void> _fetchReview() async {
+    setState(() {
+      _reviewLoading = true;
+      _reviewFailed = false;
+    });
+
+    final result = await context.read<ExamRepository>().getExamReview(
+          widget.examCompleted.bookId,
+          widget.examCompleted.result.attemptId,
+        );
+
+    if (!mounted) return;
+
+    result.fold(
+      (_) => setState(() {
+        _reviewLoading = false;
+        _reviewFailed = true;
+      }),
+      (questions) => setState(() {
+        _reviewQuestions = questions;
+        _reviewLoading = false;
+      }),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final result = examCompleted.result;
-    final settings = examCompleted.settings;
+    final result = widget.examCompleted.result;
+    final settings = widget.examCompleted.settings;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final passed = result.passed;
@@ -31,7 +74,8 @@ class ExamResultPage extends StatelessWidget {
         title: const Text('نتيجة الاختبار'),
         actions: [
           TextButton(
-            onPressed: () => context.go('/books/${examCompleted.bookId}'),
+            onPressed: () =>
+                context.go('/books/${widget.examCompleted.bookId}'),
             child: const Text('العودة للكتاب'),
           ),
         ],
@@ -137,7 +181,7 @@ class ExamResultPage extends StatelessWidget {
                           final cert = CertificateEntity(
                             id: '',
                             userId: '',
-                            bookId: examCompleted.bookId,
+                            bookId: widget.examCompleted.bookId,
                             finalExamAttemptId: result.attemptId,
                             finalScore: result.score,
                             gradeLabel: result.gradeLabel.isEmpty
@@ -146,7 +190,7 @@ class ExamResultPage extends StatelessWidget {
                             issuedAt: DateTime.now(),
                           );
                           context.push(
-                            '/certificates/${examCompleted.bookId}',
+                            '/certificates/${widget.examCompleted.bookId}',
                             extra: cert,
                           );
                         },
@@ -163,13 +207,48 @@ class ExamResultPage extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
               ],
 
-              // Back buttons
+              // Back button
               OutlinedButton.icon(
                 onPressed: () =>
-                    context.go('/books/${examCompleted.bookId}'),
+                    context.go('/books/${widget.examCompleted.bookId}'),
                 icon: const Icon(Icons.menu_book_outlined),
                 label: const Text('العودة إلى الكتاب'),
               ),
+
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Answer Review Section ────────────────────────────────
+              Row(
+                children: [
+                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md),
+                    child: Text(
+                      'مراجعة الإجابات',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: colorScheme.onSurface
+                            .withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              if (_reviewLoading)
+                const Center(child: CircularProgressIndicator())
+              else if (_reviewFailed)
+                Center(
+                  child: TextButton.icon(
+                    onPressed: _fetchReview,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('فشل تحميل المراجعة — إعادة المحاولة'),
+                  ),
+                )
+              else if (_reviewQuestions != null)
+                ExamReviewList(questions: _reviewQuestions!),
             ],
           ),
         ),
@@ -177,6 +256,8 @@ class ExamResultPage extends StatelessWidget {
     );
   }
 }
+
+// ─── Score ring ───────────────────────────────────────────────────────────────
 
 class _ScoreRing extends StatelessWidget {
   final int score;
@@ -237,6 +318,8 @@ class _ScoreRing extends StatelessWidget {
     );
   }
 }
+
+// ─── Result stat ──────────────────────────────────────────────────────────────
 
 class _ResultStat extends StatelessWidget {
   final String value;

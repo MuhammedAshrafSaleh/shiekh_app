@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/failures.dart';
 import '../../../features/notifications/cubit/connectivity_cubit.dart';
 import '../../../models/book_entity.dart';
+import '../../../models/final_exam_attempt_entity.dart';
 import '../../../models/lesson_entity.dart';
 import '../../../models/lesson_progress_entity.dart';
 import '../../../models/lesson_with_progress_entity.dart';
@@ -194,6 +195,35 @@ class BookRepository {
       return Right(completed / total);
     } on PostgrestException catch (e) {
       _log.warning('getCompletionPercentage: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, FinalExamAttemptEntity?>> getBestExamAttempt(
+      String bookId) async {
+    final networkError = _checkNetwork<FinalExamAttemptEntity?>();
+    if (networkError != null) return networkError;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return const Right(null);
+
+      final response = await _client
+          .from('final_exam_attempts')
+          .select()
+          .eq('user_id', userId)
+          .eq('book_id', bookId)
+          .order('score_percentage', ascending: false)
+          .limit(1);
+
+      final rows = response as List;
+      if (rows.isEmpty) return const Right(null);
+      return Right(
+          FinalExamAttemptEntity.fromJson(rows.first as Map<String, dynamic>));
+    } on PostgrestException catch (e) {
+      _log.warning('getBestExamAttempt: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

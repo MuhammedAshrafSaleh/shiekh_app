@@ -24,6 +24,7 @@ class BookDetailsCubit extends Cubit<BookDetailsState> {
     final enrolledResult = await _repo.isEnrolled(bookId);
     final percentResult = await _repo.getCompletionPercentage(bookId);
     final examResult = await _repo.hasFinalExam(bookId);
+    final bestAttemptResult = await _repo.getBestExamAttempt(bookId);
 
     if (lessonsResult.isLeft()) {
       final msg = lessonsResult.fold(
@@ -38,6 +39,7 @@ class BookDetailsCubit extends Cubit<BookDetailsState> {
       isEnrolled: enrolledResult.getOrElse(() => false),
       completionPercentage: percentResult.getOrElse(() => 0.0),
       hasFinalExam: examResult.getOrElse(() => false),
+      bestExamAttempt: bestAttemptResult.getOrElse(() => null),
     ));
   }
 

@@ -195,7 +195,7 @@ declare
   v_passed         boolean;
   v_grade_label    text;
   v_attempt_id     uuid;
-  v_cert_issued    boolean := false;
+  v_cert_issued    bigint := 0;
   v_row            record;
   v_answer         text;
 begin
@@ -288,7 +288,7 @@ begin
     get diagnostics v_cert_issued = ROW_COUNT;
 
     -- Achievement notification for new certificate (conflict A + H)
-    if v_cert_issued then
+    if v_cert_issued > 0 then
       insert into public.notifications (
         type, title, body, created_by
       ) values (
@@ -473,6 +473,58 @@ $$;
 
 revoke all on function public.get_lesson_quiz_review(uuid, int) from public;
 grant execute on function public.get_lesson_quiz_review(uuid, int) to authenticated;
+
+-- ============================================================
+-- SECTION 8: get_final_exam_review RPC
+-- Returns per-question review with correct/wrong flags for a
+-- submitted attempt. Security: only the owning user can fetch.
+-- ============================================================
+create or replace function public.get_final_exam_review(
+  p_book_id    uuid,
+  p_attempt_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+as $$
+declare
+  v_user_id  uuid := auth.uid();
+  v_answers  jsonb;
+begin
+  if v_user_id is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select answers into v_answers
+  from public.final_exam_attempts
+  where id = p_attempt_id and user_id = v_user_id and book_id = p_book_id;
+
+  if not found then
+    raise exception 'no_attempt_found';
+  end if;
+
+  return (
+    select jsonb_agg(
+      jsonb_build_object(
+        'id',             q.id,
+        'question_text',  q.question_text,
+        'choice_a',       q.choice_a,
+        'choice_b',       q.choice_b,
+        'choice_c',       q.choice_c,
+        'choice_d',       q.choice_d,
+        'correct_choice', q.correct_choice,
+        'user_answer',    v_answers ->> (q.id::text),
+        'is_correct',     (v_answers ->> (q.id::text)) = q.correct_choice
+      ) order by q.order_index
+    )
+    from public.final_exam_questions q
+    where q.book_id = p_book_id
+  );
+end;
+$$;
+
+revoke all on function public.get_final_exam_review(uuid, uuid) from public;
+grant execute on function public.get_final_exam_review(uuid, uuid) to authenticated;
 
 -- ============================================================
 -- End of companion migration 0001_app_support.sql

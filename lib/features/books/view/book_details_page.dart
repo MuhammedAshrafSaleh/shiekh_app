@@ -300,6 +300,7 @@ class _BookDetailsView extends StatelessWidget {
               isEnrolled: state.isEnrolled,
               isExamPublished: state.hasFinalExam,
               completionPercentage: state.completionPercentage,
+              bestAttempt: state.bestExamAttempt,
               onTap: () => context.push(
                 '/books/$bookId/exam',
                 extra: state.book.title,
@@ -526,14 +527,13 @@ class _ActionButton extends StatelessWidget {
     if (state.isEnrolled) {
       final nextLesson =
           state.lessons.where((l) => !l.isCompleted).firstOrNull;
+      if (nextLesson == null) return const SizedBox.shrink();
       return SheikhyButton.primary(
         label: 'استمرار المذاكرة',
         icon: const Icon(Icons.play_arrow),
         fullWidth: true,
-        onPressed: nextLesson == null
-            ? null
-            : () => context
-                .push('/lessons/${nextLesson.lesson.id}?bookId=$bookId'),
+        onPressed: () =>
+            context.push('/lessons/${nextLesson.lesson.id}?bookId=$bookId'),
       );
     }
 

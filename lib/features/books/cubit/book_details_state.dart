@@ -2,6 +2,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../models/book_entity.dart';
+import '../../../models/final_exam_attempt_entity.dart';
 import '../../../models/lesson_with_progress_entity.dart';
 
 abstract class BookDetailsState extends Equatable {
@@ -21,6 +22,7 @@ class BookDetailsLoaded extends BookDetailsState {
   final double completionPercentage;
   final bool hasFinalExam;
   final bool isEnrolling;
+  final FinalExamAttemptEntity? bestExamAttempt;
 
   const BookDetailsLoaded({
     required this.book,
@@ -29,6 +31,7 @@ class BookDetailsLoaded extends BookDetailsState {
     required this.completionPercentage,
     required this.hasFinalExam,
     this.isEnrolling = false,
+    this.bestExamAttempt,
   });
 
   BookDetailsLoaded copyWith({
@@ -36,6 +39,7 @@ class BookDetailsLoaded extends BookDetailsState {
     double? completionPercentage,
     List<LessonWithProgressEntity>? lessons,
     bool? isEnrolling,
+    FinalExamAttemptEntity? bestExamAttempt,
   }) {
     return BookDetailsLoaded(
       book: book,
@@ -45,6 +49,7 @@ class BookDetailsLoaded extends BookDetailsState {
           completionPercentage ?? this.completionPercentage,
       hasFinalExam: hasFinalExam,
       isEnrolling: isEnrolling ?? this.isEnrolling,
+      bestExamAttempt: bestExamAttempt ?? this.bestExamAttempt,
     );
   }
 
@@ -56,6 +61,7 @@ class BookDetailsLoaded extends BookDetailsState {
         completionPercentage,
         hasFinalExam,
         isEnrolling,
+        bestExamAttempt,
       ];
 }
 

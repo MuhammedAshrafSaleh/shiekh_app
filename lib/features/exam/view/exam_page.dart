@@ -20,8 +20,10 @@ import '../../../models/final_exam_attempt_entity.dart';
 import '../bloc/exam_bloc.dart';
 import '../bloc/exam_event.dart';
 import '../bloc/exam_state.dart';
+import '../data/exam_repository.dart';
 import '../widgets/exam_navigator_grid.dart';
 import '../widgets/timer_display.dart';
+import 'exam_review_page.dart';
 
 class ExamPage extends StatelessWidget {
   final String bookId;
@@ -91,7 +93,7 @@ class _LoadingScaffold extends StatelessWidget {
       backgroundColor: AppColors.paper,
       body: Column(
         children: [
-          SheikhyPageHeader(title: bookTitle, showBack: true),
+          SheikhyPageHeader(title: bookTitle, showBack: true, height: 72),
           Expanded(
             child: Center(
               child: CircularProgressIndicator(color: AppColors.primary),
@@ -261,13 +263,45 @@ class _IntroView extends StatelessWidget {
                   // Last attempt summary
                   if (state.pastAttempts.isNotEmpty &&
                       !state.attemptsExhausted) ...[
-                    Text(
-                      'آخر محاولة: ${_ar(state.pastAttempts.last.scorePercentage)}٪'
-                      ' — ${state.pastAttempts.last.passed ? "ناجح ✓" : "راسب"}',
-                      style: AppTextStyles.small.copyWith(
-                        color: AppColors.inkMuted,
-                      ),
-                      textAlign: TextAlign.center,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'آخر محاولة: ${_ar(state.pastAttempts.last.scorePercentage)}٪'
+                          ' — ${state.pastAttempts.last.passed ? "ناجح ✓" : "راسب"}',
+                          style: AppTextStyles.small.copyWith(
+                            color: AppColors.inkMuted,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            final last = state.pastAttempts.last;
+                            Navigator.push<void>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ExamReviewPage(
+                                  bookId: state.bookId,
+                                  attemptId: last.id,
+                                  attemptNumber: last.attemptNumber,
+                                ),
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsetsDirectional.only(
+                                start: hs.AppSpacing.s2),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'مراجعة',
+                            style: AppTextStyles.small.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: hs.AppSpacing.s4),
                   ],
@@ -316,13 +350,18 @@ class _IntroView extends StatelessWidget {
   }
 
   void _showPastAttempts(BuildContext context) {
+    final repo = context.read<ExamRepository>();
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xl)),
       ),
-      builder: (ctx) => _PastAttemptsSheet(attempts: state.pastAttempts),
+      builder: (ctx) => _PastAttemptsSheet(
+        attempts: state.pastAttempts,
+        bookId: state.bookId,
+        repository: repo,
+      ),
     );
   }
 }
@@ -375,7 +414,13 @@ class _ExamInfoCard extends StatelessWidget {
 
 class _PastAttemptsSheet extends StatelessWidget {
   final List<FinalExamAttemptEntity> attempts;
-  const _PastAttemptsSheet({required this.attempts});
+  final String bookId;
+  final ExamRepository repository;
+  const _PastAttemptsSheet({
+    required this.attempts,
+    required this.bookId,
+    required this.repository,
+  });
 
   String _ar(int n) {
     const w = '0123456789';
@@ -483,10 +528,43 @@ class _PastAttemptsSheet extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Icon(
-                        passed ? Icons.check_circle : Icons.cancel,
-                        color: accentColor,
-                        size: 22,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            passed ? Icons.check_circle : Icons.cancel,
+                            color: accentColor,
+                            size: 22,
+                          ),
+                          const SizedBox(width: hs.AppSpacing.s2),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push<void>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ExamReviewPage(
+                                    bookId: bookId,
+                                    attemptId: a.id,
+                                    attemptNumber: a.attemptNumber,
+                                  ),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              'مراجعة',
+                              style: AppTextStyles.small.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -495,6 +573,104 @@ class _PastAttemptsSheet extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Question bar (heritage top-bar for the in-progress view) ────────────────
+//
+// Paper background, hairline bottom border.
+// Start (right in RTL): back arrow + "سؤال X من Y" counter.
+// End  (left  in RTL): live timer chip via BlocSelector.
+
+class _QuestionBar extends StatelessWidget {
+  final int currentIndex;
+  final int totalQuestions;
+
+  const _QuestionBar({
+    required this.currentIndex,
+    required this.totalQuestions,
+  });
+
+  String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surface,
+      foregroundDecoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 56,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: hs.AppSpacing.s2,
+            ),
+            child: Row(
+              children: [
+                // Start (right in RTL): back arrow + question counter
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 18,
+                        color: AppColors.ink,
+                      ),
+                      tooltip: 'رجوع',
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'سؤال ${_ar(currentIndex + 1)} من',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.inkMuted,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        Text(
+                          _ar(totalQuestions),
+                          style: AppTextStyles.small.copyWith(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const Spacer(),
+
+                // End (left in RTL): live timer
+                BlocSelector<ExamBloc, ExamState, int>(
+                  selector: (s) =>
+                      s is ExamInProgress ? s.secondsRemaining : 0,
+                  builder: (_, secs) => TimerDisplay(secondsRemaining: secs),
+                ),
+                const SizedBox(width: hs.AppSpacing.s2),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -510,126 +686,118 @@ class _InProgressView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final q = state.currentQuestion;
     final selectedChoice = state.answers[q.id];
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: BlocSelector<ExamBloc, ExamState, int>(
-          selector: (s) =>
-              s is ExamInProgress ? s.secondsRemaining : 0,
-          builder: (_, secs) => TimerDisplay(secondsRemaining: secs),
-        ),
-        centerTitle: false,
-        actions: [
-          // Question counter
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: hs.AppSpacing.s4),
-            child: Center(
-              child: Text(
-                '${state.currentIndex + 1} / ${state.questions.length}',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
+      backgroundColor: AppColors.paper,
+      body: Column(
+        children: [
+          // Heritage question bar (replaces Material AppBar)
+          _QuestionBar(
+            currentIndex: state.currentIndex,
+            totalQuestions: state.questions.length,
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Navigator grid
-            ExamNavigatorGrid(
-              questions: state.questions,
-              answers: state.answers,
-              currentIndex: state.currentIndex,
-              onNavigate: (i) =>
-                  context.read<ExamBloc>().add(ExamNavigateTo(i)),
-            ),
-            const Divider(height: 1),
 
-            // Question + choices
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(hs.AppSpacing.s4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      q.questionText,
-                      style: theme.textTheme.bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w600, height: 1.5),
-                    ),
-                    const SizedBox(height: hs.AppSpacing.s4),
-                    for (final choice in ['a', 'b', 'c', 'd'])
-                      McqOptionCard(
-                        label: _choiceLetter(choice),
-                        text: q.choiceLabel(choice),
-                        optionState: selectedChoice == choice
-                            ? McqOptionState.selected
-                            : McqOptionState.idle,
-                        onTap: state.isSubmitting
-                            ? null
-                            : () => context.read<ExamBloc>().add(
-                                  ExamAnswerSelected(q.id, choice),
-                                ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
+          // Navigator grid
+          ExamNavigatorGrid(
+            questions: state.questions,
+            answers: state.answers,
+            currentIndex: state.currentIndex,
+            onNavigate: (i) =>
+                context.read<ExamBloc>().add(ExamNavigateTo(i)),
+          ),
+          const Divider(height: 1, color: AppColors.border),
 
-            // Prev / Next / Submit
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
+          // Question + choices
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                hs.AppSpacing.pageGutter,
                 hs.AppSpacing.s4,
-                hs.AppSpacing.s2,
-                hs.AppSpacing.s4,
+                hs.AppSpacing.pageGutter,
                 hs.AppSpacing.s4,
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: state.currentIndex > 0 && !state.isSubmitting
-                        ? () => context.read<ExamBloc>().add(
-                              ExamNavigateTo(state.currentIndex - 1),
-                            )
-                        : null,
-                    icon: const Icon(Icons.arrow_forward),
-                    label: const Text('السابق'),
+                  Text(
+                    q.questionText,
+                    style: AppTextStyles.bodyLg.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  const Spacer(),
-                  if (state.currentIndex < state.questions.length - 1)
-                    FilledButton.icon(
-                      onPressed: state.isSubmitting
+                  const SizedBox(height: hs.AppSpacing.s4),
+                  for (final choice in ['a', 'b', 'c', 'd'])
+                    McqOptionCard(
+                      label: _choiceLetter(choice),
+                      text: q.choiceLabel(choice),
+                      optionState: selectedChoice == choice
+                          ? McqOptionState.selected
+                          : McqOptionState.idle,
+                      onTap: state.isSubmitting
                           ? null
                           : () => context.read<ExamBloc>().add(
-                                ExamNavigateTo(state.currentIndex + 1),
+                                ExamAnswerSelected(q.id, choice),
                               ),
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('التالي'),
-                    )
-                  else
-                    FilledButton.icon(
-                      onPressed: state.isSubmitting
-                          ? null
-                          : () => _confirmSubmit(context),
-                      icon: state.isSubmitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send),
-                      label: const Text('تسليم'),
                     ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Prev / Next / Submit
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s2,
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s4,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SheikhyButton.secondary(
+                      fullWidth: true,
+                      label: 'السابق',
+                      onPressed: state.currentIndex > 0 && !state.isSubmitting
+                          ? () => context.read<ExamBloc>().add(
+                                ExamNavigateTo(state.currentIndex - 1),
+                              )
+                          : null,
+                      icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    ),
+                  ),
+                  const SizedBox(width: hs.AppSpacing.s3),
+                  Expanded(
+                    child: state.currentIndex < state.questions.length - 1
+                        ? SheikhyButton.primary(
+                            fullWidth: true,
+                            label: 'التالي',
+                            onPressed: state.isSubmitting
+                                ? null
+                                : () => context.read<ExamBloc>().add(
+                                      ExamNavigateTo(state.currentIndex + 1),
+                                    ),
+                            icon: const Icon(Icons.arrow_back_ios, size: 16),
+                          )
+                        : SheikhyButton.primary(
+                            fullWidth: true,
+                            isLoading: state.isSubmitting,
+                            label: 'تسليم',
+                            onPressed: state.isSubmitting
+                                ? null
+                                : () => _confirmSubmit(context),
+                            icon: const Icon(Icons.send_rounded, size: 16),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

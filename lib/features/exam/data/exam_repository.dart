@@ -48,6 +48,44 @@ class ExamSubmitResult {
   });
 }
 
+class ExamReviewQuestion {
+  final String id;
+  final String questionText;
+  final String choiceA;
+  final String choiceB;
+  final String choiceC;
+  final String choiceD;
+  final String correctChoice;
+  final String? userAnswer;
+  final bool isCorrect;
+
+  const ExamReviewQuestion({
+    required this.id,
+    required this.questionText,
+    required this.choiceA,
+    required this.choiceB,
+    required this.choiceC,
+    required this.choiceD,
+    required this.correctChoice,
+    required this.userAnswer,
+    required this.isCorrect,
+  });
+
+  factory ExamReviewQuestion.fromJson(Map<String, dynamic> json) {
+    return ExamReviewQuestion(
+      id: json['id'] as String,
+      questionText: json['question_text'] as String,
+      choiceA: json['choice_a'] as String,
+      choiceB: json['choice_b'] as String,
+      choiceC: json['choice_c'] as String,
+      choiceD: json['choice_d'] as String,
+      correctChoice: json['correct_choice'] as String,
+      userAnswer: json['user_answer'] as String?,
+      isCorrect: json['is_correct'] as bool? ?? false,
+    );
+  }
+}
+
 class ExamSession {
   final DateTime startedAt;
   final Map<String, String> answers;
@@ -205,6 +243,33 @@ class ExamRepository {
         _ => 'حدث خطأ أثناء تسليم الاختبار',
       };
       return Left(ServerFailure(msg));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, List<ExamReviewQuestion>>> getExamReview(
+    String bookId,
+    String attemptId,
+  ) async {
+    final networkError = _checkNetwork<List<ExamReviewQuestion>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final response = await _client.rpc('get_final_exam_review', params: {
+        'p_book_id': bookId,
+        'p_attempt_id': attemptId,
+      });
+
+      final list = response as List? ?? [];
+      final questions = list
+          .map((e) =>
+              ExamReviewQuestion.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return Right(questions);
+    } on PostgrestException catch (e) {
+      _log.warning('getExamReview: ${e.message}');
+      return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
     }
