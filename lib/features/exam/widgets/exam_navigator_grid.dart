@@ -1,6 +1,11 @@
 // lib/features/exam/widgets/exam_navigator_grid.dart
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../models/final_exam_question_entity.dart';
 
 class ExamNavigatorGrid extends StatelessWidget {
@@ -17,119 +22,105 @@ class ExamNavigatorGrid extends StatelessWidget {
     required this.onNavigate,
   });
 
+  static String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      height: 220,
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.s4,
+        AppSpacing.s3,
+        AppSpacing.s4,
+        AppSpacing.s4,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.paperSunk,
+        borderRadius: AppRadii.rLg,
+        border: Border.all(color: AppColors.border, width: AppBorders.hairline),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Row(
-              children: [
-                _Legend(
-                  color: colorScheme.primary,
-                  label: 'محاط',
-                ),
-                const SizedBox(width: 12),
-                _Legend(
-                  color: colorScheme.secondary,
-                  label: 'تم الإجابة',
-                ),
-                const SizedBox(width: 12),
-                _Legend(
-                  color: colorScheme.surfaceContainerHighest,
-                  label: 'لم يُجَب',
-                ),
-              ],
+          Text(
+            'خارطة الأسئلة',
+            style: AppTextStyles.small.copyWith(
+              color: AppColors.inkMuted,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.vertical,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 6,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 1,
-              ),
-              itemCount: questions.length,
-              itemBuilder: (context, index) {
-                final q = questions[index];
-                final isCurrent = index == currentIndex;
-                final isAnswered = answers.containsKey(q.id);
+          const SizedBox(height: AppSpacing.s3),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const cols = 8;
+              const spacing = AppSpacing.s2;
+              final cellSize =
+                  (constraints.maxWidth - (cols - 1) * spacing) / cols;
 
-                Color bg;
-                Color fg;
-                if (isCurrent) {
-                  bg = colorScheme.primary;
-                  fg = colorScheme.onPrimary;
-                } else if (isAnswered) {
-                  bg = colorScheme.secondary;
-                  fg = colorScheme.onSecondary;
-                } else {
-                  bg = colorScheme.surfaceContainerHighest;
-                  fg = colorScheme.onSurface;
-                }
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: List.generate(questions.length, (index) {
+                  final q = questions[index];
+                  final isCurrent = index == currentIndex;
+                  final isAnswered = answers.containsKey(q.id);
 
-                return InkWell(
-                  onTap: () => onNavigate(index),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: bg,
-                      borderRadius: BorderRadius.circular(6),
+                  final Color cellBg;
+                  final Color cellBorder;
+                  final Color cellText;
+
+                  if (isCurrent) {
+                    cellBg = AppColors.primary;
+                    cellBorder = Colors.transparent;
+                    cellText = AppColors.paper;
+                  } else if (isAnswered) {
+                    cellBg = AppColors.primaryTint;
+                    cellBorder = Colors.transparent;
+                    cellText = AppColors.primary;
+                  } else {
+                    cellBg = AppColors.surface;
+                    cellBorder = AppColors.border;
+                    cellText = AppColors.inkMuted;
+                  }
+
+                  return GestureDetector(
+                    onTap: () => onNavigate(index),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: cellSize,
+                      height: cellSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: cellBg,
+                        border: Border.all(
+                          color: cellBorder,
+                          width: AppBorders.hairline,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _ar(index + 1),
+                        style: AppTextStyles.caption.copyWith(
+                          color: cellText,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                          letterSpacing: 0,
+                        ),
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${index + 1}',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: fg,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                  );
+                }),
+              );
+            },
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Legend extends StatelessWidget {
-  final Color color;
-  final String label;
-  const _Legend({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                )),
-      ],
     );
   }
 }

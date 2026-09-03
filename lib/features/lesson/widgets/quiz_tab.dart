@@ -1,10 +1,20 @@
 // lib/features/lesson/widgets/quiz_tab.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/error_state.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' hide TextDirection;
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/mcq_option_card.dart';
+import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/sheikhy_empty_state.dart';
+import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../../core/widgets/sheikhy_labeled_divider.dart';
+import '../../../core/widgets/sheikhy_notice.dart';
 import '../../../features/lesson/cubit/lesson_cubit.dart';
 import '../../../features/lesson/cubit/lesson_state.dart';
 import '../../../features/lesson/data/lesson_repository.dart';
@@ -12,7 +22,6 @@ import '../../../models/lesson_quiz_attempt_entity.dart';
 
 enum _QuizPhase { intro, loading, error, answering, submitted, review }
 
-// Where the review was launched from — controls what "back" does
 enum _ReviewOrigin { result, intro }
 
 class QuizTab extends StatefulWidget {
@@ -46,7 +55,6 @@ class _QuizTabState extends State<QuizTab> {
     _preloadQuestions();
   }
 
-  // Pre-fetch questions silently so answering starts instantly.
   Future<void> _preloadQuestions() async {
     final repo = context.read<LessonRepository>();
     final result = await repo.getQuizQuestions(widget.lessonId);
@@ -144,15 +152,25 @@ class _QuizTabState extends State<QuizTab> {
     );
   }
 
+  static String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_phase == _QuizPhase.loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
 
     if (_phase == _QuizPhase.error) {
-      return ErrorState(
-        message: _errorMessage ?? 'حدث خطأ',
+      return SheikhyErrorState(
+        heading: 'تعذّر تحميل الاختبار',
+        message: _errorMessage ?? 'حدث خطأ غير متوقع',
         onRetry: () => setState(() => _phase = _QuizPhase.intro),
       );
     }
@@ -160,11 +178,11 @@ class _QuizTabState extends State<QuizTab> {
     if (_phase == _QuizPhase.review) {
       return _QuizReview(
         questions: _reviewQuestions,
-        onBack: () => setState(() => _phase == _QuizPhase.review
-            ? _phase = _reviewOrigin == _ReviewOrigin.result
-                ? _QuizPhase.submitted
-                : _QuizPhase.intro
-            : null),
+        onBack: () => setState(
+          () => _phase = _reviewOrigin == _ReviewOrigin.result
+              ? _QuizPhase.submitted
+              : _QuizPhase.intro,
+        ),
       );
     }
 
@@ -192,93 +210,113 @@ class _QuizTabState extends State<QuizTab> {
     }
 
     if (_questions.isEmpty) {
-      return const EmptyState(
+      return const SheikhyEmptyState(
         icon: Icons.quiz_outlined,
-        message: 'لا توجد أسئلة لهذا الدرس',
+        heading: 'لا توجد أسئلة',
+        subtitle: 'لم تُضَف أسئلة لهذا الدرس بعد',
       );
     }
 
     if (_phase == _QuizPhase.submitted && _result != null) {
       return _QuizResult(
         result: _result!,
+        ar: _ar,
         onRetry: () => setState(() => _phase = _QuizPhase.intro),
         onReview: () => _loadReview(null, _ReviewOrigin.result),
       );
     }
 
+    // ── Answering phase ──────────────────────────────────────────────────────
     final question = _questions[_currentIndex];
     final total = _questions.length;
+    final isLast = _currentIndex == total - 1;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Text(
-                'السؤال ${_currentIndex + 1} من $total',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const Spacer(),
-              Text(
-                '${_answers.length} / $total',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          LinearProgressIndicator(value: (_currentIndex + 1) / total),
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            question.questionText,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  height: 1.6,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          for (final choice in ['a', 'b', 'c', 'd'])
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: McqOptionCard(
-                label: _choiceLabel(choice),
-                text: question.choiceLabel(choice),
-                optionState: _answers[question.id] == choice
-                    ? McqOptionState.selected
-                    : McqOptionState.idle,
-                onTap: () => setState(() => _answers[question.id] = choice),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Question bar
+        _QuizBar(currentIndex: _currentIndex, total: total, ar: _ar),
+        const Divider(height: 1, color: AppColors.border),
+
+        // Scrollable question + options
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.pageGutter,
+              AppSpacing.s4,
+              AppSpacing.pageGutter,
+              AppSpacing.s4,
             ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              if (_currentIndex > 0)
-                TextButton.icon(
-                  onPressed: () => setState(() => _currentIndex--),
-                  icon: const Icon(Icons.chevron_right),
-                  label: const Text('السابق'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  question.questionText,
+                  style: AppTextStyles.bodyLg
+                      .copyWith(fontWeight: FontWeight.w600),
                 ),
-              const Spacer(),
-              if (_currentIndex < total - 1)
-                FilledButton.icon(
-                  onPressed: () => setState(() => _currentIndex++),
-                  icon: const Icon(Icons.chevron_left),
-                  label: const Text('التالي'),
-                )
-              else
-                FilledButton.icon(
-                  onPressed: _answers.length < total
-                      ? _showUnansweredWarning
-                      : _submit,
-                  icon: const Icon(Icons.check),
-                  label: const Text('تسليم الاختبار'),
-                ),
-            ],
+                const SizedBox(height: AppSpacing.s4),
+                for (final choice in ['a', 'b', 'c', 'd'])
+                  McqOptionCard(
+                    label: _choiceLabel(choice),
+                    text: question.choiceLabel(choice),
+                    optionState: _answers[question.id] == choice
+                        ? McqOptionState.selected
+                        : McqOptionState.idle,
+                    onTap: () =>
+                        setState(() => _answers[question.id] = choice),
+                  ),
+              ],
+            ),
           ),
-        ],
-      ),
+        ),
+
+        // Bottom navigation
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.pageGutter,
+              AppSpacing.s2,
+              AppSpacing.pageGutter,
+              AppSpacing.s4,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SheikhyButton.secondary(
+                    fullWidth: true,
+                    label: 'السابق',
+                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onPressed: _currentIndex > 0
+                        ? () => setState(() => _currentIndex--)
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s3),
+                Expanded(
+                  child: isLast
+                      ? SheikhyButton.primary(
+                          fullWidth: true,
+                          label: 'تسليم الاختبار',
+                          icon: const Icon(Icons.check_rounded, size: 16),
+                          onPressed: _answers.length < total
+                              ? _showUnansweredWarning
+                              : _submit,
+                        )
+                      : SheikhyButton.primary(
+                          fullWidth: true,
+                          label: 'التالي',
+                          icon: const Icon(Icons.arrow_back_ios, size: 16),
+                          onPressed: () =>
+                              setState(() => _currentIndex++),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -292,34 +330,172 @@ class _QuizTabState extends State<QuizTab> {
 
   void _showUnansweredWarning() {
     final unanswered = _questions.length - _answers.length;
+
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('أسئلة غير مجاب عليها'),
-        content: Text(
-          'لديك $unanswered سؤال لم تجب عليه بعد. هل تريد التسليم على أي حال؟',
+      barrierColor: AppColors.ink.withValues(alpha: 0.5),
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.rXl),
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.pageGutter,
+          vertical: AppSpacing.s8,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('إلغاء'),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.s5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.dangerBg,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 28,
+                    color: AppColors.danger,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s4),
+              Text(
+                'أسئلة غير مجاب عليها',
+                style: AppTextStyles.h3.copyWith(fontSize: 20),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.s3),
+              Text(
+                'لديك ${_QuizTabState._ar(unanswered)} سؤال لم تجب عليه. الأسئلة المتبقية ستُعتبر خاطئة.',
+                style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.s5),
+              SheikhyButton.primary(
+                fullWidth: true,
+                label: 'تسليم على أي حال',
+                icon: const Icon(Icons.check_circle_outline_rounded),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _submit();
+                },
+              ),
+              const SizedBox(height: AppSpacing.s3),
+              SheikhyButton.secondary(
+                fullWidth: true,
+                label: 'مراجعة الأسئلة',
+                icon: const Icon(Icons.list_rounded),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _submit();
-            },
-            child: const Text('تسليم'),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Intro screen
-// ─────────────────────────────────────────────────────────────
+// ─── Question bar ─────────────────────────────────────────────────────────────
+
+class _QuizBar extends StatelessWidget {
+  final int currentIndex;
+  final int total;
+  final String Function(int) ar;
+
+  const _QuizBar({
+    required this.currentIndex,
+    required this.total,
+    required this.ar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final timeStr = DateFormat('HH:mm').format(DateTime.now());
+
+    return Container(
+      color: AppColors.surface,
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 56,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: AppSpacing.s4,
+            ),
+            child: Row(
+              children: [
+                // Start (right in RTL): question counter
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'سؤال ${ar(currentIndex + 1)} من',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.inkMuted,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    Text(
+                      ar(total),
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const Spacer(),
+
+                // End (left in RTL): current time chip
+                Container(
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: AppSpacing.s2,
+                    vertical: AppSpacing.s1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.paperSunk,
+                    borderRadius: AppRadii.rPill,
+                    border: Border.all(
+                        color: AppColors.border, width: AppBorders.hairline),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.timer_outlined,
+                          size: 16, color: AppColors.inkMuted),
+                      const SizedBox(width: AppSpacing.s1),
+                      Text(
+                        timeStr,
+                        textDirection: TextDirection.ltr,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.inkMuted,
+                          fontWeight: FontWeight.w600,
+                          height: 1,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s1),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Intro phase ──────────────────────────────────────────────────────────────
 
 class _QuizIntro extends StatelessWidget {
   final int questionCount;
@@ -336,96 +512,163 @@ class _QuizIntro extends StatelessWidget {
     required this.onReview,
   });
 
+  static String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final exhausted = attemptsUsed >= 2;
     final attemptsRemaining = 2 - attemptsUsed;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.pageGutter,
+        AppSpacing.s5,
+        AppSpacing.pageGutter,
+        AppSpacing.s6,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.lg),
-          Icon(Icons.quiz_outlined, size: 64, color: theme.colorScheme.primary),
-          const SizedBox(height: AppSpacing.md),
+          // Icon
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primaryTint,
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.quiz_outlined,
+                  size: 34, color: AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+
+          // Title
           Text(
             'اختبار الدرس',
-            style: theme.textTheme.headlineSmall,
+            style: GoogleFonts.arefRuqaa(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+              color: AppColors.ink,
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.lg),
-          _InfoRow(
-            icon: Icons.help_outline,
+          const SizedBox(height: AppSpacing.s5),
+
+          // Info cards
+          _IntroInfoCard(
+            icon: Icons.format_list_numbered_outlined,
             label: 'عدد الأسئلة',
-            value: '$questionCount سؤال',
+            value: '${_ar(questionCount)} سؤال',
           ),
-          const SizedBox(height: AppSpacing.sm),
-          _InfoRow(
-            icon: Icons.repeat,
+          const SizedBox(height: AppSpacing.s3),
+          _IntroInfoCard(
+            icon: Icons.repeat_rounded,
             label: 'المحاولات المتبقية',
-            value: '$attemptsRemaining من 2',
+            value: '${_ar(attemptsRemaining)} من ${_ar(2)}',
             valueColor: attemptsRemaining == 0
-                ? theme.colorScheme.error
+                ? AppColors.danger
                 : attemptsRemaining == 1
-                    ? theme.colorScheme.tertiary
-                    : theme.colorScheme.primary,
+                    ? AppColors.warning
+                    : AppColors.success,
           ),
 
-          // Past attempt score cards
+          // Past attempts
           if (pastAttempts.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.lg),
-            Text('المحاولات السابقة',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                )),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.s5),
+            const SheikhyLabeledDivider(label: 'المحاولات السابقة'),
+            const SizedBox(height: AppSpacing.s3),
             for (final attempt in pastAttempts)
               _AttemptCard(
                 attempt: attempt,
+                ar: _ar,
                 onReview: () => onReview(attempt.attemptNumber),
               ),
           ],
 
-          const SizedBox(height: AppSpacing.md),
-          if (!exhausted) ...[
-            Text(
-              'أجب على جميع الأسئلة ثم اضغط تسليم',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-              ),
-              textAlign: TextAlign.center,
+          const SizedBox(height: AppSpacing.s5),
+
+          if (exhausted) ...[
+            SheikhyNotice(
+              variant: SheikhyNoticeVariant.danger,
+              message: 'لقد استنفدت جميع المحاولات المسموحة',
             ),
-            const SizedBox(height: AppSpacing.xl),
-            FilledButton.icon(
-              onPressed: onStart,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('ابدأ الاختبار'),
+            const SizedBox(height: AppSpacing.s3),
+            SheikhyButton.secondary(
+              fullWidth: true,
+              label: 'مراجعة آخر محاولة',
+              icon: const Icon(Icons.checklist_rounded),
+              onPressed: pastAttempts.isNotEmpty
+                  ? () => onReview(pastAttempts.last.attemptNumber)
+                  : null,
             ),
           ] else ...[
-            const SizedBox(height: AppSpacing.md),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'استنفدت جميع المحاولات',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onErrorContainer,
-                ),
-                textAlign: TextAlign.center,
-              ),
+            Text(
+              'أجب على جميع الأسئلة ثم اضغط تسليم',
+              style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: () => onReview(pastAttempts.last.attemptNumber),
-              icon: const Icon(Icons.checklist),
-              label: const Text('مراجعة آخر محاولة'),
+            const SizedBox(height: AppSpacing.s4),
+            SheikhyButton.primary(
+              fullWidth: true,
+              label: attemptsUsed > 0 ? 'إعادة الاختبار' : 'ابدأ الاختبار',
+              icon: const Icon(Icons.play_arrow_rounded),
+              onPressed: onStart,
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _IntroInfoCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _IntroInfoCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.s5,
+        vertical: AppSpacing.s4,
+      ),
+      decoration: AppDecorations.card,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.inkMuted),
+          const SizedBox(width: AppSpacing.s4),
+          Expanded(
+            child: Text(label,
+                style:
+                    AppTextStyles.small.copyWith(color: AppColors.inkMuted)),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.small.copyWith(
+              color: valueColor ?? AppColors.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -434,136 +677,201 @@ class _QuizIntro extends StatelessWidget {
 
 class _AttemptCard extends StatelessWidget {
   final LessonQuizAttemptEntity attempt;
+  final String Function(int) ar;
   final VoidCallback onReview;
 
-  const _AttemptCard({required this.attempt, required this.onReview});
+  const _AttemptCard({
+    required this.attempt,
+    required this.ar,
+    required this.onReview,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final passed = attempt.passed;
+    final accentColor = passed ? AppColors.success : AppColors.danger;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-        child: Row(
-          children: [
-            Icon(
-              passed ? Icons.check_circle : Icons.cancel,
-              color: passed ? Colors.green : theme.colorScheme.error,
-              size: 20,
+    return Container(
+      margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.s3),
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.s4,
+        vertical: AppSpacing.s3,
+      ),
+      decoration: AppDecorations.card,
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: accentColor.withValues(alpha: 0.12),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              'المحاولة ${attempt.attemptNumber}',
-              style: theme.textTheme.bodyMedium,
-            ),
-            const Spacer(),
-            Text(
-              '${attempt.scorePercentage}%',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: passed ? Colors.green : theme.colorScheme.error,
+            alignment: Alignment.center,
+            child: Text(
+              ar(attempt.attemptNumber),
+              style: AppTextStyles.small.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            TextButton(
-              onPressed: onReview,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('مراجعة'),
+          ),
+          const SizedBox(width: AppSpacing.s3),
+          Expanded(
+            child: Text(
+              'المحاولة ${ar(attempt.attemptNumber)}',
+              style: AppTextStyles.small.copyWith(color: AppColors.ink),
             ),
-          ],
-        ),
+          ),
+          Text(
+            '${ar(attempt.scorePercentage)}٪',
+            style: AppTextStyles.small.copyWith(
+              color: accentColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s3),
+          SheikhyButton.text(
+            label: 'مراجعة',
+            onPressed: onReview,
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Result screen
-// ─────────────────────────────────────────────────────────────
+// ─── Result phase ─────────────────────────────────────────────────────────────
 
 class _QuizResult extends StatelessWidget {
   final QuizGradeResult result;
+  final String Function(int) ar;
   final VoidCallback onRetry;
   final VoidCallback onReview;
 
   const _QuizResult({
     required this.result,
+    required this.ar,
     required this.onRetry,
     required this.onReview,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final passed = result.percentage >= 60;
     final canRetry = result.attemptsUsed < 2;
+    final ringColor = passed ? AppColors.primary : AppColors.danger;
 
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return SingleChildScrollView(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.pageGutter,
+        AppSpacing.s6,
+        AppSpacing.pageGutter,
+        AppSpacing.s6,
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CircleAvatar(
-            radius: 48,
-            backgroundColor: passed
-                ? theme.colorScheme.primaryContainer
-                : theme.colorScheme.errorContainer,
-            child: Text(
-              '${result.percentage}%',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                color: passed
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.error,
-                fontWeight: FontWeight.bold,
+          // Score ring
+          Center(
+            child: Container(
+              width: 148,
+              height: 148,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: ringColor, width: 9),
+                color: AppColors.paper,
+              ),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '٪${ar(result.percentage)}',
+                    style: GoogleFonts.arefRuqaa(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.s1),
+                  Text(
+                    'النتيجة',
+                    style:
+                        AppTextStyles.caption.copyWith(color: AppColors.inkMuted),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.s5),
+
+          // Heading
           Text(
-            passed ? 'أحسنت!' : 'راجع الدرس وحاول مجدداً',
-            style: theme.textTheme.titleLarge,
+            passed ? 'أحسنت! لقد نجحت' : 'راجع الدرس وحاول مجدداً',
+            style: GoogleFonts.arefRuqaa(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+              color: AppColors.ink,
+            ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            '${result.correct} إجابة صحيحة من أصل ${result.total}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+          const SizedBox(height: AppSpacing.s3),
+
+          // Score pill
+          Center(
+            child: Container(
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: AppSpacing.s5,
+                vertical: AppSpacing.s2,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: AppRadii.rPill,
+                border: Border.all(
+                    color: AppColors.border, width: AppBorders.hairline),
+              ),
+              child: Text(
+                '${ar(result.correct)} من ${ar(result.total)} إجابة صحيحة',
+                style: AppTextStyles.small.copyWith(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.s2),
+
+          // Attempt counter
           Text(
-            'المحاولة ${result.attemptsUsed} من 2',
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-            ),
+            'المحاولة ${ar(result.attemptsUsed)} من ${ar(2)}',
+            style: AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.xl),
-          OutlinedButton.icon(
+          const SizedBox(height: AppSpacing.s5),
+
+          // Review button
+          SheikhyButton.secondary(
+            fullWidth: true,
+            label: 'مراجعة الإجابات',
+            icon: const Icon(Icons.checklist_rounded),
             onPressed: onReview,
-            icon: const Icon(Icons.checklist),
-            label: const Text('مراجعة الإجابات'),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.s3),
+
+          // Retry or exhausted notice
           if (canRetry)
-            OutlinedButton.icon(
+            SheikhyButton.primary(
+              fullWidth: true,
+              label: 'إعادة الاختبار',
+              icon: const Icon(Icons.refresh_rounded),
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة الاختبار'),
             )
           else
-            Text(
-              'استنفدت جميع المحاولات',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.error,
-              ),
+            SheikhyNotice(
+              variant: SheikhyNoticeVariant.danger,
+              message: 'لقد استنفدت جميع المحاولات المسموحة',
             ),
         ],
       ),
@@ -571,9 +879,7 @@ class _QuizResult extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Review screen
-// ─────────────────────────────────────────────────────────────
+// ─── Review phase ─────────────────────────────────────────────────────────────
 
 class _QuizReview extends StatelessWidget {
   final List<QuizReviewQuestion> questions;
@@ -581,41 +887,77 @@ class _QuizReview extends StatelessWidget {
 
   const _QuizReview({required this.questions, required this.onBack});
 
+  static String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Back header
-        Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: onBack,
-                icon: const Icon(Icons.arrow_forward),
-                tooltip: 'العودة',
+        Container(
+          color: AppColors.surface,
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: 56,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: AppSpacing.s2,
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: onBack,
+                      icon: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 18,
+                        color: AppColors.ink,
+                      ),
+                      tooltip: 'رجوع',
+                    ),
+                    const SizedBox(width: AppSpacing.s2),
+                    Text(
+                      'مراجعة الإجابات',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Text('مراجعة الإجابات',
-                  style: theme.textTheme.titleMedium),
-            ],
+            ),
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1, color: AppColors.border),
+
+        // Question list
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.md),
+          child: ListView.separated(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.pageGutter,
+              AppSpacing.s4,
+              AppSpacing.pageGutter,
+              AppSpacing.s6,
+            ),
             itemCount: questions.length,
-            itemBuilder: (context, index) {
-              final q = questions[index];
-              return _ReviewQuestionCard(
-                index: index,
-                question: q,
-              );
-            },
+            separatorBuilder: (_, _) => const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.s3),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
+            itemBuilder: (context, index) => _ReviewQuestionCard(
+              index: index,
+              question: questions[index],
+              ar: _ar,
+            ),
           ),
         ),
       ],
@@ -626,70 +968,17 @@ class _QuizReview extends StatelessWidget {
 class _ReviewQuestionCard extends StatelessWidget {
   final int index;
   final QuizReviewQuestion question;
+  final String Function(int) ar;
 
-  const _ReviewQuestionCard({required this.index, required this.question});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Question number + text
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                child: Text(
-                  '${index + 1}',
-                  style: theme.textTheme.labelSmall,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  question.questionText,
-                  style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        if (question.userAnswer == null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Text(
-              'لم يتم الإجابة على هذا السؤال',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-
-        for (final choice in ['a', 'b', 'c', 'd'])
-          McqOptionCard(
-            label: _choiceLabel(choice),
-            text: question.choiceText(choice),
-            optionState: _stateFor(choice),
-            onTap: null,
-          ),
-
-        const SizedBox(height: AppSpacing.lg),
-      ],
-    );
-  }
+  const _ReviewQuestionCard({
+    required this.index,
+    required this.question,
+    required this.ar,
+  });
 
   McqOptionState _stateFor(String choice) {
     final isCorrect = choice == question.correctChoice;
     final isUserAnswer = choice == question.userAnswer;
-
     if (isCorrect) return McqOptionState.correct;
     if (isUserAnswer && !question.isCorrect) return McqOptionState.incorrect;
     return McqOptionState.idle;
@@ -702,41 +991,61 @@ class _ReviewQuestionCard extends StatelessWidget {
         'd' => 'د',
         _ => key,
       };
-}
-
-// ─────────────────────────────────────────────────────────────
-// Shared helpers
-// ─────────────────────────────────────────────────────────────
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(icon, size: 20, color: theme.colorScheme.primary),
-        const SizedBox(width: AppSpacing.sm),
-        Text(label, style: theme.textTheme.bodyMedium),
-        const Spacer(),
-        Text(
-          value,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: valueColor ?? theme.colorScheme.primary,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.paperSunk,
+                border: Border.all(
+                    color: AppColors.border, width: AppBorders.hairline),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                ar(index + 1),
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.inkMuted,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s3),
+            Expanded(
+              child: Text(
+                question.questionText,
+                style:
+                    AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         ),
+        if (question.userAnswer == null) ...[
+          const SizedBox(height: AppSpacing.s2),
+          Text(
+            'لم تتم الإجابة على هذا السؤال',
+            style:
+                AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.s3),
+        for (final choice in ['a', 'b', 'c', 'd'])
+          McqOptionCard(
+            label: _choiceLabel(choice),
+            text: question.choiceText(choice),
+            optionState: _stateFor(choice),
+            onTap: null,
+          ),
       ],
     );
   }

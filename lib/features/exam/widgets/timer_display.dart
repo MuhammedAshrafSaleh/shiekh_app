@@ -1,6 +1,11 @@
 // lib/features/exam/widgets/timer_display.dart
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/media_duration.dart';
 
 class TimerDisplay extends StatelessWidget {
@@ -13,32 +18,41 @@ class TimerDisplay extends StatelessWidget {
     final isUrgent = secondsRemaining <= 60;
     final formatted = formatMediaDuration(Duration(seconds: secondsRemaining));
 
+    final bg = isUrgent
+        ? AppColors.danger.withValues(alpha: 0.10)
+        : AppColors.paperSunk;
+    final borderColor = isUrgent
+        ? AppColors.danger.withValues(alpha: 0.40)
+        : AppColors.border;
+    final iconColor = isUrgent ? AppColors.danger : AppColors.primary;
+    final textColor = isUrgent ? AppColors.danger : AppColors.ink;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.s2,
+        vertical: AppSpacing.s1,
+      ),
       decoration: BoxDecoration(
-        color: isUrgent
-            ? Colors.red.withValues(alpha: 0.12)
-            : Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
+        color: bg,
+        borderRadius: AppRadii.rPill,
+        border: Border.all(color: borderColor, width: AppBorders.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.timer_outlined,
-            size: 18,
-            color: isUrgent ? Colors.red : Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 4),
+          Icon(Icons.timer_outlined, size: 16, color: iconColor),
+          const SizedBox(width: AppSpacing.s1),
           Text(
             formatted,
             textDirection: TextDirection.ltr,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: isUrgent ? Colors.red : null,
-                  fontWeight: FontWeight.bold,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+            style: AppTextStyles.caption.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+              height: 1,
+              letterSpacing: 0,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),

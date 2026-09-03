@@ -2,8 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
-import '../../../core/constants/app_spacing.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/sheikhy_labeled_divider.dart';
+import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/sheikhy_page_header.dart';
 import '../../../models/certificate_entity.dart';
 import '../bloc/exam_state.dart';
 import '../data/exam_repository.dart';
@@ -54,204 +63,176 @@ class _ExamResultPageState extends State<ExamResultPage> {
     );
   }
 
+  static String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   @override
   Widget build(BuildContext context) {
     final result = widget.examCompleted.result;
-    final settings = widget.examCompleted.settings;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final passed = result.passed;
 
-    final primaryColor = passed ? colorScheme.primary : colorScheme.error;
-    final bgColor =
-        passed ? colorScheme.primaryContainer : colorScheme.errorContainer;
-    final onBgColor =
-        passed ? colorScheme.onPrimaryContainer : colorScheme.onErrorContainer;
-
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('نتيجة الاختبار'),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                context.go('/books/${widget.examCompleted.bookId}'),
-            child: const Text('العودة للكتاب'),
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SheikhyPageHeader(
+            title: 'نتائج الاختبار',
+            showBack: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AppSpacing.pageGutter,
+                AppSpacing.s6,
+                AppSpacing.pageGutter,
+                AppSpacing.s6,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Score ring ─────────────────────────────────────────
+                  Center(child: _ScoreRing(score: result.score, passed: passed)),
+                  const SizedBox(height: AppSpacing.s5),
+
+                  // ── Pass / Fail heading ────────────────────────────────
+                  Text(
+                    passed ? 'تهانينا! لقد نجحت' : 'لم تنجح هذه المرة',
+                    style: GoogleFonts.arefRuqaa(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      height: 1.35,
+                      color: AppColors.ink,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.s2),
+                  Text(
+                    passed
+                        ? 'لقد أتممت الاختبار بنجاح وتفوّق.'
+                        : 'لم تبلغ النسبة المطلوبة. يمكنك المحاولة مرة أخرى.',
+                    style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.s4),
+
+                  // ── Score pill ─────────────────────────────────────────
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsetsDirectional.symmetric(
+                        horizontal: AppSpacing.s5,
+                        vertical: AppSpacing.s2,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: AppRadii.rPill,
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: AppBorders.hairline,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${_ar(result.correct)} من ${_ar(result.total)} إجابة صحيحة',
+                            style: AppTextStyles.small.copyWith(
+                              color: AppColors.ink,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.s2),
+                          Icon(
+                            passed
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.highlight_off_rounded,
+                            size: 18,
+                            color: passed ? AppColors.success : AppColors.danger,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── Certificate preview (pass only) ────────────────────
+                  if (passed) ...[
+                    const SizedBox(height: AppSpacing.s5),
+                    Text(
+                      'معاينة الشهادة',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.inkMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.s3),
+                    _CertPreviewCard(result: result),
+                  ],
+
+                  const SizedBox(height: AppSpacing.s5),
+
+                  // ── Action buttons ─────────────────────────────────────
+                  if (passed)
+                    SheikhyButton.primary(
+                      fullWidth: true,
+                      label: 'تحميل الشهادة',
+                      icon: const Icon(Icons.download_rounded),
+                      onPressed: () {
+                        final cert = CertificateEntity(
+                          id: '',
+                          userId: '',
+                          bookId: widget.examCompleted.bookId,
+                          finalExamAttemptId: result.attemptId,
+                          finalScore: result.score,
+                          gradeLabel: result.gradeLabel.isEmpty
+                              ? null
+                              : result.gradeLabel,
+                          issuedAt: DateTime.now(),
+                        );
+                        context.push(
+                          '/certificates/${widget.examCompleted.bookId}',
+                          extra: cert,
+                        );
+                      },
+                    ),
+                  if (passed) const SizedBox(height: AppSpacing.s3),
+                  SheikhyButton.secondary(
+                    fullWidth: true,
+                    label: 'العودة للكتاب',
+                    icon: const Icon(Icons.menu_book_outlined),
+                    onPressed: () =>
+                        context.go('/books/${widget.examCompleted.bookId}'),
+                  ),
+
+                  // ── Answer review ──────────────────────────────────────
+                  const SizedBox(height: AppSpacing.s6),
+                  const SheikhyLabeledDivider(label: 'مراجعة الإجابات'),
+                  const SizedBox(height: AppSpacing.s4),
+
+                  if (_reviewLoading)
+                    Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary),
+                    )
+                  else if (_reviewFailed)
+                    Center(
+                      child: SheikhyButton.text(
+                        label: 'فشل تحميل المراجعة — إعادة المحاولة',
+                        onPressed: _fetchReview,
+                      ),
+                    )
+                  else if (_reviewQuestions != null)
+                    ExamReviewList(questions: _reviewQuestions!),
+                ],
+              ),
+            ),
           ),
         ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Score ring
-              Center(
-                child: _ScoreRing(
-                  score: result.score,
-                  passingPercentage: settings.passingPercentage,
-                  passed: passed,
-                  primaryColor: primaryColor,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Pass / Fail badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  passed ? 'ناجح  ✓' : 'راسب',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: onBgColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              // Grade label
-              if (result.gradeLabel.isNotEmpty)
-                Center(
-                  child: Text(
-                    result.gradeLabel,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Stats
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _ResultStat(
-                    value: '${result.correct}',
-                    label: 'إجابة صحيحة',
-                    color: colorScheme.primary,
-                  ),
-                  _ResultStat(
-                    value: '${result.total - result.correct}',
-                    label: 'إجابة خاطئة',
-                    color: colorScheme.error,
-                  ),
-                  _ResultStat(
-                    value: '${result.total}',
-                    label: 'إجمالي الأسئلة',
-                    color: colorScheme.onSurface,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Certificate section (if passed)
-              if (passed) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD4A017).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: const Color(0xFFD4A017).withValues(alpha: 0.4)),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.emoji_events,
-                          color: Color(0xFFD4A017), size: 40),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'تهانيّ! لقد حصلت على شهادة إتمام',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF8B6914),
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      FilledButton.icon(
-                        onPressed: () {
-                          final cert = CertificateEntity(
-                            id: '',
-                            userId: '',
-                            bookId: widget.examCompleted.bookId,
-                            finalExamAttemptId: result.attemptId,
-                            finalScore: result.score,
-                            gradeLabel: result.gradeLabel.isEmpty
-                                ? null
-                                : result.gradeLabel,
-                            issuedAt: DateTime.now(),
-                          );
-                          context.push(
-                            '/certificates/${widget.examCompleted.bookId}',
-                            extra: cert,
-                          );
-                        },
-                        icon: const Icon(Icons.download),
-                        label: const Text('عرض وتحميل الشهادة'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFD4A017),
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-
-              // Back button
-              OutlinedButton.icon(
-                onPressed: () =>
-                    context.go('/books/${widget.examCompleted.bookId}'),
-                icon: const Icon(Icons.menu_book_outlined),
-                label: const Text('العودة إلى الكتاب'),
-              ),
-
-              const SizedBox(height: AppSpacing.xl),
-
-              // ── Answer Review Section ────────────────────────────────
-              Row(
-                children: [
-                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md),
-                    child: Text(
-                      'مراجعة الإجابات',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: colorScheme.onSurface
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: colorScheme.outlineVariant)),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              if (_reviewLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (_reviewFailed)
-                Center(
-                  child: TextButton.icon(
-                    onPressed: _fetchReview,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('فشل تحميل المراجعة — إعادة المحاولة'),
-                  ),
-                )
-              else if (_reviewQuestions != null)
-                ExamReviewList(questions: _reviewQuestions!),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -261,55 +242,134 @@ class _ExamResultPageState extends State<ExamResultPage> {
 
 class _ScoreRing extends StatelessWidget {
   final int score;
-  final int passingPercentage;
   final bool passed;
-  final Color primaryColor;
 
-  const _ScoreRing({
-    required this.score,
-    required this.passingPercentage,
-    required this.passed,
-    required this.primaryColor,
-  });
+  const _ScoreRing({required this.score, required this.passed});
+
+  static String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 160,
-      height: 160,
-      child: Stack(
-        alignment: Alignment.center,
+    final ringColor = passed ? AppColors.primary : AppColors.danger;
+
+    return Container(
+      width: 172,
+      height: 172,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: ringColor, width: 10),
+        color: AppColors.paper,
+      ),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 160,
-            height: 160,
-            child: CircularProgressIndicator(
-              value: score / 100,
-              strokeWidth: 12,
-              backgroundColor:
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
-              color: primaryColor,
-              strokeCap: StrokeCap.round,
+          Text(
+            '٪${_ar(score)}',
+            style: GoogleFonts.arefRuqaa(
+              fontSize: 40,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+              color: AppColors.ink,
             ),
           ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$score%',
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
-                    ),
+          const SizedBox(height: AppSpacing.s1),
+          Text(
+            'النتيجة النهائية',
+            style: AppTextStyles.caption.copyWith(color: AppColors.inkMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Certificate preview card ─────────────────────────────────────────────────
+
+class _CertPreviewCard extends StatelessWidget {
+  final ExamSubmitResult result;
+
+  const _CertPreviewCard({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('d MMMM yyyy', 'ar').format(DateTime.now());
+
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.s5,
+        AppSpacing.s5,
+        AppSpacing.s5,
+        AppSpacing.s4,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.rLg,
+        border: Border.all(color: AppColors.gold, width: AppBorders.hairline),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Shield icon
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.goldSoft,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.verified_user_outlined,
+              color: AppColors.gold,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s3),
+
+          // Subtitle
+          Text(
+            'لإتمامه بنجاح دراسة واختبار',
+            style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+            textAlign: TextAlign.center,
+          ),
+
+          // Grade label (if available)
+          if (result.gradeLabel.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.s2),
+            Text(
+              result.gradeLabel,
+              style: GoogleFonts.arefRuqaa(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+                color: AppColors.goldDeep,
               ),
-              Text(
-                'نسبة النجاح: $passingPercentage%',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.55),
-                    ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+
+          const SizedBox(height: AppSpacing.s4),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: AppSpacing.s3),
+
+          // Grade + Date row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _CertMeta(label: 'التقدير', value: result.gradeLabel),
+              _CertMeta(
+                label: 'التاريخ',
+                value: dateStr,
+                align: TextAlign.end,
               ),
             ],
           ),
@@ -319,40 +379,35 @@ class _ScoreRing extends StatelessWidget {
   }
 }
 
-// ─── Result stat ──────────────────────────────────────────────────────────────
-
-class _ResultStat extends StatelessWidget {
-  final String value;
+class _CertMeta extends StatelessWidget {
   final String label;
-  final Color color;
+  final String value;
+  final TextAlign align;
 
-  const _ResultStat({
-    required this.value,
+  const _CertMeta({
     required this.label,
-    required this.color,
+    required this.value,
+    this.align = TextAlign.start,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: align == TextAlign.end
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
-          value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+          label,
+          style: AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
         ),
         Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.6),
-              ),
-          textAlign: TextAlign.center,
+          value,
+          style: AppTextStyles.small.copyWith(
+            color: AppColors.ink,
+            fontWeight: FontWeight.w700,
+          ),
+          textAlign: align,
         ),
       ],
     );

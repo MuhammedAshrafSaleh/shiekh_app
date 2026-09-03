@@ -1,7 +1,9 @@
 // lib/features/exam/widgets/exam_review_list.dart
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_spacing.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/mcq_option_card.dart';
 import '../data/exam_repository.dart';
 
@@ -11,16 +13,15 @@ class ExamReviewList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       children: [
         for (var i = 0; i < questions.length; i++) ...[
           ExamReviewItem(index: i, question: questions[i]),
-          if (i < questions.length - 1)
-            Divider(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-              height: AppSpacing.lg,
-            ),
+          if (i < questions.length - 1) ...[
+            const SizedBox(height: AppSpacing.s3),
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: AppSpacing.s3),
+          ],
         ],
       ],
     );
@@ -32,6 +33,15 @@ class ExamReviewItem extends StatelessWidget {
   final ExamReviewQuestion question;
   const ExamReviewItem({super.key, required this.index, required this.question});
 
+  static String _ar(int n) {
+    const w = '0123456789';
+    const a = '٠١٢٣٤٥٦٧٨٩';
+    return n.toString().split('').map((c) {
+      final i = w.indexOf(c);
+      return i >= 0 ? a[i] : c;
+    }).join();
+  }
+
   McqOptionState _stateFor(String choiceKey) {
     if (choiceKey == question.correctChoice) return McqOptionState.correct;
     if (choiceKey == question.userAnswer && choiceKey != question.correctChoice) {
@@ -40,9 +50,16 @@ class ExamReviewItem extends StatelessWidget {
     return McqOptionState.idle;
   }
 
+  String _choiceLetter(String key) => switch (key) {
+        'a' => 'أ',
+        'b' => 'ب',
+        'c' => 'ج',
+        'd' => 'د',
+        _ => key,
+      };
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final choices = [
       ('أ', 'a', question.choiceA),
       ('ب', 'b', question.choiceB),
@@ -51,17 +68,16 @@ class ExamReviewItem extends StatelessWidget {
     ];
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          '${index + 1}. ${question.questionText}',
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(fontWeight: FontWeight.w600),
+          '${_ar(index + 1)}. ${question.questionText}',
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.s3),
         for (final (label, key, text) in choices)
           McqOptionCard(
-            label: label,
+            label: _choiceLetter(label),
             text: text,
             optionState: _stateFor(key),
           ),
