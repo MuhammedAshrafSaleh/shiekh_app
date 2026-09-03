@@ -53,6 +53,7 @@ class _VideoTabState extends State<VideoTab> {
   ChewieController? _chewieController;
   Timer? _positionTimer;
   bool _watchedThreshold = false;
+  LessonCubit? _lessonCubit;
 
   _Status _status = _Status.loading;
   bool _invalidUrl = false;
@@ -61,6 +62,14 @@ class _VideoTabState extends State<VideoTab> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!widget.previewMode) {
+      _lessonCubit = context.read<LessonCubit>();
+    }
   }
 
   Future<void> _load() async {
@@ -130,7 +139,7 @@ class _VideoTabState extends State<VideoTab> {
     if (total <= 0) return;
     if (value.position.inSeconds / total >= 0.9) {
       _watchedThreshold = true;
-      context.read<LessonCubit>().markVideoWatched();
+      _lessonCubit?.markVideoWatched();
     }
   }
 
@@ -138,7 +147,7 @@ class _VideoTabState extends State<VideoTab> {
     if (widget.previewMode || !mounted) return;
     final value = _videoController?.value;
     if (value == null || !value.isInitialized) return;
-    context.read<LessonCubit>().saveVideoPosition(value.position.inSeconds);
+    _lessonCubit?.saveVideoPosition(value.position.inSeconds);
   }
 
   Future<void> _openInYoutube() async {
