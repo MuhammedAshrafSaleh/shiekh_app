@@ -228,35 +228,24 @@ class _HeatmapSection extends StatelessWidget {
           decoration: AppDecorations.card,
           padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
           child: activityByDate.isNotEmpty
-              ? HeatMapCalendar(
-                  datasets: activityByDate,
-                  colorsets: {
-                    1: AppColors.primary.withValues(alpha: 0.25),
-                    2: AppColors.primary.withValues(alpha: 0.50),
-                    3: AppColors.primary.withValues(alpha: 0.75),
-                    4: AppColors.primary,
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    // 7 cells × 4 px margin each; derive cell size to fit exactly
+                    final cellSize = (constraints.maxWidth - 28) / 7;
+                    return HeatMapCalendar(
+                      datasets: activityByDate,
+                      size: cellSize,
+                      colorsets: {
+                        1: AppColors.primary.withValues(alpha: 0.25),
+                        2: AppColors.primary.withValues(alpha: 0.50),
+                        3: AppColors.primary.withValues(alpha: 0.75),
+                        4: AppColors.primary,
+                      },
+                      textColor: AppColors.inkMuted,
+                      defaultColor: AppColors.paperSunk,
+                      showColorTip: false,
+                    );
                   },
-                  colorTipHelper: [
-                    Text(
-                      'أقل',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.inkFaint,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                    null,
-                    null,
-                    Text(
-                      'أكثر',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.inkFaint,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ],
-                  textColor: AppColors.inkMuted,
-                  defaultColor: AppColors.paperSunk,
-                  showColorTip: true,
                 )
               : Padding(
                   padding: const EdgeInsetsDirectional.symmetric(
