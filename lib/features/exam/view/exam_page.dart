@@ -634,7 +634,7 @@ class _QuestionBar extends StatelessWidget {
                         color: AppColors.ink,
                       ),
                       tooltip: 'رجوع',
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () => _showLeaveExamDialog(context),
                     ),
                     Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -680,6 +680,32 @@ class _QuestionBar extends StatelessWidget {
 
 // ─── In-Progress View ─────────────────────────────────────────────────────────
 
+void _showLeaveExamDialog(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('مغادرة الاختبار؟'),
+      content: const Text(
+        'إذا غادرت الآن سيُحتسب هذا كمحاولة مستخدمة ولن تتمكن من استردادها.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('الاستمرار في الاختبار'),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.of(dialogContext).pop();
+            context.read<ExamBloc>().add(const ExamSubmitConfirmed());
+          },
+          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          child: const Text('مغادرة'),
+        ),
+      ],
+    ),
+  );
+}
+
 class _InProgressView extends StatelessWidget {
   final ExamInProgress state;
   final String bookTitle;
@@ -691,7 +717,12 @@ class _InProgressView extends StatelessWidget {
     final q = state.currentQuestion;
     final selectedChoice = state.answers[q.id];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _showLeaveExamDialog(context);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.paper,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -702,17 +733,7 @@ class _InProgressView extends StatelessWidget {
             totalQuestions: state.questions.length,
           ),
 
-          // Navigator grid
-          ExamNavigatorGrid(
-            questions: state.questions,
-            answers: state.answers,
-            currentIndex: state.currentIndex,
-            onNavigate: (i) =>
-                context.read<ExamBloc>().add(ExamNavigateTo(i)),
-          ),
-          const Divider(height: 1, color: AppColors.border),
-
-          // Question + choices
+          // Question + choices + navigator
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsetsDirectional.fromSTEB(
@@ -744,6 +765,14 @@ class _InProgressView extends StatelessWidget {
                                 ExamAnswerSelected(q.id, choice),
                               ),
                     ),
+                  const SizedBox(height: hs.AppSpacing.s2),
+                  ExamNavigatorGrid(
+                    questions: state.questions,
+                    answers: state.answers,
+                    currentIndex: state.currentIndex,
+                    onNavigate: (i) =>
+                        context.read<ExamBloc>().add(ExamNavigateTo(i)),
+                  ),
                 ],
               ),
             ),
@@ -802,31 +831,105 @@ class _InProgressView extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
   void _confirmSubmit(BuildContext context) {
     final unanswered = state.unansweredCount;
+    final answered = state.answeredCount;
+    final total = state.questions.length;
+    final hasUnanswered = unanswered > 0;
+
+    String ar(int n) {
+      const w = '0123456789';
+      const a = '٠١٢٣٤٥٦٧٨٩';
+      return n.toString().split('').map((c) {
+        final i = w.indexOf(c);
+        return i >= 0 ? a[i] : c;
+      }).join();
+    }
+
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تسليم الاختبار'),
-        content: Text(unanswered > 0
-            ? 'لديك $unanswered سؤال غير مُجاب. هل تريد التسليم على أي حال؟'
-            : 'هل أنت متأكد من تسليم الاختبار؟ لا يمكن التراجع.'),
-        actions: [
-          TextButton(
-            onPressed: () => ctx.pop(),
-            child: const Text('إلغاء'),
+      barrierColor: AppColors.ink.withValues(alpha: 0.5),
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.rXl),
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: hs.AppSpacing.pageGutter,
+          vertical: hs.AppSpacing.s8,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(hs.AppSpacing.s5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Icon
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: hasUnanswered
+                        ? AppColors.dangerBg
+                        : AppColors.primaryTint,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    hasUnanswered
+                        ? Icons.warning_amber_rounded
+                        : Icons.check_circle_outline_rounded,
+                    size: 28,
+                    color: hasUnanswered ? AppColors.danger : AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: hs.AppSpacing.s4),
+
+              // Title
+              Text(
+                'هل أنت متأكد من إنهاء الاختبار؟',
+                style: AppTextStyles.h3.copyWith(fontSize: 20),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: hs.AppSpacing.s3),
+
+              // Body
+              Text(
+                hasUnanswered
+                    ? 'لقد أجبت على ${ar(answered)} من ${ar(total)} سؤال، الأسئلة المتبقية ستُعتبر خاطئة.'
+                    : 'لقد أجبت على جميع الأسئلة. هل تريد تسليم الاختبار الآن؟',
+                style:
+                    AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: hs.AppSpacing.s5),
+
+              // Submit
+              SheikhyButton.primary(
+                fullWidth: true,
+                label: 'تسليم الاختبار',
+                icon: const Icon(Icons.check_circle_outline_rounded),
+                onPressed: () {
+                  ctx.pop();
+                  context.read<ExamBloc>().add(const ExamSubmitConfirmed());
+                },
+              ),
+              const SizedBox(height: hs.AppSpacing.s3),
+
+              // Review (dismiss)
+              SheikhyButton.secondary(
+                fullWidth: true,
+                label: 'مراجعة الأسئلة',
+                icon: const Icon(Icons.list_rounded),
+                onPressed: () => ctx.pop(),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () {
-              ctx.pop();
-              context.read<ExamBloc>().add(const ExamSubmitConfirmed());
-            },
-            child: const Text('تسليم'),
-          ),
-        ],
+        ),
       ),
     );
   }
