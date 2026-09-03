@@ -92,8 +92,9 @@ class _LoadingScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.paper,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SheikhyPageHeader(title: bookTitle, showBack: true, height: 72),
+          SheikhyPageHeader(title: bookTitle, showBack: true),
           Expanded(
             child: Center(
               child: CircularProgressIndicator(color: AppColors.primary),
@@ -117,6 +118,7 @@ class _ErrorScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.paper,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SheikhyPageHeader(title: 'الاختبار النهائي', showBack: true),
           Expanded(
@@ -157,11 +159,11 @@ class _IntroView extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.paper,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SheikhyPageHeader(
             title: 'الاختبار النهائي',
             showBack: true,
-            height: 72,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -692,6 +694,7 @@ class _InProgressView extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.paper,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Heritage question bar (replaces Material AppBar)
           _QuestionBar(
@@ -849,6 +852,7 @@ class ExamNotFoundView extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.paper,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: const [
           SheikhyPageHeader(title: 'الاختبار النهائي', showBack: true),
           Expanded(
