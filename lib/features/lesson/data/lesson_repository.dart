@@ -189,7 +189,7 @@ class LessonRepository {
           .from('lesson_quiz_questions_student')
           .select()
           .eq('lesson_id', lessonId)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(50);
 
       final questions = (response as List)
@@ -228,7 +228,7 @@ class LessonRepository {
             .select()
             .eq('user_id', userId)
             .eq('lesson_id', lessonId)
-            .order('attempt_number')
+            .order('attempt_number', ascending: true)
             .limit(2);
 
         pastAttempts = (attemptsResponse as List)
@@ -351,7 +351,7 @@ class LessonRepository {
           .eq('book_id', bookId)
           .eq('status', 'published')
           .gt('order_index', currentOrderIndex)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(1);
 
       final rows = response as List;

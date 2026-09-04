@@ -30,7 +30,7 @@ class OnboardingRepository {
           .from('onboarding_slides')
           .select()
           .eq('is_active', true)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(50);
 
       final slides = (raw as List)

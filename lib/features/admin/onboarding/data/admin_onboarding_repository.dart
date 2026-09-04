@@ -29,7 +29,7 @@ class AdminOnboardingRepository {
       final raw = await _client
           .from('onboarding_slides')
           .select()
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(50);
       final slides = (raw as List)
           .map((e) => OnboardingSlideEntity.fromJson(e as Map<String, dynamic>))

@@ -31,7 +31,7 @@ class AdminLessonRepository {
           .from('lessons')
           .select()
           .eq('book_id', bookId)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(200);
       return Right((data as List)
           .map((e) => LessonEntity.fromJson(e as Map<String, dynamic>))
@@ -214,7 +214,7 @@ class AdminLessonRepository {
           .from('lesson_quiz_questions')
           .select()
           .eq('lesson_id', lessonId)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(50);
       return Right((data as List)
           .map((e) =>

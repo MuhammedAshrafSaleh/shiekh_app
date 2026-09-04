@@ -29,10 +29,47 @@ class BookDetailsPage extends StatefulWidget {
 }
 
 class _BookDetailsPageState extends State<BookDetailsPage> {
+  GoRouter? _router;
+  late final VoidCallback _routeListener;
+  String _lastKnownRoute = '';
+
   @override
   void initState() {
     super.initState();
     context.read<BookDetailsCubit>().loadBook(widget.bookId);
+    _routeListener = _handleRouteChange;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final router = GoRouter.of(context);
+    if (router != _router) {
+      _router?.routerDelegate.removeListener(_routeListener);
+      _router = router;
+      router.routerDelegate.addListener(_routeListener);
+    }
+  }
+
+  void _handleRouteChange() {
+    if (!mounted) return;
+    final currentPath =
+        _router?.routerDelegate.currentConfiguration.uri.path ?? '';
+    final returningFromLesson = _lastKnownRoute.startsWith('/lessons/') &&
+        currentPath == '/books/${widget.bookId}';
+    _lastKnownRoute = currentPath;
+    if (returningFromLesson) {
+      final cubit = context.read<BookDetailsCubit>();
+      if (cubit.state is BookDetailsLoaded) {
+        cubit.refreshProgress(widget.bookId);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_routeListener);
+    super.dispose();
   }
 
   @override
@@ -272,12 +309,20 @@ class _BookDetailsView extends StatelessWidget {
             ),
             itemBuilder: (context, index) {
               final item = state.lessons[index];
+              final isSequentiallyLocked = state.isEnrolled &&
+                  index > 0 &&
+                  !state.lessons[index - 1].isCompleted;
               return LessonListItem(
                 item: item,
                 isEnrolled: state.isEnrolled,
+                isLocked: isSequentiallyLocked,
                 onTap: () {
                   if (!state.isEnrolled) {
                     _showEnrollDialog(context);
+                    return;
+                  }
+                  if (isSequentiallyLocked) {
+                    _showLockedLessonDialog(context);
                     return;
                   }
                   context
@@ -330,6 +375,61 @@ class _BookDetailsView extends StatelessWidget {
       context: context,
       bookTitle: state.book.title,
       onConfirm: () => context.read<BookDetailsCubit>().enroll(bookId),
+    );
+  }
+
+  void _showLockedLessonDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierColor: AppColors.ink.withValues(alpha: 0.5),
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.rXl),
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.pageGutter,
+          vertical: AppSpacing.s8,
+        ),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.all(AppSpacing.s5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.goldSoft,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.lock_outline,
+                  color: AppColors.gold,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s4),
+              Text(
+                'محاضرة مقفلة',
+                style: AppTextStyles.h3,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.s2),
+              Text(
+                'يجب إتمام المحاضرة السابقة وامتحاناتها أولاً قبل الانتقال إلى هذه المحاضرة',
+                style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.s5),
+              SheikhyButton.secondary(
+                fullWidth: true,
+                label: 'حسناً',
+                onPressed: () => dialogCtx.pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

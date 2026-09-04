@@ -9,6 +9,7 @@ import '../../../models/lesson_with_progress_entity.dart';
 class LessonListItem extends StatelessWidget {
   final LessonWithProgressEntity item;
   final bool isEnrolled;
+  final bool isLocked;
   final VoidCallback onTap;
 
   const LessonListItem({
@@ -16,11 +17,13 @@ class LessonListItem extends StatelessWidget {
     required this.item,
     required this.isEnrolled,
     required this.onTap,
+    this.isLocked = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isCompleted = item.isCompleted;
+    final isDimmed = !isEnrolled || isLocked;
 
     return InkWell(
       onTap: onTap,
@@ -35,6 +38,7 @@ class LessonListItem extends StatelessWidget {
             _LessonStatusIcon(
               isCompleted: isCompleted,
               isEnrolled: isEnrolled,
+              isLocked: isLocked,
               orderIndex: item.lesson.orderIndex,
             ),
             const SizedBox(width: AppSpacing.s4),
@@ -45,7 +49,7 @@ class LessonListItem extends StatelessWidget {
                   Text(
                     item.lesson.title,
                     style: AppTextStyles.small.copyWith(
-                      color: isEnrolled ? AppColors.ink : AppColors.inkFaint,
+                      color: isDimmed ? AppColors.inkFaint : AppColors.ink,
                       height: 1.5,
                     ),
                   ),
@@ -53,6 +57,15 @@ class LessonListItem extends StatelessWidget {
                     const SizedBox(height: AppSpacing.s1),
                     Text(
                       'يجب التسجيل في الكتاب أولاً',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.inkFaint,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ] else if (isLocked) ...[
+                    const SizedBox(height: AppSpacing.s1),
+                    Text(
+                      'أتمم المحاضرة السابقة أولاً',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.inkFaint,
                         letterSpacing: 0,
@@ -74,17 +87,19 @@ class LessonListItem extends StatelessWidget {
 class _LessonStatusIcon extends StatelessWidget {
   final bool isCompleted;
   final bool isEnrolled;
+  final bool isLocked;
   final int orderIndex;
 
   const _LessonStatusIcon({
     required this.isCompleted,
     required this.isEnrolled,
+    required this.isLocked,
     required this.orderIndex,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (!isEnrolled) {
+    if (!isEnrolled || isLocked) {
       return Container(
         width: 32,
         height: 32,

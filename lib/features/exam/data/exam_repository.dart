@@ -157,7 +157,7 @@ class ExamRepository {
           .select()
           .eq('user_id', userId)
           .eq('book_id', bookId)
-          .order('attempt_number')
+          .order('attempt_number', ascending: true)
           .limit(10);
 
       final attempts = (attemptsResp as List)
@@ -190,7 +190,7 @@ class ExamRepository {
           .from('final_exam_questions_student')
           .select()
           .eq('book_id', bookId)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(200);
 
       final questions = (response as List)

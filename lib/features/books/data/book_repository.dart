@@ -57,7 +57,7 @@ class BookRepository {
           .select()
           .eq('book_id', bookId)
           .eq('status', 'published')
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(100);
 
       final lessons = (lessonsRaw as List)

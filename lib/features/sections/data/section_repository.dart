@@ -72,7 +72,7 @@ class SectionRepository {
           .select()
           .eq('section_id', sectionId)
           .eq('status', 'published')
-          .order('title')
+          .order('title', ascending: true)
           .limit(50);
 
       final books = (booksRaw as List)

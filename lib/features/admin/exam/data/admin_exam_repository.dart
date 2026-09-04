@@ -89,7 +89,7 @@ class AdminExamRepository {
           .from('final_exam_questions')
           .select()
           .eq('book_id', bookId)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(200);
       return Right((data as List)
           .map((e) => AdminFinalExamQuestionEntity.fromJson(
@@ -235,7 +235,7 @@ class AdminExamRepository {
           .from('lesson_quiz_questions')
           .select('*, lessons!inner(book_id)')
           .eq('lessons.book_id', bookId)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(200);
       return Right((data as List)
           .map((e) =>

@@ -32,7 +32,7 @@ class HomeRepository {
           .from('home_banners')
           .select()
           .eq('is_active', true)
-          .order('order_index')
+          .order('order_index', ascending: true)
           .limit(10);
 
       final banners = (response as List)
@@ -59,7 +59,7 @@ class HomeRepository {
           .select()
           .eq('is_featured', true)
           .eq('status', 'published')
-          .order('featured_order', nullsFirst: false)
+          .order('featured_order', ascending: true, nullsFirst: false)
           .limit(20);
 
       final books = (booksRaw as List)

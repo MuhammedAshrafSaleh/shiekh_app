@@ -46,7 +46,26 @@ class _LessonPageState extends State<LessonPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LessonCubit, LessonState>(
+    return BlocConsumer<LessonCubit, LessonState>(
+      listenWhen: (prev, curr) {
+        // Only auto-advance on a genuine in-session completion transition
+        // (Loaded-incomplete → Loaded-complete). Opening an already-completed
+        // lesson goes Loading → Loaded-complete, which must NOT auto-navigate.
+        return prev is LessonLoaded &&
+            !prev.isCompleted &&
+            curr is LessonLoaded &&
+            curr.isCompleted;
+      },
+      listener: (context, state) {
+        if (state is! LessonLoaded) return;
+        if (state.nextLessonId == null) return;
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (!context.mounted) return;
+          context.pushReplacement(
+            '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
+          );
+        });
+      },
       builder: (context, state) {
         return switch (state) {
           LessonInitial() || LessonLoading() => _LessonSkeleton(
@@ -519,14 +538,15 @@ class _LessonActionBarState extends State<_LessonActionBar> {
         onPressed = null;
       }
     } else {
-      label = _activeCompletionLabel;
       if (state.hasQuizQuestions && !state.quizAttempted) {
+        label = 'ابدأ الاختبار';
         onPressed = () {
           final quizIndex =
               widget.tabs.indexWhere((t) => t.completionLabel == null);
           if (quizIndex >= 0) _tabController?.animateTo(quizIndex);
         };
       } else {
+        label = _activeCompletionLabel;
         onPressed = () => context.read<LessonCubit>().markVideoWatched();
       }
     }
