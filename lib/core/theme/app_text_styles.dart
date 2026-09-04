@@ -21,6 +21,16 @@ abstract final class AppTextStyles {
         color: AppColors.ink,
       );
 
+  // Smaller ceremonial display — Aref Ruqaa 36 / 1.3 / 700. Same calligraphic
+  // treatment as [display] for titles that need less scale (e.g. onboarding
+  // slide headings).
+  static TextStyle get displaySm => GoogleFonts.arefRuqaa(
+        fontSize: 36,
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+        color: AppColors.ink,
+      );
+
   // Headings — Reem Kufi.
   static TextStyle get h1 => GoogleFonts.reemKufi(
         fontSize: 40,

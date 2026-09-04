@@ -11,6 +11,7 @@ import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
 import '../features/admin/exam/data/admin_exam_repository.dart';
 import '../features/admin/lessons/data/admin_lesson_repository.dart';
 import '../features/admin/notifications/data/admin_notifications_repository.dart';
+import '../features/admin/onboarding/data/admin_onboarding_repository.dart';
 import '../features/admin/qa/data/admin_qa_repository.dart';
 import '../features/admin/sections/data/admin_section_repository.dart';
 import '../features/admin/stats/data/admin_stats_repository.dart';
@@ -25,6 +26,7 @@ import '../features/lesson/data/video_stream_repository.dart';
 import '../features/notifications/cubit/connectivity_cubit.dart';
 import '../features/notifications/cubit_notifs/notifications_cubit.dart';
 import '../features/notifications/data/notifications_repository.dart';
+import '../features/onboarding/data/onboarding_repository.dart';
 import '../features/profile/data/profile_repository.dart';
 import '../features/qa/data/qa_repository.dart';
 import '../features/sections/data/section_repository.dart';
@@ -39,12 +41,8 @@ class SheikhyProviders extends StatelessWidget {
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider<ThemeCubit>(
-          create: (_) => ThemeCubit()..load(),
-        ),
-        BlocProvider<ConnectivityCubit>(
-          create: (_) => ConnectivityCubit(),
-        ),
+        BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()..load()),
+        BlocProvider<ConnectivityCubit>(create: (_) => ConnectivityCubit()),
       ],
       child: Builder(
         builder: (ctx) {
@@ -59,6 +57,9 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<SectionRepository>(
                 create: (_) => SectionRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<OnboardingRepository>(
+                create: (_) => OnboardingRepository(supabase, connectivity),
               ),
               RepositoryProvider<BookRepository>(
                 create: (_) => BookRepository(supabase, connectivity),
@@ -79,43 +80,36 @@ class SheikhyProviders extends StatelessWidget {
                 create: (_) => CertificateRepository(supabase, connectivity),
               ),
               RepositoryProvider<AchievementsRepository>(
-                create: (_) =>
-                    AchievementsRepository(supabase, connectivity),
+                create: (_) => AchievementsRepository(supabase, connectivity),
               ),
               RepositoryProvider<ProfileRepository>(
                 create: (_) => ProfileRepository(supabase, connectivity),
               ),
               RepositoryProvider<NotificationsRepository>(
-                create: (_) =>
-                    NotificationsRepository(supabase, connectivity),
+                create: (_) => NotificationsRepository(supabase, connectivity),
               ),
               // --- Admin repositories (Phase 6) ---
               RepositoryProvider<AdminDashboardRepository>(
-                create: (_) =>
-                    AdminDashboardRepository(supabase, connectivity),
+                create: (_) => AdminDashboardRepository(supabase, connectivity),
               ),
               RepositoryProvider<AdminSectionRepository>(
-                create: (_) =>
-                    AdminSectionRepository(supabase, connectivity),
+                create: (_) => AdminSectionRepository(supabase, connectivity),
               ),
               RepositoryProvider<AdminBookRepository>(
                 create: (_) => AdminBookRepository(supabase, connectivity),
               ),
               RepositoryProvider<AdminBannerRepository>(
-                create: (_) =>
-                    AdminBannerRepository(supabase, connectivity),
+                create: (_) => AdminBannerRepository(supabase, connectivity),
               ),
               // --- Admin repositories (Phase 7) ---
               RepositoryProvider<AdminLessonRepository>(
-                create: (_) =>
-                    AdminLessonRepository(supabase, connectivity),
+                create: (_) => AdminLessonRepository(supabase, connectivity),
               ),
               RepositoryProvider<AdminExamRepository>(
                 create: (_) => AdminExamRepository(supabase, connectivity),
               ),
               RepositoryProvider<AdminStatsRepository>(
-                create: (_) =>
-                    AdminStatsRepository(supabase, connectivity),
+                create: (_) => AdminStatsRepository(supabase, connectivity),
               ),
               RepositoryProvider<AdminQaRepository>(
                 create: (_) => AdminQaRepository(supabase, connectivity),
@@ -123,6 +117,10 @@ class SheikhyProviders extends StatelessWidget {
               RepositoryProvider<AdminNotificationsRepository>(
                 create: (_) =>
                     AdminNotificationsRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminOnboardingRepository>(
+                create: (_) =>
+                    AdminOnboardingRepository(supabase, connectivity),
               ),
             ],
             child: MultiBlocProvider(

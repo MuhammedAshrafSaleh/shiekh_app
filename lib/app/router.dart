@@ -36,6 +36,9 @@ import '../features/lesson/data/lesson_repository.dart';
 import '../features/lesson/data/video_stream_repository.dart';
 import '../features/lesson/view/lesson_page.dart';
 import '../features/notifications/view/notifications_page.dart';
+import '../features/onboarding/cubit/onboarding_cubit.dart';
+import '../features/onboarding/data/onboarding_repository.dart';
+import '../features/onboarding/view/onboarding_page.dart';
 import '../features/profile/cubit/profile_cubit.dart';
 import '../features/profile/data/profile_repository.dart';
 import '../features/profile/view/change_password_page.dart';
@@ -76,6 +79,9 @@ import '../features/admin/notifications/cubit/admin_notifications_cubit.dart';
 import '../features/admin/notifications/data/admin_notifications_repository.dart';
 import '../features/admin/notifications/view/admin_notification_form_page.dart';
 import '../features/admin/notifications/view/admin_notifications_page.dart';
+import '../features/admin/onboarding/cubit/admin_onboarding_cubit.dart';
+import '../features/admin/onboarding/data/admin_onboarding_repository.dart';
+import '../features/admin/onboarding/view/admin_onboarding_page.dart';
 import '../features/admin/qa/cubit/admin_qa_cubit.dart';
 import '../features/admin/qa/data/admin_qa_repository.dart';
 import '../features/admin/qa/view/admin_qa_page.dart';
@@ -94,9 +100,9 @@ class _PlaceholderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: Center(child: Text(title)),
-      );
+    appBar: AppBar(title: Text(title)),
+    body: Center(child: Text(title)),
+  );
 }
 
 // --------------- Router factory ---------------
@@ -110,7 +116,9 @@ GoRouter buildRouter(AuthCubit authCubit) {
       final loc = state.matchedLocation;
 
       final isOnSplash = loc == '/splash';
-      final isOnAuth = loc.startsWith('/login') ||
+      final isOnOnboarding = loc.startsWith('/onboarding');
+      final isOnAuth =
+          loc.startsWith('/login') ||
           loc.startsWith('/signup') ||
           loc.startsWith('/forgot-password') ||
           loc.startsWith('/reset-sent') ||
@@ -127,15 +135,15 @@ GoRouter buildRouter(AuthCubit authCubit) {
       }
 
       if (authState is AuthError) {
-        return isOnAuth ? null : '/login';
+        return (isOnAuth || isOnOnboarding) ? null : '/onboarding';
       }
 
       if (authState is AuthUnauthenticated) {
-        return isOnAuth ? null : '/login';
+        return (isOnAuth || isOnOnboarding) ? null : '/onboarding';
       }
 
       if (authState is AuthAuthenticated) {
-        if (isOnAuth || isOnSplash) {
+        if (isOnAuth || isOnSplash || isOnOnboarding) {
           return authState.isAdmin ? '/admin' : '/home';
         }
         if (loc.startsWith('/admin') && !authState.isAdmin) {
@@ -146,18 +154,17 @@ GoRouter buildRouter(AuthCubit authCubit) {
       return null;
     },
     routes: [
+      GoRoute(path: '/splash', builder: (_, _) => const SplashPage()),
       GoRoute(
-        path: '/splash',
-        builder: (_, _) => const SplashPage(),
+        path: '/onboarding',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              OnboardingCubit(ctx.read<OnboardingRepository>())..loadSlides(),
+          child: const OnboardingPage(),
+        ),
       ),
-      GoRoute(
-        path: '/login',
-        builder: (_, _) => const LoginPage(),
-      ),
-      GoRoute(
-        path: '/signup',
-        builder: (_, _) => const SignupPage(),
-      ),
+      GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+      GoRoute(path: '/signup', builder: (_, _) => const SignupPage()),
       GoRoute(
         path: '/forgot-password',
         builder: (_, _) => const ForgotPasswordPage(),
@@ -169,10 +176,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
           return ResetSentPage(email: email);
         },
       ),
-      GoRoute(
-        path: '/reset-callback',
-        builder: (_, _) => const SplashPage(),
-      ),
+      GoRoute(path: '/reset-callback', builder: (_, _) => const SplashPage()),
 
       // --- Student Shell ---
       ShellRoute(
@@ -197,16 +201,15 @@ GoRouter buildRouter(AuthCubit authCubit) {
           GoRoute(
             path: '/achievements',
             builder: (context, _) => BlocProvider(
-              create: (ctx) => AchievementsCubit(
-                  ctx.read<AchievementsRepository>()),
+              create: (ctx) =>
+                  AchievementsCubit(ctx.read<AchievementsRepository>()),
               child: const AchievementsPage(),
             ),
           ),
           GoRoute(
             path: '/profile',
             builder: (context, _) => BlocProvider(
-              create: (ctx) =>
-                  ProfileCubit(ctx.read<ProfileRepository>()),
+              create: (ctx) => ProfileCubit(ctx.read<ProfileRepository>()),
               child: const ProfilePage(),
             ),
           ),
@@ -221,8 +224,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
           final sectionName = state.uri.queryParameters['name'];
           return BlocProvider(
             create: (ctx) =>
-                SectionBooksCubit(ctx.read<SectionRepository>())
-                  ..loadBooks(id),
+                SectionBooksCubit(ctx.read<SectionRepository>())..loadBooks(id),
             child: SectionBooksPage(sectionId: id, sectionName: sectionName),
           );
         },
@@ -257,23 +259,19 @@ GoRouter buildRouter(AuthCubit authCubit) {
               final bookId = routeState.pathParameters['id']!;
               // bookTitle passed via extra or falls back
               final extra = routeState.extra;
-              final bookTitle =
-                  extra is String ? extra : 'الاختبار الشامل';
+              final bookTitle = extra is String ? extra : 'الاختبار الشامل';
               return BlocProvider(
-                create: (ctx) => ExamBloc(ctx.read<ExamRepository>())
-                  ..add(ExamLoadRequested(bookId)),
-                child: ExamPage(
-                  bookId: bookId,
-                  bookTitle: bookTitle,
-                ),
+                create: (ctx) =>
+                    ExamBloc(ctx.read<ExamRepository>())
+                      ..add(ExamLoadRequested(bookId)),
+                child: ExamPage(bookId: bookId, bookTitle: bookTitle),
               );
             },
             routes: [
               GoRoute(
                 path: 'result',
                 builder: (context, routeState) {
-                  final examCompleted =
-                      routeState.extra as ExamCompleted;
+                  final examCompleted = routeState.extra as ExamCompleted;
                   return ExamResultPage(examCompleted: examCompleted);
                 },
               ),
@@ -296,16 +294,16 @@ GoRouter buildRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/profile/edit',
         builder: (context, _) => BlocProvider(
-          create: (ctx) => ProfileCubit(ctx.read<ProfileRepository>())
-            ..loadProfile(),
+          create: (ctx) =>
+              ProfileCubit(ctx.read<ProfileRepository>())..loadProfile(),
           child: const EditProfilePage(),
         ),
       ),
       GoRoute(
         path: '/profile/edit-password',
         builder: (context, _) => BlocProvider(
-          create: (ctx) => ProfileCubit(ctx.read<ProfileRepository>())
-            ..loadProfile(),
+          create: (ctx) =>
+              ProfileCubit(ctx.read<ProfileRepository>())..loadProfile(),
           child: const ChangePasswordPage(),
         ),
       ),
@@ -370,8 +368,8 @@ GoRouter buildRouter(AuthCubit authCubit) {
           GoRoute(
             path: '/admin/change-password',
             builder: (context, _) => BlocProvider(
-              create: (ctx) => ProfileCubit(ctx.read<ProfileRepository>())
-                ..loadProfile(),
+              create: (ctx) =>
+                  ProfileCubit(ctx.read<ProfileRepository>())..loadProfile(),
               child: const ChangePasswordPage(),
             ),
           ),
@@ -383,8 +381,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/admin/sections',
         builder: (context, _) => BlocProvider(
           create: (ctx) =>
-              AdminSectionsCubit(ctx.read<AdminSectionRepository>())
-                ..load(),
+              AdminSectionsCubit(ctx.read<AdminSectionRepository>())..load(),
           child: const AdminSectionsPage(),
         ),
         routes: [
@@ -401,8 +398,8 @@ GoRouter buildRouter(AuthCubit authCubit) {
             builder: (context, state) {
               final section = state.extra as SectionEntity;
               return BlocProvider(
-                create: (ctx) => AdminSectionsCubit(
-                    ctx.read<AdminSectionRepository>()),
+                create: (ctx) =>
+                    AdminSectionsCubit(ctx.read<AdminSectionRepository>()),
                 child: AdminSectionFormPage(existing: section),
               );
             },
@@ -415,8 +412,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/admin/books/new',
         builder: (context, _) => BlocProvider(
           create: (ctx) =>
-              AdminBookCubit(ctx.read<AdminBookRepository>())
-                ..loadForm(),
+              AdminBookCubit(ctx.read<AdminBookRepository>())..loadForm(),
           child: const AdminBookFormPage(),
         ),
       ),
@@ -466,8 +462,7 @@ GoRouter buildRouter(AuthCubit authCubit) {
               return BlocProvider(
                 create: (ctx) =>
                     AdminLessonFormCubit(ctx.read<AdminLessonRepository>()),
-                child: AdminLessonFormPage(
-                    bookId: bookId, lessonId: lessonId),
+                child: AdminLessonFormPage(bookId: bookId, lessonId: lessonId),
               );
             },
           ),
@@ -496,20 +491,28 @@ GoRouter buildRouter(AuthCubit authCubit) {
           final bookTitle = state.uri.queryParameters['title'] ?? 'الكتاب';
           return BlocProvider(
             create: (ctx) =>
-                AdminStatsCubit(ctx.read<AdminStatsRepository>())
-                  ..load(bookId),
-            child:
-                AdminBookDashboardPage(bookId: bookId, bookTitle: bookTitle),
+                AdminStatsCubit(ctx.read<AdminStatsRepository>())..load(bookId),
+            child: AdminBookDashboardPage(bookId: bookId, bookTitle: bookTitle),
           );
         },
+      ),
+
+      // --- Admin: Onboarding slides ---
+      GoRoute(
+        path: '/admin/onboarding',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminOnboardingCubit(ctx.read<AdminOnboardingRepository>())
+                ..load(),
+          child: const AdminOnboardingPage(),
+        ),
       ),
 
       // --- Admin: Q&A (Task 7.6) ---
       GoRoute(
         path: '/admin/qa',
         builder: (context, _) => BlocProvider(
-          create: (ctx) =>
-              AdminQaCubit(ctx.read<AdminQaRepository>())..load(),
+          create: (ctx) => AdminQaCubit(ctx.read<AdminQaRepository>())..load(),
           child: const AdminQaPage(),
         ),
       ),
@@ -528,7 +531,8 @@ GoRouter buildRouter(AuthCubit authCubit) {
             path: 'new',
             builder: (context, _) => BlocProvider(
               create: (ctx) => AdminNotificationsCubit(
-                  ctx.read<AdminNotificationsRepository>()),
+                ctx.read<AdminNotificationsRepository>(),
+              ),
               child: const AdminNotificationFormPage(),
             ),
           ),
@@ -561,15 +565,11 @@ GoRouter buildRouter(AuthCubit authCubit) {
             builder: (context, state) {
               final extra = state.extra as Map<String, dynamic>;
               final banner = extra['banner'] as BannerEntity;
-              final books =
-                  (extra['books'] as List).cast<BookEntity>();
+              final books = (extra['books'] as List).cast<BookEntity>();
               return BlocProvider(
                 create: (ctx) =>
                     AdminBannerCubit(ctx.read<AdminBannerRepository>()),
-                child: AdminBannerFormPage(
-                  existing: banner,
-                  books: books,
-                ),
+                child: AdminBannerFormPage(existing: banner, books: books),
               );
             },
           ),
@@ -651,9 +651,7 @@ class _SheikhyBottomNav extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -746,7 +744,8 @@ class _AdminShell extends StatelessWidget {
                 return const IconThemeData(color: Colors.black87);
               }
               return IconThemeData(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant);
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              );
             }),
           ),
         ),

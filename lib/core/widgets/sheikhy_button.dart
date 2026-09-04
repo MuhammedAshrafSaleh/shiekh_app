@@ -10,7 +10,7 @@ import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-enum SheikhyButtonVariant { primary, secondary, text }
+enum SheikhyButtonVariant { primary, secondary, gold, text }
 
 enum SheikhyButtonSize { md, sm }
 
@@ -46,6 +46,19 @@ class SheikhyButton extends StatelessWidget {
     this.fullWidth = false,
   }) : variant = SheikhyButtonVariant.secondary;
 
+  /// Solid gold button — for gold CTAs on the primary (green) field, e.g. the
+  /// onboarding "التالي"/"ابدأ" action where a primary-green button would
+  /// disappear into the background.
+  const SheikhyButton.gold({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.size = SheikhyButtonSize.md,
+    this.isLoading = false,
+    this.icon,
+    this.fullWidth = false,
+  }) : variant = SheikhyButtonVariant.gold;
+
   const SheikhyButton.text({
     super.key,
     required this.label,
@@ -72,6 +85,7 @@ class SheikhyButton extends StatelessWidget {
     if (variant == SheikhyButtonVariant.text) return _buildText();
 
     final isPrimary = variant == SheikhyButtonVariant.primary;
+    final isGold = variant == SheikhyButtonVariant.gold;
     final Color bg;
     final Color fg;
     final BorderSide side;
@@ -83,13 +97,17 @@ class SheikhyButton extends StatelessWidget {
       bg = AppColors.primary;
       fg = AppColors.inkInvert;
       side = BorderSide(color: AppColors.primaryDeep, width: 1);
+    } else if (isGold) {
+      bg = AppColors.gold;
+      fg = AppColors.ink;
+      side = const BorderSide(color: AppColors.goldDeep, width: 1);
     } else {
       bg = AppColors.paper;
       fg = AppColors.primary;
       side = const BorderSide(color: AppColors.gold, width: 1.5);
     }
 
-    final showInsetHighlight = isPrimary && !_disabled;
+    final showInsetHighlight = (isPrimary || isGold) && !_disabled;
 
     Widget content = Container(
       constraints: BoxConstraints(minHeight: _height),
@@ -132,10 +150,7 @@ class SheikhyButton extends StatelessWidget {
       color: bg,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.rMd, side: side),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: _disabled ? null : onPressed,
-        child: content,
-      ),
+      child: InkWell(onTap: _disabled ? null : onPressed, child: content),
     );
 
     return fullWidth
@@ -190,7 +205,10 @@ class SheikhyButton extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconTheme(data: IconThemeData(color: fg, size: 18), child: icon!),
+        IconTheme(
+          data: IconThemeData(color: fg, size: 18),
+          child: icon!,
+        ),
         const SizedBox(width: AppSpacing.s2),
         text,
       ],
@@ -198,10 +216,10 @@ class SheikhyButton extends StatelessWidget {
   }
 
   Widget _spinner(Color color) => SizedBox(
-        height: 20,
-        width: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, color: color),
-      );
+    height: 20,
+    width: 20,
+    child: CircularProgressIndicator(strokeWidth: 2, color: color),
+  );
 }
 
 /// 48×48 square icon button. [filled] uses primary bg + gold icon; otherwise a
