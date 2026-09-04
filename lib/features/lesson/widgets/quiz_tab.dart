@@ -187,6 +187,15 @@ class _QuizTabState extends State<QuizTab> {
     }
 
     if (_phase == _QuizPhase.intro) {
+      if (widget.previewMode) {
+        return _QuizIntro(
+          questionCount: _questions.length,
+          attemptsUsed: 0,
+          pastAttempts: const [],
+          onStart: _startQuiz,
+          onReview: (n) => _loadReview(n, _ReviewOrigin.intro),
+        );
+      }
       return BlocBuilder<LessonCubit, LessonState>(
         buildWhen: (prev, next) =>
             prev is LessonLoaded &&
