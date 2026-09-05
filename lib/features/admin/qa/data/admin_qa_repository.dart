@@ -50,7 +50,6 @@ class AdminQaRepository {
 
   Future<Either<Failure, StudentQuestionEntity>> answerQuestion({
     required String questionId,
-    required String userId,
     required String answerText,
   }) async {
     final net = _checkNetwork<StudentQuestionEntity>();

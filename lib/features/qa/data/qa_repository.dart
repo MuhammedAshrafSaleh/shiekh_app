@@ -23,7 +23,7 @@ class QaRepository {
 
   Future<Either<Failure, Unit>> askQuestion({
     required String bookId,
-    required String lessonId,
+    String? lessonId,
     required String questionText,
   }) async {
     final networkError = _checkNetwork<Unit>();
@@ -36,7 +36,7 @@ class QaRepository {
       await _client.from('student_questions').insert({
         'user_id': userId,
         'book_id': bookId,
-        'lesson_id': lessonId,
+        if (lessonId != null) 'lesson_id': lessonId,
         'question_text': questionText,
         'status': 'pending',
       });

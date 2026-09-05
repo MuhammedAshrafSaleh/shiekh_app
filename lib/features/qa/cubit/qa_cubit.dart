@@ -27,7 +27,7 @@ class AskQuestionCubit extends Cubit<AskQuestionState> {
 
   Future<void> submit({
     required String bookId,
-    required String lessonId,
+    String? lessonId,
     required String questionText,
   }) async {
     emit(AskQuestionSubmitting());

@@ -16,11 +16,11 @@ class AskQuestionSheet extends StatefulWidget {
   const AskQuestionSheet({
     super.key,
     required this.bookId,
-    required this.lessonId,
+    this.lessonId,
   });
 
   final String bookId;
-  final String lessonId;
+  final String? lessonId;
 
   @override
   State<AskQuestionSheet> createState() => _AskQuestionSheetState();

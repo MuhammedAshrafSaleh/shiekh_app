@@ -242,7 +242,6 @@ class _ReplyDialogState extends State<_ReplyDialog> {
     setState(() => _saving = true);
     final ok = await context.read<AdminQaCubit>().answerQuestion(
           questionId: widget.question.id,
-          userId: widget.question.lessonId,
           answerText: text,
         );
     if (mounted) {

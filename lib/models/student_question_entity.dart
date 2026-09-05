@@ -4,7 +4,7 @@ import 'package:equatable/equatable.dart';
 class StudentQuestionEntity extends Equatable {
   final String id;
   final String bookId;
-  final String lessonId;
+  final String? lessonId;
   final String questionText;
   final String? answerText;
   final String status;
@@ -14,7 +14,7 @@ class StudentQuestionEntity extends Equatable {
   const StudentQuestionEntity({
     required this.id,
     required this.bookId,
-    required this.lessonId,
+    this.lessonId,
     required this.questionText,
     this.answerText,
     required this.status,
@@ -28,7 +28,7 @@ class StudentQuestionEntity extends Equatable {
     return StudentQuestionEntity(
       id: json['id'] as String,
       bookId: json['book_id'] as String,
-      lessonId: json['lesson_id'] as String,
+      lessonId: json['lesson_id'] as String?,
       questionText: json['question_text'] as String,
       answerText: json['answer_text'] as String?,
       status: json['status'] as String,

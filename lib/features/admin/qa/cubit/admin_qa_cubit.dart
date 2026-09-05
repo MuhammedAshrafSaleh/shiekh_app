@@ -36,12 +36,10 @@ class AdminQaCubit extends Cubit<AdminQaState> {
 
   Future<bool> answerQuestion({
     required String questionId,
-    required String userId,
     required String answerText,
   }) async {
     final result = await _repo.answerQuestion(
       questionId: questionId,
-      userId: userId,
       answerText: answerText,
     );
     return result.fold(
