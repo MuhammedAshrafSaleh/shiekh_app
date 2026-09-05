@@ -529,7 +529,13 @@ class _HeritageSliverHeader extends StatelessWidget {
           color: AppColors.inkInvert,
         ),
         tooltip: 'رجوع',
-        onPressed: () => context.pop(),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/home');
+          }
+        },
       ),
       title: Text(
         state.book.title,
