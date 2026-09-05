@@ -11,6 +11,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/mcq_option_card.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
+import '../../../core/widgets/show_exam_start_dialog.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_labeled_divider.dart';
 import '../../../core/widgets/sheikhy_notice.dart';
@@ -30,7 +31,16 @@ class QuizTab extends StatefulWidget {
   /// LessonCubit — used by the admin "preview as student" screen.
   final bool previewMode;
 
-  const QuizTab({super.key, required this.lessonId, this.previewMode = false});
+  /// Called with true when the user enters the answering phase, false when they
+  /// leave it. Used by the parent to intercept back-navigation.
+  final void Function(bool answering)? onAnsweringChanged;
+
+  const QuizTab({
+    super.key,
+    required this.lessonId,
+    this.previewMode = false,
+    this.onAnsweringChanged,
+  });
 
   @override
   State<QuizTab> createState() => _QuizTabState();
@@ -54,6 +64,26 @@ class _QuizTabState extends State<QuizTab> {
     _preloadQuestions();
   }
 
+  /// Single entry-point for all phase transitions so `onAnsweringChanged` is
+  /// always fired consistently. [also] runs inside the same setState call.
+  void _gotoPhase(_QuizPhase newPhase, [VoidCallback? also]) {
+    setState(() {
+      _phase = newPhase;
+      also?.call();
+    });
+    widget.onAnsweringChanged?.call(newPhase == _QuizPhase.answering);
+  }
+
+  @override
+  void dispose() {
+    // Ensure the parent is notified that we are no longer in answering phase
+    // if the widget is removed (e.g., tab changed, page popped).
+    if (_phase == _QuizPhase.answering) {
+      widget.onAnsweringChanged?.call(false);
+    }
+    super.dispose();
+  }
+
   Future<void> _preloadQuestions() async {
     final repo = context.read<LessonRepository>();
     final result = await repo.getQuizQuestions(widget.lessonId);
@@ -63,33 +93,30 @@ class _QuizTabState extends State<QuizTab> {
 
   Future<void> _startQuiz() async {
     if (_questions.isEmpty) {
-      setState(() => _phase = _QuizPhase.loading);
+      _gotoPhase(_QuizPhase.loading);
       final repo = context.read<LessonRepository>();
       final result = await repo.getQuizQuestions(widget.lessonId);
       if (!mounted) return;
       result.fold(
-        (failure) => setState(() {
-          _phase = _QuizPhase.error;
+        (failure) => _gotoPhase(_QuizPhase.error, () {
           _errorMessage = failure.message;
         }),
-        (questions) => setState(() {
+        (questions) => _gotoPhase(_QuizPhase.answering, () {
           _questions = questions;
           _currentIndex = 0;
           _answers.clear();
-          _phase = _QuizPhase.answering;
         }),
       );
     } else {
-      setState(() {
+      _gotoPhase(_QuizPhase.answering, () {
         _currentIndex = 0;
         _answers.clear();
-        _phase = _QuizPhase.answering;
       });
     }
   }
 
   Future<void> _submit() async {
-    setState(() => _phase = _QuizPhase.loading);
+    _gotoPhase(_QuizPhase.loading);
     final repo = context.read<LessonRepository>();
 
     final result = widget.previewMode
@@ -99,18 +126,12 @@ class _QuizTabState extends State<QuizTab> {
     result.fold(
       (failure) {
         if (mounted) {
-          setState(() {
-            _phase = _QuizPhase.error;
-            _errorMessage = failure.message;
-          });
+          _gotoPhase(_QuizPhase.error, () => _errorMessage = failure.message);
         }
       },
       (grade) {
         if (mounted) {
-          setState(() {
-            _result = grade;
-            _phase = _QuizPhase.submitted;
-          });
+          _gotoPhase(_QuizPhase.submitted, () => _result = grade);
           if (!widget.previewMode) {
             final newAttempt = LessonQuizAttemptEntity(
               id: '',
@@ -131,7 +152,7 @@ class _QuizTabState extends State<QuizTab> {
   }
 
   Future<void> _loadReview(int? attemptNumber, _ReviewOrigin origin) async {
-    setState(() => _phase = _QuizPhase.loading);
+    _gotoPhase(_QuizPhase.loading);
     final repo = context.read<LessonRepository>();
     final result = await repo.getQuizReview(
       widget.lessonId,
@@ -139,14 +160,12 @@ class _QuizTabState extends State<QuizTab> {
     );
     if (!mounted) return;
     result.fold(
-      (failure) => setState(() {
-        _phase = _QuizPhase.error;
+      (failure) => _gotoPhase(_QuizPhase.error, () {
         _errorMessage = failure.message;
       }),
-      (questions) => setState(() {
+      (questions) => _gotoPhase(_QuizPhase.review, () {
         _reviewQuestions = questions;
         _reviewOrigin = origin;
-        _phase = _QuizPhase.review;
       }),
     );
   }
@@ -170,15 +189,15 @@ class _QuizTabState extends State<QuizTab> {
       return SheikhyErrorState(
         heading: 'تعذّر تحميل الاختبار',
         message: _errorMessage ?? 'حدث خطأ غير متوقع',
-        onRetry: () => setState(() => _phase = _QuizPhase.intro),
+        onRetry: () => _gotoPhase(_QuizPhase.intro),
       );
     }
 
     if (_phase == _QuizPhase.review) {
       return _QuizReview(
         questions: _reviewQuestions,
-        onBack: () => setState(
-          () => _phase = _reviewOrigin == _ReviewOrigin.result
+        onBack: () => _gotoPhase(
+          _reviewOrigin == _ReviewOrigin.result
               ? _QuizPhase.submitted
               : _QuizPhase.intro,
         ),
@@ -229,7 +248,7 @@ class _QuizTabState extends State<QuizTab> {
       return _QuizResult(
         result: _result!,
         ar: _ar,
-        onRetry: () => setState(() => _phase = _QuizPhase.intro),
+        onRetry: () => _gotoPhase(_QuizPhase.intro),
         onReview: () => _loadReview(null, _ReviewOrigin.result),
       );
     }
@@ -589,7 +608,10 @@ class _QuizIntro extends StatelessWidget {
               fullWidth: true,
               label: attemptsUsed > 0 ? 'إعادة الاختبار' : 'ابدأ الاختبار',
               icon: const Icon(Icons.play_arrow_rounded),
-              onPressed: onStart,
+              onPressed: () async {
+                final confirmed = await showExamStartDialog(context);
+                if (confirmed) onStart();
+              },
             ),
           ],
         ],

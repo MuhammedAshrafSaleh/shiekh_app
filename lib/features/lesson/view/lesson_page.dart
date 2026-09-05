@@ -18,6 +18,7 @@ import '../../qa/data/qa_repository.dart';
 import '../../qa/widgets/ask_question_sheet.dart';
 import '../cubit/lesson_cubit.dart';
 import '../cubit/lesson_state.dart';
+import '../../../core/widgets/show_exam_start_dialog.dart';
 import '../widgets/audio_tab.dart';
 import '../widgets/pdf_tab.dart';
 import '../widgets/quiz_tab.dart';
@@ -187,7 +188,7 @@ class _MinimalLessonHeader extends StatelessWidget {
 
 // ── Full loaded lesson view ───────────────────────────────────────────────────
 
-class _LessonView extends StatelessWidget {
+class _LessonView extends StatefulWidget {
   final LessonLoaded state;
   final String lessonId;
   final String bookId;
@@ -197,6 +198,28 @@ class _LessonView extends StatelessWidget {
     required this.lessonId,
     required this.bookId,
   });
+
+  @override
+  State<_LessonView> createState() => _LessonViewState();
+}
+
+class _LessonViewState extends State<_LessonView> {
+  bool _quizAnswering = false;
+
+  void _onAnsweringChanged(bool answering) {
+    if (_quizAnswering != answering) {
+      setState(() => _quizAnswering = answering);
+    }
+  }
+
+  Future<void> _handleBack() async {
+    if (_quizAnswering) {
+      final leave = await showLeaveQuizDialog(context);
+      if (leave && mounted) context.pop();
+    } else {
+      context.pop();
+    }
+  }
 
   void _openAskSheet(BuildContext context) {
     showModalBottomSheet<void>(
@@ -209,8 +232,8 @@ class _LessonView extends StatelessWidget {
       builder: (_) => BlocProvider(
         create: (ctx) => AskQuestionCubit(ctx.read<QaRepository>()),
         child: AskQuestionSheet(
-          bookId: bookId,
-          lessonId: lessonId,
+          bookId: widget.bookId,
+          lessonId: widget.lessonId,
         ),
       ),
     );
@@ -218,7 +241,7 @@ class _LessonView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lesson = state.lesson;
+    final lesson = widget.state.lesson;
     final lessonRepo = context.read<LessonRepository>();
 
     final tabs = <_TabDef>[
@@ -230,7 +253,7 @@ class _LessonView extends StatelessWidget {
           isVideoTab: true,
           content: VideoTab(
             videoUrl: lesson.videoUrl!,
-            initialPositionSeconds: state.lastPositionSeconds,
+            initialPositionSeconds: widget.state.lastPositionSeconds,
           ),
         ),
       if (lesson.hasAudio)
@@ -250,14 +273,17 @@ class _LessonView extends StatelessWidget {
           completionLabel: 'أكملت القراءة',
           content: PdfTab(pdfUrl: lesson.pdfUrl!),
         ),
-      if (state.hasQuizQuestions)
+      if (widget.state.hasQuizQuestions)
         _TabDef(
           label: 'اختبار',
           icon: Icons.quiz_outlined,
           completionLabel: null,
           content: RepositoryProvider.value(
             value: lessonRepo,
-            child: QuizTab(lessonId: lessonId),
+            child: QuizTab(
+              lessonId: widget.lessonId,
+              onAnsweringChanged: _onAnsweringChanged,
+            ),
           ),
         ),
     ];
@@ -268,9 +294,9 @@ class _LessonView extends StatelessWidget {
         body: Column(
           children: [
             _LessonHeader(
-              state: state,
+              state: widget.state,
               onAskTap: () => _openAskSheet(context),
-              onBack: () => context.pop(),
+              onBack: _handleBack,
             ),
             Expanded(
               child: SheikhyEmptyState(
@@ -284,29 +310,37 @@ class _LessonView extends StatelessWidget {
       );
     }
 
-    return DefaultTabController(
-      length: tabs.length,
-      child: Scaffold(
-        backgroundColor: AppColors.paper,
-        body: Column(
-          children: [
-            _LessonHeader(
-              state: state,
-              onAskTap: () => _openAskSheet(context),
-              onBack: () => context.pop(),
-            ),
-            _LessonTabBar(tabs: tabs),
-            Expanded(
-              child: TabBarView(
-                children: tabs.map((t) => t.content).toList(),
+    return PopScope(
+      canPop: !_quizAnswering,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await showLeaveQuizDialog(context);
+        if (leave && context.mounted) context.pop();
+      },
+      child: DefaultTabController(
+        length: tabs.length,
+        child: Scaffold(
+          backgroundColor: AppColors.paper,
+          body: Column(
+            children: [
+              _LessonHeader(
+                state: widget.state,
+                onAskTap: () => _openAskSheet(context),
+                onBack: _handleBack,
               ),
-            ),
-            _LessonActionBar(
-              tabs: tabs,
-              state: state,
-              bookId: bookId,
-            ),
-          ],
+              _LessonTabBar(tabs: tabs),
+              Expanded(
+                child: TabBarView(
+                  children: tabs.map((t) => t.content).toList(),
+                ),
+              ),
+              _LessonActionBar(
+                tabs: tabs,
+                state: widget.state,
+                bookId: widget.bookId,
+              ),
+            ],
+          ),
         ),
       ),
     );

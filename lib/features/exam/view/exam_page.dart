@@ -12,6 +12,7 @@ import '../../../core/theme/app_spacing.dart' as hs;
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/mcq_option_card.dart';
 import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/show_exam_start_dialog.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_notice.dart';
@@ -314,9 +315,15 @@ class _IntroView extends StatelessWidget {
                     isLoading: state.isStarting,
                     onPressed: state.isLocked || state.isStarting
                         ? null
-                        : () => context
-                            .read<ExamBloc>()
-                            .add(const ExamStartRequested()),
+                        : () async {
+                            final confirmed =
+                                await showExamStartDialog(context);
+                            if (confirmed && context.mounted) {
+                              context
+                                  .read<ExamBloc>()
+                                  .add(const ExamStartRequested());
+                            }
+                          },
                     label: state.attemptsUsed == 0
                         ? 'ابدأ الاختبار الآن'
                         : 'إعادة الاختبار',
