@@ -29,6 +29,12 @@ class QuestionCard extends StatelessWidget {
     return Container(
       decoration: AppDecorations.card,
       clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.s4,
+        AppSpacing.s2,
+        AppSpacing.s4,
+        AppSpacing.s2,
+      ),
       child: Padding(
         padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
         child: Column(

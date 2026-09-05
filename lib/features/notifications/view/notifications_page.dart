@@ -204,85 +204,91 @@ class _NotificationCard extends StatelessWidget {
             ? AppColors.primaryTint.withValues(alpha: 0.5)
             : AppColors.surface,
         borderRadius: AppRadii.rLg,
-        border: BorderDirectional(
-          top: BorderSide(color: AppColors.border, width: AppBorders.hairline),
-          bottom:
-              BorderSide(color: AppColors.border, width: AppBorders.hairline),
-          end: BorderSide(color: AppColors.border, width: AppBorders.hairline),
-          start: BorderSide(
-            color: isUnread ? typeColor : AppColors.border,
-            width: isUnread ? AppBorders.accent : AppBorders.hairline,
-          ),
-        ),
+        border: Border.all(color: AppColors.border, width: AppBorders.hairline),
         boxShadow: AppShadows.card,
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: AppRadii.rLg,
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _NotifIcon(type: notification.type),
-                const SizedBox(width: AppSpacing.s3),
-                Expanded(
-                  child: Column(
+      child: ClipRRect(
+        borderRadius: AppRadii.rLg,
+        child: Stack(
+          children: [
+            if (isUnread)
+              PositionedDirectional(
+                start: 0,
+                top: 0,
+                bottom: 0,
+                width: AppBorders.accent,
+                child: ColoredBox(color: typeColor),
+              ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: AppRadii.rLg,
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.all(AppSpacing.s4),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              notification.title,
-                              style: AppTextStyles.small.copyWith(
-                                color: AppColors.ink,
-                                fontWeight: isUnread
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                height: 1.4,
-                              ),
+                      _NotifIcon(type: notification.type),
+                      const SizedBox(width: AppSpacing.s3),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    notification.title,
+                                    style: AppTextStyles.small.copyWith(
+                                      color: AppColors.ink,
+                                      fontWeight: isUnread
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                                if (isUnread) ...[
+                                  const SizedBox(width: AppSpacing.s2),
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                          ),
-                          if (isUnread) ...[
-                            const SizedBox(width: AppSpacing.s2),
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
+                            const SizedBox(height: AppSpacing.s1),
+                            Text(
+                              notification.body,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.inkMuted,
+                                letterSpacing: 0,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: AppSpacing.s1),
+                            Text(
+                              _relativeTime(notification.sendAt),
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.inkFaint,
+                                letterSpacing: 0,
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.s1),
-                      Text(
-                        notification.body,
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.inkMuted,
-                          letterSpacing: 0,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AppSpacing.s1),
-                      Text(
-                        _relativeTime(notification.sendAt),
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.inkFaint,
-                          letterSpacing: 0,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

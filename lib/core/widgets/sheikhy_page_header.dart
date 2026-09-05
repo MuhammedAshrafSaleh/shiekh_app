@@ -46,15 +46,23 @@ class SheikhyPageHeader extends StatelessWidget {
             bottom: false,
             child: SizedBox(
               height: height,
-              child: Stack(
-                alignment: Alignment.center,
+              child: Row(
                 children: [
-                  Padding(
-                    padding: EdgeInsetsDirectional.symmetric(
-                      horizontal: (showBack || action != null)
-                          ? AppSpacing.s7 + AppSpacing.s4
-                          : AppSpacing.s7,
-                    ),
+                  // Back arrow at START (= right edge in RTL)
+                  if (showBack)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_forward_ios,
+                        color: AppColors.inkInvert,
+                        size: 20,
+                      ),
+                      tooltip: 'رجوع',
+                      onPressed: () => Navigator.of(context).pop(),
+                    )
+                  else
+                    const SizedBox(width: AppSpacing.s4),
+                  // Title — start-aligned (right in RTL), expanded
+                  Expanded(
                     child: Text(
                       title,
                       style: GoogleFonts.reemKufi(
@@ -63,29 +71,17 @@ class SheikhyPageHeader extends StatelessWidget {
                         height: 1.3,
                         color: AppColors.inkInvert,
                       ),
-                      textAlign: TextAlign.center,
+                      textAlign: TextAlign.start,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Back arrow at START (= right edge in RTL)
-                  if (showBack)
-                    PositionedDirectional(
-                      start: AppSpacing.s2,
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.arrow_forward_ios,
-                          color: AppColors.inkInvert,
-                          size: 20,
-                        ),
-                        tooltip: 'رجوع',
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ),
                   // Secondary action at END (= left edge in RTL)
                   if (action != null)
-                    PositionedDirectional(
-                      end: AppSpacing.s2,
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        end: AppSpacing.s2,
+                      ),
                       child: action!,
                     ),
                 ],
