@@ -57,11 +57,13 @@ class LessonCubit extends Cubit<LessonState> {
       quizAttemptsUsed: quizMeta.attemptsUsed,
       pastAttempts: quizMeta.pastAttempts,
       nextLessonId: nextLesson?.id,
+      videoWatched: progress != null && progress.lastPositionSeconds > 0,
     ));
   }
 
   // Called periodically from video tab (rule L)
   Future<void> saveVideoPosition(int positionSeconds) async {
+    if (positionSeconds <= 0) return; // don't overwrite a non-zero sentinel
     final current = state;
     if (current is! LessonLoaded) return;
 
@@ -72,7 +74,7 @@ class LessonCubit extends Cubit<LessonState> {
     );
   }
 
-  // Called when video reaches ~90% or user taps "الدرس التالي" (rule L)
+  // Called when video reaches ~90% or user taps "أنهيت المحاضرة" (rule L)
   Future<void> markVideoWatched() async {
     final current = state;
     if (current is! LessonLoaded || current.isCompleted) return;
@@ -82,6 +84,36 @@ class LessonCubit extends Cubit<LessonState> {
 
     if (shouldComplete) {
       await _completeLesson(current);
+    } else {
+      // Quiz exists but not yet attempted — persist that the video was watched
+      // so State 2 ("ابدأ الاختبار") survives a session restart.
+      final positionToSave =
+          current.lastPositionSeconds > 0 ? current.lastPositionSeconds : 1;
+      await _repo.saveProgress(
+        lessonId: current.lesson.id,
+        lastPositionSeconds: positionToSave,
+        completed: false,
+      );
+      // Also update in-memory progress so markQuizAttempted sees
+      // hasVideoProgress = true and calls _completeLesson after the quiz.
+      final existingProgress = current.progress;
+      final updatedProgress = existingProgress != null
+          ? LessonProgressEntity(
+              id: existingProgress.id,
+              userId: existingProgress.userId,
+              lessonId: existingProgress.lessonId,
+              completed: false,
+              lastPositionSeconds: positionToSave,
+              completedAt: existingProgress.completedAt,
+            )
+          : LessonProgressEntity(
+              id: '',
+              userId: '',
+              lessonId: current.lesson.id,
+              completed: false,
+              lastPositionSeconds: positionToSave,
+            );
+      emit(current.copyWith(videoWatched: true, progress: updatedProgress));
     }
   }
 

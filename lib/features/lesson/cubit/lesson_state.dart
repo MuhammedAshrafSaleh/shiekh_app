@@ -24,6 +24,7 @@ class LessonLoaded extends LessonState {
   final List<LessonQuizAttemptEntity> pastAttempts;
   final String? nextLessonId;
   final bool isSavingProgress;
+  final bool videoWatched;
 
   const LessonLoaded({
     required this.lesson,
@@ -34,6 +35,7 @@ class LessonLoaded extends LessonState {
     this.pastAttempts = const [],
     this.nextLessonId,
     this.isSavingProgress = false,
+    this.videoWatched = false,
   });
 
   LessonLoaded copyWith({
@@ -44,6 +46,7 @@ class LessonLoaded extends LessonState {
     List<LessonQuizAttemptEntity>? pastAttempts,
     String? nextLessonId,
     bool? isSavingProgress,
+    bool? videoWatched,
   }) {
     return LessonLoaded(
       lesson: lesson,
@@ -54,6 +57,7 @@ class LessonLoaded extends LessonState {
       pastAttempts: pastAttempts ?? this.pastAttempts,
       nextLessonId: nextLessonId ?? this.nextLessonId,
       isSavingProgress: isSavingProgress ?? this.isSavingProgress,
+      videoWatched: videoWatched ?? this.videoWatched,
     );
   }
 
@@ -72,6 +76,7 @@ class LessonLoaded extends LessonState {
         pastAttempts,
         nextLessonId,
         isSavingProgress,
+        videoWatched,
       ];
 }
 

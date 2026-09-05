@@ -227,6 +227,7 @@ class _LessonView extends StatelessWidget {
           label: 'فيديو',
           icon: Icons.play_circle_outline,
           completionLabel: 'أكملت الفيديو',
+          isVideoTab: true,
           content: VideoTab(
             videoUrl: lesson.videoUrl!,
             initialPositionSeconds: state.lastPositionSeconds,
@@ -504,19 +505,11 @@ class _LessonActionBarState extends State<_LessonActionBar> {
     super.dispose();
   }
 
-  String get _activeCompletionLabel {
-    final tab = _activeIndex < widget.tabs.length
-        ? widget.tabs[_activeIndex]
-        : null;
-    return tab?.completionLabel ?? 'حفظ الدرس';
-  }
+  _TabDef? get _activeTab =>
+      _activeIndex < widget.tabs.length ? widget.tabs[_activeIndex] : null;
 
-  bool get _isQuizTab {
-    final tab = _activeIndex < widget.tabs.length
-        ? widget.tabs[_activeIndex]
-        : null;
-    return tab?.completionLabel == null;
-  }
+  bool get _isQuizTab => _activeTab?.completionLabel == null;
+  bool get _isVideoTab => _activeTab?.isVideoTab == true;
 
   @override
   Widget build(BuildContext context) {
@@ -526,27 +519,57 @@ class _LessonActionBarState extends State<_LessonActionBar> {
 
     final String label;
     final VoidCallback? onPressed;
+    final Widget? icon;
 
-    if (state.isCompleted) {
-      if (state.nextLessonId != null) {
-        label = 'الدرس التالي';
-        onPressed = () => context.pushReplacement(
-              '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
-            );
-      } else {
-        label = 'مكتمل ✓';
-        onPressed = null;
-      }
-    } else {
-      if (state.hasQuizQuestions && !state.quizAttempted) {
+    if (_isVideoTab) {
+      // 3-state video button
+      if (state.quizAttempted || state.quizExhausted ||
+          (!state.hasQuizQuestions && state.videoWatched) ||
+          state.isCompleted) {
+        // State 3 — quiz done (or no quiz and video watched)
+        if (state.nextLessonId != null) {
+          label = 'الدرس التالي';
+          icon = null;
+          onPressed = () => context.pushReplacement(
+                '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
+              );
+        } else {
+          label = 'مكتمل ✓';
+          icon = const Icon(Icons.check);
+          onPressed = null;
+        }
+      } else if (state.videoWatched && state.hasQuizQuestions) {
+        // State 2 — video watched, quiz pending
         label = 'ابدأ الاختبار';
+        icon = null;
         onPressed = () {
           final quizIndex =
               widget.tabs.indexWhere((t) => t.completionLabel == null);
           if (quizIndex >= 0) _tabController?.animateTo(quizIndex);
         };
       } else {
-        label = _activeCompletionLabel;
+        // State 1 — video not yet marked watched
+        label = 'أنهيت المحاضرة';
+        icon = null;
+        onPressed = () => context.read<LessonCubit>().markVideoWatched();
+      }
+    } else {
+      // Non-video, non-quiz tabs — existing behavior
+      icon = state.isCompleted && state.nextLessonId == null
+          ? const Icon(Icons.check)
+          : null;
+      if (state.isCompleted) {
+        if (state.nextLessonId != null) {
+          label = 'الدرس التالي';
+          onPressed = () => context.pushReplacement(
+                '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
+              );
+        } else {
+          label = 'مكتمل ✓';
+          onPressed = null;
+        }
+      } else {
+        label = _activeTab?.completionLabel ?? 'حفظ الدرس';
         onPressed = () => context.read<LessonCubit>().markVideoWatched();
       }
     }
@@ -569,9 +592,7 @@ class _LessonActionBarState extends State<_LessonActionBar> {
           ),
           child: SheikhyButton.primary(
             label: label,
-            icon: state.isCompleted && state.nextLessonId == null
-                ? const Icon(Icons.check)
-                : null,
+            icon: icon,
             fullWidth: true,
             isLoading: state.isSavingProgress,
             onPressed: onPressed,
@@ -589,11 +610,13 @@ class _TabDef {
   final IconData icon;
   final String? completionLabel;
   final Widget content;
+  final bool isVideoTab;
 
   const _TabDef({
     required this.label,
     required this.icon,
     required this.completionLabel,
     required this.content,
+    this.isVideoTab = false,
   });
 }

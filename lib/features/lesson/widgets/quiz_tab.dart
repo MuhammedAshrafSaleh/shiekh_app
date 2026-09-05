@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_decorations.dart';
@@ -424,8 +423,6 @@ class _QuizBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = DateFormat('HH:mm').format(DateTime.now());
-
     return Container(
       color: AppColors.surface,
       child: SafeArea(
@@ -436,65 +433,25 @@ class _QuizBar extends StatelessWidget {
             padding: const EdgeInsetsDirectional.symmetric(
               horizontal: AppSpacing.s4,
             ),
-            child: Row(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Start (right in RTL): question counter
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'سؤال ${ar(currentIndex + 1)} من',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.inkMuted,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                    Text(
-                      ar(total),
-                      style: AppTextStyles.small.copyWith(
-                        color: AppColors.ink,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const Spacer(),
-
-                // End (left in RTL): current time chip
-                Container(
-                  padding: const EdgeInsetsDirectional.symmetric(
-                    horizontal: AppSpacing.s2,
-                    vertical: AppSpacing.s1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.paperSunk,
-                    borderRadius: AppRadii.rPill,
-                    border: Border.all(
-                        color: AppColors.border, width: AppBorders.hairline),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.timer_outlined,
-                          size: 16, color: AppColors.inkMuted),
-                      const SizedBox(width: AppSpacing.s1),
-                      Text(
-                        timeStr,
-                        textDirection: TextDirection.ltr,
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.inkMuted,
-                          fontWeight: FontWeight.w600,
-                          height: 1,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ],
+                Text(
+                  'سؤال ${ar(currentIndex + 1)} من',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.inkMuted,
+                    letterSpacing: 0,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.s1),
+                Text(
+                  ar(total),
+                  style: AppTextStyles.small.copyWith(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                  ),
+                ),
               ],
             ),
           ),
