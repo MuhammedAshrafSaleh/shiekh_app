@@ -58,6 +58,7 @@ class AdminLessonPreviewPage extends StatelessWidget {
           content: AudioTab(
             audioUrl: audioUrl!.trim(),
             lessonTitle: title,
+            previewMode: true,
           ),
         ),
       if (_hasPdf)

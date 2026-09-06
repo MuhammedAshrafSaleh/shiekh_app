@@ -1,8 +1,10 @@
 // lib/features/lesson/widgets/audio_tab.dart
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
@@ -16,6 +18,8 @@ import '../../../core/utils/drive_url.dart';
 import '../../../core/utils/media_duration.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_progress_bar.dart';
+import '../cubit/lesson_cubit.dart';
+import 'resume_snackbar.dart';
 
 // States managed locally — playback is display-only, not business state
 enum _AudioStatus { checking, idle, downloading, playing, paused, error }
@@ -23,11 +27,18 @@ enum _AudioStatus { checking, idle, downloading, playing, paused, error }
 class AudioTab extends StatefulWidget {
   final String audioUrl;
   final String lessonTitle;
+  final int initialPositionSeconds;
+
+  /// When true, the player runs without any progress tracking (no LessonCubit
+  /// calls) — used by the admin "preview as student" screen.
+  final bool previewMode;
 
   const AudioTab({
     super.key,
     required this.audioUrl,
     required this.lessonTitle,
+    this.initialPositionSeconds = 0,
+    this.previewMode = false,
   });
 
   @override
@@ -44,6 +55,18 @@ class _AudioTabState extends State<AudioTab> {
   String? _errorMessage;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+
+  LessonCubit? _lessonCubit;
+  Timer? _positionTimer;
+  bool _didShowResumeToast = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!widget.previewMode) {
+      _lessonCubit = context.read<LessonCubit>();
+    }
+  }
 
   @override
   void initState() {
@@ -99,7 +122,16 @@ class _AudioTabState extends State<AudioTab> {
   Future<void> _loadLocalFile() async {
     try {
       await _player.setFilePath(_localPath!);
+      // Resume from the saved position, once, when re-entering the lesson.
+      if (!widget.previewMode && widget.initialPositionSeconds > 0) {
+        await _player.seek(Duration(seconds: widget.initialPositionSeconds));
+        if (mounted && !_didShowResumeToast) {
+          _didShowResumeToast = true;
+          showResumeSnackBar(context, widget.initialPositionSeconds);
+        }
+      }
       if (mounted) setState(() => _status = _AudioStatus.paused);
+      _startPositionTimer();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -108,6 +140,20 @@ class _AudioTabState extends State<AudioTab> {
         });
       }
     }
+  }
+
+  void _startPositionTimer() {
+    if (widget.previewMode || _positionTimer != null) return;
+    _positionTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _savePosition(),
+    );
+  }
+
+  void _savePosition() {
+    if (widget.previewMode || !mounted) return;
+    // The cubit ignores a position of 0, so we never overwrite real progress.
+    _lessonCubit?.savePosition(_player.position.inSeconds);
   }
 
   Future<void> _download(String downloadUrl) async {
@@ -183,6 +229,8 @@ class _AudioTabState extends State<AudioTab> {
 
   @override
   void dispose() {
+    _positionTimer?.cancel();
+    _savePosition();
     _player.dispose();
     _cancelToken?.cancel();
     super.dispose();

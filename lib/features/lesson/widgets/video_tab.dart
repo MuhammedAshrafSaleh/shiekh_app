@@ -16,6 +16,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../cubit/lesson_cubit.dart';
 import '../data/video_stream_repository.dart';
+import 'resume_snackbar.dart';
 
 /// Plays a YouTube video inline by resolving its direct stream URL (via
 /// [VideoStreamRepository]) and playing it with a native [VideoPlayer]/[Chewie].
@@ -96,6 +97,9 @@ class _VideoTabState extends State<VideoTab> {
         await controller.seekTo(
           Duration(seconds: widget.initialPositionSeconds),
         );
+        if (mounted && !widget.previewMode) {
+          showResumeSnackBar(context, widget.initialPositionSeconds);
+        }
       }
     } on Exception catch (e, s) {
       _log.warning('Failed to init player for ${widget.videoUrl}', e, s);
@@ -147,7 +151,7 @@ class _VideoTabState extends State<VideoTab> {
     if (widget.previewMode || !mounted) return;
     final value = _videoController?.value;
     if (value == null || !value.isInitialized) return;
-    _lessonCubit?.saveVideoPosition(value.position.inSeconds);
+    _lessonCubit?.savePosition(value.position.inSeconds);
   }
 
   Future<void> _openInYoutube() async {

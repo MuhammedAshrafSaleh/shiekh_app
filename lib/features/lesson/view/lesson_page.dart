@@ -243,6 +243,9 @@ class _LessonViewState extends State<_LessonView> {
   Widget build(BuildContext context) {
     final lesson = widget.state.lesson;
     final lessonRepo = context.read<LessonRepository>();
+    // Always resume from the last saved position — a completed lesson can still
+    // be re-watched from where the student left off. Tabs only seek when > 0.
+    final resumeSeconds = widget.state.lastPositionSeconds;
 
     final tabs = <_TabDef>[
       if (lesson.hasVideo)
@@ -253,7 +256,7 @@ class _LessonViewState extends State<_LessonView> {
           isVideoTab: true,
           content: VideoTab(
             videoUrl: lesson.videoUrl!,
-            initialPositionSeconds: widget.state.lastPositionSeconds,
+            initialPositionSeconds: resumeSeconds,
           ),
         ),
       if (lesson.hasAudio)
@@ -264,6 +267,7 @@ class _LessonViewState extends State<_LessonView> {
           content: AudioTab(
             audioUrl: lesson.audioUrl!,
             lessonTitle: lesson.title,
+            initialPositionSeconds: resumeSeconds,
           ),
         ),
       if (lesson.hasPdf)

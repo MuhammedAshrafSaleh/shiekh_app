@@ -61,11 +61,16 @@ class LessonCubit extends Cubit<LessonState> {
     ));
   }
 
-  // Called periodically from video tab (rule L)
-  Future<void> saveVideoPosition(int positionSeconds) async {
+  // Called periodically from the video/audio tabs (rule L)
+  Future<void> savePosition(int positionSeconds) async {
     if (positionSeconds <= 0) return; // don't overwrite a non-zero sentinel
     final current = state;
     if (current is! LessonLoaded) return;
+
+    // Don't let an early tick right after re-entry clobber real progress: if we
+    // already have a meaningful saved position, never move it backwards.
+    final currentSaved = current.lastPositionSeconds;
+    if (positionSeconds < currentSaved && currentSaved > 30) return;
 
     await _repo.saveProgress(
       lessonId: current.lesson.id,
