@@ -47,6 +47,13 @@ class AuthCubit extends Cubit<AuthState> {
     if (_resolvingRole) return;
     _resolvingRole = true;
     try {
+      // Guests (anonymous sessions) are always student-role; skip the DB role
+      // lookup entirely. `isGuest` is derived from user.isAnonymous in the state.
+      if (user.isAnonymous) {
+        if (isClosed) return;
+        emit(AuthAuthenticated(user: user, role: UserRole.student));
+        return;
+      }
       final roleStr = await _repo.getUserRole();
       if (isClosed) return;
       final role = roleStr == 'admin' ? UserRole.admin : UserRole.student;
@@ -54,6 +61,38 @@ class AuthCubit extends Cubit<AuthState> {
     } finally {
       _resolvingRole = false;
     }
+  }
+
+  /// Starts a guest (anonymous) session. On success the auth stream fires and
+  /// `_resolveRole` emits an AuthAuthenticated with `isGuest == true`.
+  Future<void> continueAsGuest() async {
+    emit(AuthLoading());
+    final result = await _repo.signInAnonymously();
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => _log.info('continueAsGuest OK'),
+    );
+  }
+
+  /// Upgrades the current anonymous session into a real email account in place.
+  /// On success the auth stream re-resolves the role as a registered user.
+  /// On failure (most importantly, the email already exists) emits AuthError
+  /// so the UI can surface the message and offer to sign in instead.
+  Future<void> convertGuest({
+    required String email,
+    required String password,
+    required String fullName,
+  }) async {
+    emit(AuthLoading());
+    final result = await _repo.convertGuest(
+      email: email,
+      password: password,
+      fullName: fullName,
+    );
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => _log.info('convertGuest OK'),
+    );
   }
 
   Future<void> signIn({

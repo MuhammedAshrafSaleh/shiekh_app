@@ -14,10 +14,18 @@ class _MockSupabaseClient extends Mock implements SupabaseClient {}
 
 class _MockGoTrueClient extends Mock implements GoTrueClient {}
 
+class _MockUserResponse extends Mock implements UserResponse {}
+
+class _FakeUserAttributes extends Fake implements UserAttributes {}
+
 void main() {
   late _MockSupabaseClient client;
   late _MockGoTrueClient auth;
   late AuthRepository repo;
+
+  setUpAll(() {
+    registerFallbackValue(_FakeUserAttributes());
+  });
 
   setUp(() {
     client = _MockSupabaseClient();
@@ -222,6 +230,112 @@ void main() {
       final role = await repo.getUserRole();
 
       expect(role, isNull);
+    });
+  });
+
+  group('signInAnonymously', () {
+    test('returns Right(null) on success', () async {
+      when(() => auth.signInAnonymously())
+          .thenAnswer((_) async => AuthResponse());
+
+      final result = await repo.signInAnonymously();
+
+      expect(result, const Right<Failure, void>(null));
+    });
+
+    test('maps disabled anonymous provider to Arabic AuthFailure', () async {
+      when(() => auth.signInAnonymously())
+          .thenThrow(const AuthException('Anonymous sign-ins are disabled'));
+
+      final result = await repo.signInAnonymously();
+
+      expect(
+        result,
+        const Left<Failure, void>(AuthFailure('وضع الزائر غير مُفعّل حالياً')),
+      );
+    });
+
+    test('maps an unexpected (non-Auth) error to ServerFailure', () async {
+      when(() => auth.signInAnonymously()).thenThrow(Exception('boom'));
+
+      final result = await repo.signInAnonymously();
+
+      expect(
+        result,
+        const Left<Failure, void>(
+          ServerFailure('حدث خطأ غير متوقع، يرجى المحاولة مجدداً'),
+        ),
+      );
+    });
+  });
+
+  group('convertGuest', () {
+    test('returns Right(null) on success', () async {
+      when(() => auth.updateUser(any()))
+          .thenAnswer((_) async => _MockUserResponse());
+
+      final result = await repo.convertGuest(
+        email: 'a@b.com',
+        password: 'secret1',
+        fullName: 'اسم',
+      );
+
+      expect(result, const Right<Failure, void>(null));
+    });
+
+    test('maps already-in-use email to the Arabic collision message', () async {
+      when(() => auth.updateUser(any())).thenThrow(
+        const AuthException('email address is already in use by another user'),
+      );
+
+      final result = await repo.convertGuest(
+        email: 'taken@b.com',
+        password: 'secret1',
+        fullName: 'اسم',
+      );
+
+      expect(
+        result,
+        const Left<Failure, void>(
+          AuthFailure('هذا البريد الإلكتروني مسجّل مسبقاً'),
+        ),
+      );
+    });
+
+    test('maps EMAIL_TAKEN trigger error to the same collision message',
+        () async {
+      when(() => auth.updateUser(any()))
+          .thenThrow(const AuthException('EMAIL_TAKEN'));
+
+      final result = await repo.convertGuest(
+        email: 'taken@b.com',
+        password: 'secret1',
+        fullName: 'اسم',
+      );
+
+      expect(
+        result,
+        const Left<Failure, void>(
+          AuthFailure('هذا البريد الإلكتروني مسجّل مسبقاً'),
+        ),
+      );
+    });
+
+    test('maps an unexpected (non-Auth) error to ServerFailure', () async {
+      when(() => auth.updateUser(any())).thenThrow(Exception('boom'));
+
+      final result = await repo.convertGuest(
+        email: 'a@b.com',
+        password: 'secret1',
+        fullName: 'اسم',
+      );
+
+      expect(
+        result,
+        const Left<Failure, void>(
+          ServerFailure('حدث خطأ غير متوقع، يرجى المحاولة مجدداً'),
+        ),
+      );
     });
   });
 }

@@ -23,8 +23,12 @@ class AuthAuthenticated extends AuthState {
 
   bool get isAdmin => role == UserRole.admin;
 
+  /// A guest is an anonymous Supabase session. Derived from the auth state
+  /// itself (the JWT `is_anonymous` claim), not a separate auth system.
+  bool get isGuest => user.isAnonymous;
+
   @override
-  List<Object?> get props => [user.id, role];
+  List<Object?> get props => [user.id, role, isGuest];
 }
 
 class AuthUnauthenticated extends AuthState {}

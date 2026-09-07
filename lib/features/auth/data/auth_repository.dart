@@ -55,6 +55,55 @@ class AuthRepository {
     }
   }
 
+  /// Starts a guest session via Supabase anonymous auth. The guest gets a real
+  /// `auth.uid` (with `is_anonymous = true` in the JWT), so existing RLS keeps
+  /// working on one code path. Requires "Anonymous sign-ins" enabled in the
+  /// project's Auth settings — otherwise Supabase returns `anonymous_provider_disabled`.
+  Future<Either<Failure, void>> signInAnonymously() async {
+    try {
+      await _client.auth.signInAnonymously();
+      return const Right(null);
+    } on AuthException catch (e) {
+      _log.warning('signInAnonymously failed: ${e.message}');
+      return Left(AuthFailure(_mapAuthError(e.message)));
+    } catch (e) {
+      _log.severe('signInAnonymously unexpected: $e');
+      return Left(ServerFailure('حدث خطأ غير متوقع، يرجى المحاولة مجدداً'));
+    }
+  }
+
+  /// Upgrades the current anonymous session into a real email account IN PLACE
+  /// (same `auth.uid`). With email confirmation disabled the change takes effect
+  /// immediately and the JWT's `is_anonymous` flips to false; the
+  /// `on_auth_user_converted` DB trigger syncs the profile row's email/full_name.
+  ///
+  /// The main failure case is [email] already belonging to another account:
+  /// Supabase rejects the link at the auth layer and this returns an
+  /// [AuthFailure] carrying the localized "already registered" message so the UI
+  /// can steer the user to sign in instead (no second user is ever created).
+  Future<Either<Failure, void>> convertGuest({
+    required String email,
+    required String password,
+    required String fullName,
+  }) async {
+    try {
+      await _client.auth.updateUser(
+        UserAttributes(
+          email: email,
+          password: password,
+          data: {'full_name': fullName},
+        ),
+      );
+      return const Right(null);
+    } on AuthException catch (e) {
+      _log.warning('convertGuest failed: ${e.message}');
+      return Left(AuthFailure(_mapAuthError(e.message)));
+    } catch (e) {
+      _log.severe('convertGuest unexpected: $e');
+      return Left(ServerFailure('حدث خطأ غير متوقع، يرجى المحاولة مجدداً'));
+    }
+  }
+
   Future<Either<Failure, void>> signOut() async {
     try {
       await _client.auth.signOut();
@@ -105,8 +154,16 @@ class AuthRepository {
       return 'يرجى تأكيد بريدك الإلكتروني أولاً';
     }
     if (raw.contains('User already registered') ||
-        raw.contains('already been registered')) {
+        raw.contains('already been registered') ||
+        raw.contains('already in use') ||
+        raw.contains('email_exists') ||
+        raw.contains('identity_already_exists') ||
+        raw.contains('EMAIL_TAKEN')) {
       return 'هذا البريد الإلكتروني مسجّل مسبقاً';
+    }
+    if (raw.contains('Anonymous sign-ins are disabled') ||
+        raw.contains('anonymous_provider_disabled')) {
+      return 'وضع الزائر غير مُفعّل حالياً';
     }
     if (raw.contains('Password should be')) {
       return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
