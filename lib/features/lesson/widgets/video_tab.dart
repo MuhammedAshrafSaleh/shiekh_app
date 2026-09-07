@@ -186,14 +186,11 @@ class _VideoTabState extends State<VideoTab> {
               : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
           onOpenYoutube: _invalidUrl ? null : _openInYoutube,
         ),
-      _Status.ready => Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Chewie(controller: _chewieController!),
-            ),
-            const Expanded(child: SizedBox()),
-          ],
+      _Status.ready => Center(
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Chewie(controller: _chewieController!),
+          ),
         ),
     };
   }
