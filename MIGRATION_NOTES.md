@@ -114,3 +114,17 @@ white block inside the cream heritage fields. **Fixed at source:**
   (`lib/core/theme/sheikhy_theme.dart` → `SheikhyTheme.light`) is currently used
   **only** by the theme-preview entrypoint. Global wiring happens once screens are
   migrated; at that point `AppTheme` is removed.
+
+## Known gaps — Guest Mode (Stage 3 fix pending)
+
+- **Lesson quiz not enrollment-gated at the data layer.** The
+  `lesson_quiz_questions_student` view filters on `not is_guest()` but **not** on
+  enrollment, and `submit_lesson_quiz` (`0001_app_support.sql`) checks only
+  `is_guest()` + null uid — **no enrollment check**. So a *registered-but-not-
+  enrolled* user can currently fetch a lesson's quiz questions and submit an
+  attempt directly (bypassing the UI). Guests are unaffected (RLS returns 0 rows).
+  **Interim mitigation (shipped Stage 2):** the quiz tab is visible-but-gated in
+  the UI for unenrolled users (`_QuizGate` in `lesson_page.dart`).
+  **Stage 3 fix (pending):** add an enrollment check to `submit_lesson_quiz` and
+  to the `lesson_quiz_questions_student` view so the access model
+  ("quiz requires enrollment") is enforced server-side, not just in the UI.

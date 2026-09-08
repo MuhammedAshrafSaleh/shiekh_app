@@ -14,6 +14,11 @@ class AuthCubit extends Cubit<AuthState> {
   // ignore: cancel_subscriptions
   StreamSubscription<dynamic>? _authSub;
   bool _resolvingRole = false;
+  // True while an in-place guest conversion is being resolved. A failed
+  // updateUser can surface a transient sign-out on the auth stream even though
+  // the anonymous session is still valid; this guards against dropping the
+  // guest to onboarding during that window.
+  bool _convertingGuest = false;
 
   AuthCubit(this._repo) : super(AuthInitial());
 
@@ -34,8 +39,13 @@ class AuthCubit extends Cubit<AuthState> {
   void _listenToAuthChanges() {
     _authSub = _repo.authStateChanges.listen((authState) async {
       if (authState.session == null) {
+        // Ignore a transient sign-out surfaced by a failed guest conversion —
+        // the anonymous session is still valid, so the guest must not be dropped
+        // to onboarding. convertGuest() handles the failure explicitly.
+        if (_convertingGuest) return;
         emit(AuthUnauthenticated());
       } else {
+        _convertingGuest = false;
         await _resolveRole(authState.session!.user);
       }
     });
@@ -65,7 +75,11 @@ class AuthCubit extends Cubit<AuthState> {
 
   /// Starts a guest (anonymous) session. On success the auth stream fires and
   /// `_resolveRole` emits an AuthAuthenticated with `isGuest == true`.
+  ///
+  /// Guarded against re-entry: if a sign-in is already in flight (AuthLoading),
+  /// a second tap is ignored so we never open two anonymous sessions.
   Future<void> continueAsGuest() async {
+    if (state is AuthLoading) return;
     emit(AuthLoading());
     final result = await _repo.signInAnonymously();
     result.fold(
@@ -84,14 +98,45 @@ class AuthCubit extends Cubit<AuthState> {
     required String fullName,
   }) async {
     emit(AuthLoading());
+    _convertingGuest = true;
     final result = await _repo.convertGuest(
       email: email,
       password: password,
       fullName: fullName,
     );
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => _log.info('convertGuest OK'),
+    await result.fold(
+      (failure) async {
+        // Surface the error, then re-assert the guest session. A failed
+        // conversion must NOT drop the anonymous auth.uid: the user stays a
+        // guest on the signup screen with the error visible, and a corrected
+        // retry still upgrades in place (never creates a second account).
+        emit(AuthError(failure.message));
+        final session = _repo.currentSession;
+        if (session != null) {
+          emit(AuthAuthenticated(user: session.user, role: UserRole.student));
+        }
+        // Release the sign-out guard after the current event burst so any late
+        // side-effect event from the failed updateUser is ignored first.
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (!isClosed) _convertingGuest = false;
+        });
+      },
+      (_) async {
+        _log.info('convertGuest OK');
+        _convertingGuest = false;
+        // updateUser keeps the OLD anonymous JWT, so the is_anonymous claim
+        // stays true until refreshed. Force a fresh JWT so the claim flips to
+        // false server-side (RLS reads auth.jwt()->>'is_anonymous') and the
+        // User object reflects the registered identity — otherwise the app and
+        // Supabase RLS both keep treating the user as a guest.
+        final refreshed = await _repo.refreshSession();
+        await refreshed.fold(
+          (failure) async => emit(AuthError(failure.message)),
+          (user) async {
+            if (user != null) await _resolveRole(user);
+          },
+        );
+      },
     );
   }
 

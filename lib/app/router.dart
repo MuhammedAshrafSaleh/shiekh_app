@@ -143,6 +143,17 @@ GoRouter buildRouter(AuthCubit authCubit) {
       }
 
       if (authState is AuthAuthenticated) {
+        // Guest-mode conversion: a guest is authenticated, so the default rule
+        // below would bounce them off /signup and /login. Let them stay on the
+        // conversion screens — either because they're still a guest, or because
+        // the screen carries a `returnTo` (the page owns post-auth navigation:
+        // enroll + return-to-lesson, which must not be pre-empted to /home).
+        final onConversionScreen =
+            loc.startsWith('/signup') || loc.startsWith('/login');
+        final hasReturnTo = state.uri.queryParameters['returnTo'] != null;
+        if (onConversionScreen && (authState.isGuest || hasReturnTo)) {
+          return null;
+        }
         if (isOnAuth || isOnSplash || isOnOnboarding) {
           return authState.isAdmin ? '/admin' : '/home';
         }
@@ -163,8 +174,20 @@ GoRouter buildRouter(AuthCubit authCubit) {
           child: const OnboardingPage(),
         ),
       ),
-      GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
-      GoRoute(path: '/signup', builder: (_, _) => const SignupPage()),
+      GoRoute(
+        path: '/login',
+        builder: (_, state) => LoginPage(
+          returnTo: state.uri.queryParameters['returnTo'],
+          autoEnrollBookId: state.uri.queryParameters['autoEnrollBookId'],
+        ),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (_, state) => SignupPage(
+          returnTo: state.uri.queryParameters['returnTo'],
+          autoEnrollBookId: state.uri.queryParameters['autoEnrollBookId'],
+        ),
+      ),
       GoRoute(
         path: '/forgot-password',
         builder: (_, _) => const ForgotPasswordPage(),

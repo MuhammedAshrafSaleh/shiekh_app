@@ -10,6 +10,10 @@ class LessonListItem extends StatelessWidget {
   final LessonWithProgressEntity item;
   final bool isEnrolled;
   final bool isLocked;
+
+  /// Lesson 1 is open to everyone (guests / unenrolled included). When true the
+  /// item renders as accessible even without enrollment, with a free-preview hint.
+  final bool isOpenToAll;
   final VoidCallback onTap;
 
   const LessonListItem({
@@ -18,12 +22,15 @@ class LessonListItem extends StatelessWidget {
     required this.isEnrolled,
     required this.onTap,
     this.isLocked = false,
+    this.isOpenToAll = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isCompleted = item.isCompleted;
-    final isDimmed = !isEnrolled || isLocked;
+    final accessible = isEnrolled || isOpenToAll;
+    final isDimmed = !accessible || isLocked;
+    final isFreePreview = isOpenToAll && !isEnrolled;
 
     return InkWell(
       onTap: onTap,
@@ -37,7 +44,7 @@ class LessonListItem extends StatelessWidget {
           children: [
             _LessonStatusIcon(
               isCompleted: isCompleted,
-              isEnrolled: isEnrolled,
+              accessible: accessible,
               isLocked: isLocked,
               orderIndex: item.lesson.orderIndex,
             ),
@@ -53,7 +60,16 @@ class LessonListItem extends StatelessWidget {
                       height: 1.5,
                     ),
                   ),
-                  if (!isEnrolled) ...[
+                  if (isFreePreview) ...[
+                    const SizedBox(height: AppSpacing.s1),
+                    Text(
+                      'درس تجريبي — متاح للجميع',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ] else if (!accessible) ...[
                     const SizedBox(height: AppSpacing.s1),
                     Text(
                       'يجب التسجيل في الكتاب أولاً',
@@ -76,7 +92,7 @@ class LessonListItem extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.s3),
-            _MediaIcons(lesson: item.lesson),
+            _MediaIcons(item: item),
           ],
         ),
       ),
@@ -86,20 +102,20 @@ class LessonListItem extends StatelessWidget {
 
 class _LessonStatusIcon extends StatelessWidget {
   final bool isCompleted;
-  final bool isEnrolled;
+  final bool accessible;
   final bool isLocked;
   final int orderIndex;
 
   const _LessonStatusIcon({
     required this.isCompleted,
-    required this.isEnrolled,
+    required this.accessible,
     required this.isLocked,
     required this.orderIndex,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (!isEnrolled || isLocked) {
+    if (!accessible || isLocked) {
       return Container(
         width: 32,
         height: 32,
@@ -149,22 +165,22 @@ class _LessonStatusIcon extends StatelessWidget {
 }
 
 class _MediaIcons extends StatelessWidget {
-  final dynamic lesson;
+  final LessonWithProgressEntity item;
 
-  const _MediaIcons({required this.lesson});
+  const _MediaIcons({required this.item});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (lesson.hasVideo)
+        if (item.hasVideo)
           const Icon(
             Icons.play_circle_outline,
             size: 16,
             color: AppColors.inkFaint,
           ),
-        if (lesson.hasAudio)
+        if (item.hasAudio)
           const Padding(
             padding: EdgeInsetsDirectional.only(start: AppSpacing.s1),
             child: Icon(
@@ -173,7 +189,7 @@ class _MediaIcons extends StatelessWidget {
               color: AppColors.inkFaint,
             ),
           ),
-        if (lesson.hasPdf)
+        if (item.hasPdf)
           const Padding(
             padding: EdgeInsetsDirectional.only(start: AppSpacing.s1),
             child: Icon(

@@ -104,6 +104,24 @@ class AuthRepository {
     }
   }
 
+  /// Forces a token refresh so a freshly-converted guest gets a NEW JWT with
+  /// `is_anonymous: false`. `updateUser` (see [convertGuest]) swaps in the new
+  /// User object but keeps the old anonymous access token, so the `is_anonymous`
+  /// claim — which server-side RLS reads via `auth.jwt()` — stays `true` until
+  /// the session is refreshed. Returns the refreshed [User].
+  Future<Either<Failure, User?>> refreshSession() async {
+    try {
+      final response = await _client.auth.refreshSession();
+      return Right(response.session?.user);
+    } on AuthException catch (e) {
+      _log.warning('refreshSession failed: ${e.message}');
+      return Left(AuthFailure(_mapAuthError(e.message)));
+    } catch (e) {
+      _log.severe('refreshSession unexpected: $e');
+      return Left(ServerFailure('حدث خطأ غير متوقع، يرجى المحاولة مجدداً'));
+    }
+  }
+
   Future<Either<Failure, void>> signOut() async {
     try {
       await _client.auth.signOut();

@@ -27,11 +27,19 @@ class QuizGradeResult {
 }
 
 class LessonQuizMeta {
+  /// Entitlement-INDEPENDENT presence flag (from lessons_public.has_quiz): true
+  /// iff the lesson actually has a quiz, regardless of whether this viewer may
+  /// see its content. Drives quiz-tab VISIBILITY.
+  final bool hasQuiz;
+
+  /// Entitled question count (from the student view). 0 for guests — used for
+  /// the enrolled quiz flow, NOT for tab visibility.
   final int questionCount;
   final int attemptsUsed;
   final List<LessonQuizAttemptEntity> pastAttempts;
 
   const LessonQuizMeta({
+    required this.hasQuiz,
     required this.questionCount,
     required this.attemptsUsed,
     required this.pastAttempts,
@@ -76,12 +84,12 @@ class QuizReviewQuestion {
   }
 
   String choiceText(String key) => switch (key) {
-        'a' => choiceA,
-        'b' => choiceB,
-        'c' => choiceC,
-        'd' => choiceD,
-        _ => '',
-      };
+    'a' => choiceA,
+    'b' => choiceB,
+    'c' => choiceC,
+    'd' => choiceD,
+    _ => '',
+  };
 }
 
 class LessonRepository {
@@ -115,8 +123,36 @@ class LessonRepository {
     }
   }
 
+  /// Whether the current session is enrolled in [bookId]. Guests and unenrolled
+  /// users resolve to false (enrollments RLS returns them 0 rows). Used to decide
+  /// whether the quiz tab shows real content or a gate.
+  Future<Either<Failure, bool>> isEnrolledInBook(String bookId) async {
+    final networkError = _checkNetwork<bool>();
+    if (networkError != null) return networkError;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return const Right(false);
+
+      final response = await _client
+          .from('enrollments')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('book_id', bookId)
+          .limit(1);
+
+      return Right((response as List).isNotEmpty);
+    } on PostgrestException catch (e) {
+      _log.warning('isEnrolledInBook: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
   Future<Either<Failure, LessonProgressEntity?>> getLessonProgress(
-      String lessonId) async {
+    String lessonId,
+  ) async {
     final networkError = _checkNetwork<LessonProgressEntity?>();
     if (networkError != null) return networkError;
 
@@ -134,7 +170,8 @@ class LessonRepository {
       final rows = response as List;
       if (rows.isEmpty) return const Right(null);
       return Right(
-          LessonProgressEntity.fromJson(rows.first as Map<String, dynamic>));
+        LessonProgressEntity.fromJson(rows.first as Map<String, dynamic>),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getLessonProgress: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -157,17 +194,14 @@ class LessonRepository {
       if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
 
       final now = DateTime.now().toIso8601String();
-      await _client.from('lesson_progress').upsert(
-        {
-          'user_id': userId,
-          'lesson_id': lessonId,
-          'completed': completed,
-          'last_position_seconds': lastPositionSeconds,
-          if (completed) 'completed_at': now,
-          'updated_at': now,
-        },
-        onConflict: 'user_id,lesson_id',
-      );
+      await _client.from('lesson_progress').upsert({
+        'user_id': userId,
+        'lesson_id': lessonId,
+        'completed': completed,
+        'last_position_seconds': lastPositionSeconds,
+        if (completed) 'completed_at': now,
+        'updated_at': now,
+      }, onConflict: 'user_id,lesson_id');
 
       return const Right(unit);
     } on PostgrestException catch (e) {
@@ -180,7 +214,8 @@ class LessonRepository {
 
   // CC-18: uses lesson_quiz_questions_student view (no correct_choice)
   Future<Either<Failure, List<QuizQuestionEntity>>> getQuizQuestions(
-      String lessonId) async {
+    String lessonId,
+  ) async {
     final networkError = _checkNetwork<List<QuizQuestionEntity>>();
     if (networkError != null) return networkError;
 
@@ -193,8 +228,7 @@ class LessonRepository {
           .limit(50);
 
       final questions = (response as List)
-          .map((e) =>
-              QuizQuestionEntity.fromJson(e as Map<String, dynamic>))
+          .map((e) => QuizQuestionEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(questions);
@@ -213,6 +247,15 @@ class LessonRepository {
     try {
       final userId = _client.auth.currentUser?.id;
 
+      // Entitlement-independent presence flag (lessons_public runs as owner).
+      final metaRow = await _client
+          .from('lessons_public')
+          .select('has_quiz')
+          .eq('id', lessonId)
+          .maybeSingle();
+      final hasQuiz = (metaRow?['has_quiz'] as bool?) ?? false;
+
+      // Entitled question count (0 for guests via the student view's is_guest guard).
       final questionsResponse = await _client
           .from('lesson_quiz_questions_student')
           .select('id')
@@ -232,16 +275,21 @@ class LessonRepository {
             .limit(2);
 
         pastAttempts = (attemptsResponse as List)
-            .map((e) => LessonQuizAttemptEntity.fromJson(
-                e as Map<String, dynamic>))
+            .map(
+              (e) =>
+                  LessonQuizAttemptEntity.fromJson(e as Map<String, dynamic>),
+            )
             .toList();
       }
 
-      return Right(LessonQuizMeta(
-        questionCount: questionCount,
-        attemptsUsed: pastAttempts.length,
-        pastAttempts: pastAttempts,
-      ));
+      return Right(
+        LessonQuizMeta(
+          hasQuiz: hasQuiz,
+          questionCount: questionCount,
+          attemptsUsed: pastAttempts.length,
+          pastAttempts: pastAttempts,
+        ),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getQuizMeta: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -258,18 +306,20 @@ class LessonRepository {
     if (networkError != null) return networkError;
 
     try {
-      final response = await _client.rpc('submit_lesson_quiz', params: {
-        'p_lesson_id': lessonId,
-        'p_answers': answers,
-      });
+      final response = await _client.rpc(
+        'submit_lesson_quiz',
+        params: {'p_lesson_id': lessonId, 'p_answers': answers},
+      );
 
       final data = response as Map<String, dynamic>;
-      return Right(QuizGradeResult(
-        correct: data['correct'] as int,
-        total: data['total'] as int,
-        percentage: data['percentage'] as int,
-        attemptsUsed: data['attempts_used'] as int,
-      ));
+      return Right(
+        QuizGradeResult(
+          correct: data['correct'] as int,
+          total: data['total'] as int,
+          percentage: data['percentage'] as int,
+          attemptsUsed: data['attempts_used'] as int,
+        ),
+      );
     } on PostgrestException catch (e) {
       _log.warning('submitQuiz: ${e.message}');
       if (e.message.contains('attempts_exhausted')) {
@@ -291,8 +341,10 @@ class LessonRepository {
     try {
       final params = <String, dynamic>{'p_lesson_id': lessonId};
       if (attemptNumber != null) params['p_attempt_number'] = attemptNumber;
-      final response =
-          await _client.rpc('get_lesson_quiz_review', params: params);
+      final response = await _client.rpc(
+        'get_lesson_quiz_review',
+        params: params,
+      );
 
       final data = response as Map<String, dynamic>;
       final questions = (data['questions'] as List)
@@ -319,18 +371,20 @@ class LessonRepository {
     if (networkError != null) return networkError;
 
     try {
-      final response = await _client.rpc('grade_lesson_quiz', params: {
-        'p_lesson_id': lessonId,
-        'p_answers': answers,
-      });
+      final response = await _client.rpc(
+        'grade_lesson_quiz',
+        params: {'p_lesson_id': lessonId, 'p_answers': answers},
+      );
 
       final data = response as Map<String, dynamic>;
-      return Right(QuizGradeResult(
-        correct: data['correct'] as int,
-        total: data['total'] as int,
-        percentage: data['percentage'] as int,
-        attemptsUsed: 0,
-      ));
+      return Right(
+        QuizGradeResult(
+          correct: data['correct'] as int,
+          total: data['total'] as int,
+          percentage: data['percentage'] as int,
+          attemptsUsed: 0,
+        ),
+      );
     } on PostgrestException catch (e) {
       _log.warning('gradeQuiz: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -340,7 +394,9 @@ class LessonRepository {
   }
 
   Future<Either<Failure, LessonEntity?>> getNextLesson(
-      String bookId, int currentOrderIndex) async {
+    String bookId,
+    int currentOrderIndex,
+  ) async {
     final networkError = _checkNetwork<LessonEntity?>();
     if (networkError != null) return networkError;
 
@@ -356,8 +412,7 @@ class LessonRepository {
 
       final rows = response as List;
       if (rows.isEmpty) return const Right(null);
-      return Right(
-          LessonEntity.fromJson(rows.first as Map<String, dynamic>));
+      return Right(LessonEntity.fromJson(rows.first as Map<String, dynamic>));
     } on PostgrestException catch (e) {
       _log.warning('getNextLesson: ${e.message}');
       return Left(ServerFailure(e.message));

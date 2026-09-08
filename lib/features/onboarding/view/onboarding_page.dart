@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../auth/cubit/auth_cubit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -197,6 +198,29 @@ class _OnboardingCarouselState extends State<_OnboardingCarousel> {
                 onPressed: _onPrimaryTap,
                 fullWidth: true,
               ),
+              // Guest entry point — final slide only. Starts an anonymous
+              // session; the auth-state change routes the guest to /home.
+              if (_isLast) ...[
+                const SizedBox(height: AppSpacing.s3),
+                InkWell(
+                  onTap: () => context.read<AuthCubit>().continueAsGuest(),
+                  borderRadius: AppRadii.rMd,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.symmetric(
+                      horizontal: AppSpacing.s3,
+                      vertical: AppSpacing.s2,
+                    ),
+                    child: Text(
+                      'متابعة كزائر',
+                      style: AppTextStyles.buttonLabel.copyWith(
+                        color: AppColors.surface,
+                        decoration: TextDecoration.underline,
+                        decorationColor: AppColors.goldLight,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -15,10 +15,95 @@ import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_progress_bar.dart';
+import '../../auth/cubit/auth_cubit.dart';
+import '../../auth/cubit/auth_state.dart';
 import '../cubit/book_details_cubit.dart';
 import '../cubit/book_details_state.dart';
 import '../widgets/final_exam_card.dart';
 import '../widgets/lesson_list_item.dart';
+
+/// True when the current session is an anonymous guest.
+bool _isGuest(BuildContext context) {
+  final s = context.read<AuthCubit>().state;
+  return s is AuthAuthenticated && s.isGuest;
+}
+
+/// Basic (Stage 2) guest gate: prompt to create an account, carrying the
+/// destination so conversion returns here and auto-enrolls. Replaced by the
+/// shared AccountGate in Stage 3.
+void _showGuestSignupGate(
+  BuildContext context, {
+  required String returnTo,
+  required String bookId,
+}) {
+  final signupLoc = Uri(
+    path: '/signup',
+    queryParameters: {'returnTo': returnTo, 'autoEnrollBookId': bookId},
+  ).toString();
+
+  showDialog<void>(
+    context: context,
+    barrierColor: AppColors.ink.withValues(alpha: 0.5),
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.rXl),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pageGutter,
+        vertical: AppSpacing.s8,
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.s5),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.primaryTint,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.person_add_alt_1_outlined,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            Text(
+              'أنشئ حساباً لمتابعة التعلّم',
+              style: AppTextStyles.h3,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s2),
+            Text(
+              'الدرس الأول متاح للجميع. لمتابعة بقية الدروس أنشئ حساباً مجانياً وسنعيدك إلى حيث توقفت.',
+              style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s5),
+            SheikhyButton.primary(
+              fullWidth: true,
+              label: 'أنشئ حساباً',
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              onPressed: () {
+                dialogCtx.pop();
+                context.push(signupLoc);
+              },
+            ),
+            const SizedBox(height: AppSpacing.s2),
+            SheikhyButton.secondary(
+              fullWidth: true,
+              label: 'لاحقاً',
+              onPressed: () => dialogCtx.pop(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 class BookDetailsPage extends StatefulWidget {
   final String bookId;
@@ -55,7 +140,8 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
     if (!mounted) return;
     final currentPath =
         _router?.routerDelegate.currentConfiguration.uri.path ?? '';
-    final returningFromLesson = _lastKnownRoute.startsWith('/lessons/') &&
+    final returningFromLesson =
+        _lastKnownRoute.startsWith('/lessons/') &&
         currentPath == '/books/${widget.bookId}';
     _lastKnownRoute = currentPath;
     if (returningFromLesson) {
@@ -84,17 +170,16 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
         body: BlocBuilder<BookDetailsCubit, BookDetailsState>(
           builder: (context, state) {
             return switch (state) {
-              BookDetailsInitial() ||
-              BookDetailsLoading() =>
+              BookDetailsInitial() || BookDetailsLoading() =>
                 _BookDetailsSkeleton(bookId: widget.bookId),
               BookDetailsError(:final message) => _BookDetailsErrorView(
-                  message: message,
-                  bookId: widget.bookId,
-                ),
+                message: message,
+                bookId: widget.bookId,
+              ),
               BookDetailsLoaded() => _BookDetailsView(
-                  state: state,
-                  bookId: widget.bookId,
-                ),
+                state: state,
+                bookId: widget.bookId,
+              ),
               _ => const SizedBox.shrink(),
             };
           },
@@ -139,7 +224,10 @@ class _BookDetailsSkeleton extends StatelessWidget {
                         _SkeletonBox(width: 32, height: 32, radius: 16),
                         SizedBox(width: AppSpacing.s4),
                         Expanded(
-                          child: _SkeletonBox(width: double.infinity, height: 14),
+                          child: _SkeletonBox(
+                            width: double.infinity,
+                            height: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -228,8 +316,7 @@ class _BookDetailsErrorView extends StatelessWidget {
           child: SheikhyErrorState(
             heading: 'تعذّر تحميل الكتاب',
             message: message,
-            onRetry: () =>
-                context.read<BookDetailsCubit>().loadBook(bookId),
+            onRetry: () => context.read<BookDetailsCubit>().loadBook(bookId),
           ),
         ),
       ],
@@ -309,31 +396,34 @@ class _BookDetailsView extends StatelessWidget {
             ),
             itemBuilder: (context, index) {
               final item = state.lessons[index];
-              final isSequentiallyLocked = state.isEnrolled &&
+              // Access model: lesson 1 (first in order) is open to everyone;
+              // lesson 2+ requires enrollment. The list is ordered by
+              // order_index, so index 0 is the first lesson.
+              final isFirstLesson = index == 0;
+              final isSequentiallyLocked =
+                  state.isEnrolled &&
                   index > 0 &&
                   !state.lessons[index - 1].isCompleted;
               return LessonListItem(
                 item: item,
                 isEnrolled: state.isEnrolled,
+                isOpenToAll: isFirstLesson,
                 isLocked: isSequentiallyLocked,
                 onTap: () {
+                  // Lesson 1: open to guests / unenrolled / enrolled alike.
+                  if (isFirstLesson) {
+                    _openLesson(context, item.lesson.id);
+                    return;
+                  }
                   if (!state.isEnrolled) {
-                    _showEnrollDialog(context);
+                    _gateUnenrolled(context, item.lesson.id);
                     return;
                   }
                   if (isSequentiallyLocked) {
                     _showLockedLessonDialog(context);
                     return;
                   }
-                  context
-                      .push('/lessons/${item.lesson.id}?bookId=$bookId')
-                      .then((_) {
-                    if (context.mounted) {
-                      context
-                          .read<BookDetailsCubit>()
-                          .refreshProgress(bookId);
-                    }
-                  });
+                  _openLesson(context, item.lesson.id);
                 },
               );
             },
@@ -347,10 +437,8 @@ class _BookDetailsView extends StatelessWidget {
               isExamPublished: state.hasFinalExam,
               completionPercentage: state.completionPercentage,
               bestAttempt: state.bestExamAttempt,
-              onTap: () => context.push(
-                '/books/$bookId/exam',
-                extra: state.book.title,
-              ),
+              onTap: () =>
+                  context.push('/books/$bookId/exam', extra: state.book.title),
             ),
           ),
 
@@ -368,6 +456,28 @@ class _BookDetailsView extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  void _openLesson(BuildContext context, String lessonId) {
+    context.push('/lessons/$lessonId?bookId=$bookId').then((_) {
+      if (context.mounted) {
+        context.read<BookDetailsCubit>().refreshProgress(bookId);
+      }
+    });
+  }
+
+  // Lesson 2+ tapped without enrollment: a guest is prompted to create an
+  // account (returning to this exact lesson); a registered user to enroll.
+  void _gateUnenrolled(BuildContext context, String lessonId) {
+    if (_isGuest(context)) {
+      _showGuestSignupGate(
+        context,
+        returnTo: '/lessons/$lessonId?bookId=$bookId',
+        bookId: bookId,
+      );
+    } else {
+      _showEnrollDialog(context);
+    }
   }
 
   void _showEnrollDialog(BuildContext context) {
@@ -565,9 +675,7 @@ class _HeritageSliverHeader extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             // Primary green fill
-            DecoratedBox(
-              decoration: BoxDecoration(color: AppColors.primary),
-            ),
+            DecoratedBox(decoration: BoxDecoration(color: AppColors.primary)),
             // Girih lattice
             GirihBackground(color: AppColors.goldLight, opacity: 0.14),
             // MihrabArch at bottom-end, bleeds off edge (mirrors course card pattern)
@@ -682,8 +790,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.isEnrolled) {
-      final nextLesson =
-          state.lessons.where((l) => !l.isCompleted).firstOrNull;
+      final nextLesson = state.lessons.where((l) => !l.isCompleted).firstOrNull;
       if (nextLesson == null) return const SizedBox.shrink();
       return SheikhyButton.primary(
         label: 'استمرار المذاكرة',
@@ -698,16 +805,27 @@ class _ActionButton extends StatelessWidget {
       buildWhen: (p, c) => c is BookDetailsLoaded,
       builder: (context, s) {
         final loaded = s is BookDetailsLoaded ? s : state;
+        final guest = _isGuest(context);
         return SheikhyButton.primary(
-          label: 'التسجيل في الكتاب',
-          icon: const Icon(Icons.how_to_reg_outlined),
+          label: guest ? 'أنشئ حساباً للتسجيل' : 'التسجيل في الكتاب',
+          icon: Icon(
+            guest ? Icons.person_add_alt_1_outlined : Icons.how_to_reg_outlined,
+          ),
           fullWidth: true,
           isLoading: loaded.isEnrolling,
-          onPressed:
-              loaded.isEnrolling ? null : () => _showEnrollDialog(context),
+          onPressed: loaded.isEnrolling ? null : () => _onPressed(context),
         );
       },
     );
+  }
+
+  void _onPressed(BuildContext context) {
+    if (_isGuest(context)) {
+      // Guest can't enroll; convert first, then return here auto-enrolled.
+      _showGuestSignupGate(context, returnTo: '/books/$bookId', bookId: bookId);
+    } else {
+      _showEnrollDialog(context);
+    }
   }
 
   void _showEnrollDialog(BuildContext context) {

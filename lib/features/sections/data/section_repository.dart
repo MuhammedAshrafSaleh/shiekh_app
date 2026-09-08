@@ -43,10 +43,12 @@ class SectionRepository {
       }
 
       final sections = (sectionsRaw as List)
-          .map((e) => SectionEntity.fromJson(
-                e as Map<String, dynamic>,
-                bookCount: countBySection[e['id'] as String] ?? 0,
-              ))
+          .map(
+            (e) => SectionEntity.fromJson(
+              e as Map<String, dynamic>,
+              bookCount: countBySection[e['id'] as String] ?? 0,
+            ),
+          )
           .toList();
 
       return Right(sections);
@@ -83,8 +85,11 @@ class SectionRepository {
 
       final bookIds = books.map((b) => b.id).toList();
 
+      // lessons_public (owner-run view) returns ALL published lessons regardless
+      // of entitlement, so the card total is correct for guests too (the base
+      // lessons table is entitlement-gated by 0007 and would undercount).
       final lessonsRaw = await _client
-          .from('lessons')
+          .from('lessons_public')
           .select('id, book_id')
           .eq('status', 'published')
           .inFilter('book_id', bookIds)

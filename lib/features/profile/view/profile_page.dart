@@ -13,6 +13,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_page_header.dart';
 import '../../auth/cubit/auth_cubit.dart';
+import '../../auth/cubit/auth_state.dart';
 import '../cubit/profile_cubit.dart';
 import '../cubit/profile_state.dart';
 import '../data/profile_repository.dart';
@@ -143,13 +144,19 @@ class _AvatarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A guest carries an internal <uuid>@guest.sheikhy.local placeholder email
+    // that must never be user-facing: show "زائر" and hide the email entirely.
+    final authState = context.read<AuthCubit>().state;
+    final isGuest = authState is AuthAuthenticated && authState.isGuest;
+    final displayName = isGuest ? 'زائر' : stats.fullName;
+
     return Column(
       children: [
         CircleAvatar(
           radius: 40,
           backgroundColor: AppColors.goldSoft,
           child: Text(
-            _initials,
+            isGuest ? 'ز' : _initials,
             style: GoogleFonts.arefRuqaa(
               fontSize: 26,
               fontWeight: FontWeight.w700,
@@ -159,7 +166,7 @@ class _AvatarSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.s3),
         Text(
-          stats.fullName,
+          displayName,
           style: GoogleFonts.arefRuqaa(
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -168,15 +175,17 @@ class _AvatarSection extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: AppSpacing.s1),
-        Text(
-          stats.email,
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.inkMuted,
-            letterSpacing: 0,
+        if (!isGuest) ...[
+          const SizedBox(height: AppSpacing.s1),
+          Text(
+            stats.email,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.inkMuted,
+              letterSpacing: 0,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
+        ],
       ],
     );
   }
@@ -308,10 +317,7 @@ class _VerticalDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: AppBorders.hairline,
-      color: AppColors.border,
-    );
+    return Container(width: AppBorders.hairline, color: AppColors.border);
   }
 }
 

@@ -47,7 +47,8 @@ class HomeRepository {
     }
   }
 
-  Future<Either<Failure, List<BookWithProgressEntity>>> getFeaturedBooks() async {
+  Future<Either<Failure, List<BookWithProgressEntity>>>
+  getFeaturedBooks() async {
     final networkError = _checkNetwork<List<BookWithProgressEntity>>();
     if (networkError != null) return networkError;
 
@@ -70,8 +71,11 @@ class HomeRepository {
 
       final bookIds = books.map((b) => b.id).toList();
 
+      // lessons_public (owner-run view) returns ALL published lessons regardless
+      // of entitlement, so the card total is correct for guests too (the base
+      // lessons table is entitlement-gated by 0007 and would undercount).
       final lessonsRaw = await _client
-          .from('lessons')
+          .from('lessons_public')
           .select('id, book_id')
           .eq('status', 'published')
           .inFilter('book_id', bookIds)

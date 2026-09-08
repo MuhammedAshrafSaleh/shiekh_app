@@ -12,6 +12,8 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
+import '../../auth/cubit/auth_cubit.dart';
+import '../../auth/cubit/auth_state.dart';
 import '../../lesson/data/lesson_repository.dart';
 import '../../qa/cubit/qa_cubit.dart';
 import '../../qa/data/qa_repository.dart';
@@ -28,11 +30,7 @@ class LessonPage extends StatefulWidget {
   final String lessonId;
   final String bookId;
 
-  const LessonPage({
-    super.key,
-    required this.lessonId,
-    required this.bookId,
-  });
+  const LessonPage({super.key, required this.lessonId, required this.bookId});
 
   @override
   State<LessonPage> createState() => _LessonPageState();
@@ -70,19 +68,19 @@ class _LessonPageState extends State<LessonPage> {
       builder: (context, state) {
         return switch (state) {
           LessonInitial() || LessonLoading() => _LessonSkeleton(
-              lessonId: widget.lessonId,
-              bookId: widget.bookId,
-            ),
+            lessonId: widget.lessonId,
+            bookId: widget.bookId,
+          ),
           LessonError(:final message) => _LessonErrorView(
-              message: message,
-              lessonId: widget.lessonId,
-              bookId: widget.bookId,
-            ),
+            message: message,
+            lessonId: widget.lessonId,
+            bookId: widget.bookId,
+          ),
           LessonLoaded() => _LessonView(
-              state: state,
-              lessonId: widget.lessonId,
-              bookId: widget.bookId,
-            ),
+            state: state,
+            lessonId: widget.lessonId,
+            bookId: widget.bookId,
+          ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -135,9 +133,8 @@ class _LessonErrorView extends StatelessWidget {
             child: SheikhyErrorState(
               heading: 'تعذّر تحميل الدرس',
               message: message,
-              onRetry: () => context
-                  .read<LessonCubit>()
-                  .loadLesson(lessonId, bookId),
+              onRetry: () =>
+                  context.read<LessonCubit>().loadLesson(lessonId, bookId),
             ),
           ),
         ],
@@ -159,7 +156,10 @@ class _MinimalLessonHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: AppBorders.hairline,
+          ),
         ),
       ),
       child: SafeArea(
@@ -277,18 +277,23 @@ class _LessonViewState extends State<_LessonView> {
           completionLabel: 'أكملت القراءة',
           content: PdfTab(pdfUrl: lesson.pdfUrl!),
         ),
-      if (widget.state.hasQuizQuestions)
+      // Tab VISIBILITY keys off presence (lessonHasQuiz), so guests / unenrolled
+      // on a lesson that genuinely has a quiz still see the tab — gated. Lessons
+      // with no quiz keep hiding it.
+      if (widget.state.lessonHasQuiz)
         _TabDef(
           label: 'اختبار',
           icon: Icons.quiz_outlined,
           completionLabel: null,
-          content: RepositoryProvider.value(
-            value: lessonRepo,
-            child: QuizTab(
-              lessonId: widget.lessonId,
-              onAnsweringChanged: _onAnsweringChanged,
-            ),
-          ),
+          content: widget.state.canTakeQuiz
+              ? RepositoryProvider.value(
+                  value: lessonRepo,
+                  child: QuizTab(
+                    lessonId: widget.lessonId,
+                    onAnsweringChanged: _onAnsweringChanged,
+                  ),
+                )
+              : _QuizGate(bookId: widget.bookId, lessonId: widget.lessonId),
         ),
     ];
 
@@ -372,7 +377,10 @@ class _LessonHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: AppBorders.hairline,
+          ),
         ),
       ),
       child: SafeArea(
@@ -394,8 +402,9 @@ class _LessonHeader extends StatelessWidget {
                   children: [
                     Text(
                       'الدرس ${lesson.orderIndex}',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.inkFaint),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.inkFaint,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.s1),
                     Text(
@@ -468,7 +477,10 @@ class _LessonTabBar extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: AppBorders.hairline,
+          ),
         ),
       ),
       child: TabBar(
@@ -486,12 +498,7 @@ class _LessonTabBar extends StatelessWidget {
         unselectedLabelStyle: GoogleFonts.tajawal(fontSize: 14),
         dividerColor: Colors.transparent,
         tabs: tabs
-            .map(
-              (t) => Tab(
-                icon: Icon(t.icon, size: 20),
-                text: t.label,
-              ),
-            )
+            .map((t) => Tab(icon: Icon(t.icon, size: 20), text: t.label))
             .toList(),
       ),
     );
@@ -561,7 +568,8 @@ class _LessonActionBarState extends State<_LessonActionBar> {
 
     if (_isVideoTab) {
       // 3-state video button
-      if (state.quizAttempted || state.quizExhausted ||
+      if (state.quizAttempted ||
+          state.quizExhausted ||
           (!state.hasQuizQuestions && state.videoWatched) ||
           state.isCompleted) {
         // State 3 — quiz done (or no quiz and video watched)
@@ -569,8 +577,8 @@ class _LessonActionBarState extends State<_LessonActionBar> {
           label = 'الدرس التالي';
           icon = null;
           onPressed = () => context.pushReplacement(
-                '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
-              );
+            '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
+          );
         } else {
           label = 'مكتمل ✓';
           icon = const Icon(Icons.check);
@@ -581,8 +589,9 @@ class _LessonActionBarState extends State<_LessonActionBar> {
         label = 'ابدأ الاختبار';
         icon = null;
         onPressed = () {
-          final quizIndex =
-              widget.tabs.indexWhere((t) => t.completionLabel == null);
+          final quizIndex = widget.tabs.indexWhere(
+            (t) => t.completionLabel == null,
+          );
           if (quizIndex >= 0) _tabController?.animateTo(quizIndex);
         };
       } else {
@@ -600,8 +609,8 @@ class _LessonActionBarState extends State<_LessonActionBar> {
         if (state.nextLessonId != null) {
           label = 'الدرس التالي';
           onPressed = () => context.pushReplacement(
-                '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
-              );
+            '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
+          );
         } else {
           label = 'مكتمل ✓';
           onPressed = null;
@@ -657,4 +666,95 @@ class _TabDef {
     required this.content,
     this.isVideoTab = false,
   });
+}
+
+// ── Quiz gate (guest / registered-not-enrolled) ───────────────────────────────
+//
+// Shown as the quiz tab's content when the session isn't entitled to take the
+// quiz. The tab itself stays visible (lessonHasQuiz) so the quiz is discoverable;
+// tapping it reveals this gate instead of loading any content — so no quiz rows
+// are ever fetched for a guest. Basic dialog-free panel for now; Stage 3 replaces
+// it with the shared AccountGate component.
+class _QuizGate extends StatelessWidget {
+  final String bookId;
+  final String lessonId;
+
+  const _QuizGate({required this.bookId, required this.lessonId});
+
+  bool _isGuest(BuildContext context) {
+    final s = context.read<AuthCubit>().state;
+    return s is AuthAuthenticated && s.isGuest;
+  }
+
+  void _onCta(BuildContext context) {
+    if (_isGuest(context)) {
+      // Convert in place, then return to this lesson auto-enrolled.
+      final signupLoc = Uri(
+        path: '/signup',
+        queryParameters: {
+          'returnTo': '/lessons/$lessonId?bookId=$bookId',
+          'autoEnrollBookId': bookId,
+        },
+      ).toString();
+      context.push(signupLoc);
+    } else {
+      // Registered but not enrolled → back to book details to enroll.
+      context.go('/books/$bookId');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final guest = _isGuest(context);
+    final message = guest
+        ? 'سجّل حساباً أولاً عشان تقدر تحل الاختبار'
+        : 'سجّل في الكتاب أولاً عشان تقدر تحل الاختبار';
+    final ctaLabel = guest ? 'أنشئ حساباً' : 'التسجيل في الكتاب';
+    final ctaIcon = guest
+        ? Icons.person_add_alt_1_outlined
+        : Icons.how_to_reg_outlined;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.pageGutter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: AppColors.goldSoft,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.lock_outline,
+                color: AppColors.goldDeep,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            Text(
+              'الاختبار غير متاح الآن',
+              style: AppTextStyles.h3,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s2),
+            Text(
+              message,
+              style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s5),
+            SheikhyButton.primary(
+              label: ctaLabel,
+              icon: Icon(ctaIcon),
+              onPressed: () => _onCta(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

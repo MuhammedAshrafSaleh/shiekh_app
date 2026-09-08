@@ -2,12 +2,13 @@
 //
 // Heritage redesign (Auth Phase 1, screens 1b/1c). Header band + email +
 // password (with eye toggle + inline "نسيتها؟") + "remember me" + primary CTA +
-// "أو" divider + alternate sign-in + sign-up footer. Server/validation errors
-// surface as a top SheikhyNotice banner (design 1c) plus per-field errorText.
+// "أو" divider + guest entry ("تصفح كزائر") + sign-up footer. Server/validation
+// errors surface as a top SheikhyNotice banner (design 1c) plus per-field
+// errorText.
 //
 // Visual-only migration: the AuthCubit contract is unchanged — signIn(email,
-// password). "remember me" and "الدخول برمز الملفة" are rendered but not yet
-// wired (no backing cubit method) per the approved plan.
+// password). "remember me" is rendered but not yet wired (no backing cubit
+// method) per the approved plan. The guest button calls continueAsGuest().
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -24,9 +25,16 @@ import '../../../core/widgets/sheikhy_password_field.dart';
 import '../../../core/widgets/sheikhy_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
+import '../post_auth_flow.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  /// Set when arriving from the guest email-collision path: after signing into
+  /// the pre-existing account, auto-enroll in [autoEnrollBookId] and return to
+  /// [returnTo]. Both null for a normal login.
+  final String? returnTo;
+  final String? autoEnrollBookId;
+
+  const LoginPage({super.key, this.returnTo, this.autoEnrollBookId});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -40,6 +48,11 @@ class _LoginPageState extends State<LoginPage> {
   String? _formError;
   String? _emailError;
   String? _passwordError;
+  bool _postAuthHandled = false;
+
+  bool get _hasPendingReturn =>
+      (widget.returnTo != null && widget.returnTo!.isNotEmpty) ||
+      (widget.autoEnrollBookId != null && widget.autoEnrollBookId!.isNotEmpty);
 
   @override
   void dispose() {
@@ -73,22 +86,34 @@ class _LoginPageState extends State<LoginPage> {
     context.read<AuthCubit>().signIn(email: email, password: password);
   }
 
-  void _comingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('هذه الميزة قيد التطوير'),
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthCubit, AuthState>(
-      listenWhen: (prev, curr) => curr is AuthError,
+      listenWhen: (prev, curr) =>
+          curr is AuthError || curr is AuthAuthenticated,
       listener: (context, state) {
         if (state is AuthError) {
           setState(() => _formError = state.message);
+        } else if (state is AuthAuthenticated &&
+            !state.isGuest &&
+            _hasPendingReturn &&
+            !_postAuthHandled) {
+          // Collision path: signed into the pre-existing account — finish the
+          // guest journey (enroll + return to the intended lesson).
+          _postAuthHandled = true;
+          completeGuestReturn(
+            context,
+            returnTo: widget.returnTo,
+            enrollBookId: widget.autoEnrollBookId,
+          );
+        } else if (state is AuthAuthenticated &&
+            state.isGuest &&
+            !_hasPendingReturn) {
+          // "تصفح كزائر" from the login screen. The router keeps authenticated
+          // guests on conversion screens (login/signup) for the in-place
+          // conversion flow, so it won't auto-route this fresh guest — navigate
+          // to /home explicitly.
+          context.go('/home');
         }
       },
       child: Scaffold(
@@ -168,10 +193,15 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: AppSpacing.s5),
                     const SheikhyLabeledDivider(label: 'أو'),
                     const SizedBox(height: AppSpacing.s5),
+                    // Guest entry point — mirrors the onboarding "متابعة كزائر"
+                    // path for users who skip onboarding or return to the app.
+                    // Starts an anonymous session; the auth-state change routes
+                    // the guest to /home.
                     SheikhyButton.secondary(
-                      label: 'الدخول برمز الملفة',
+                      label: 'تصفح كزائر',
                       fullWidth: true,
-                      onPressed: _comingSoon,
+                      onPressed: () =>
+                          context.read<AuthCubit>().continueAsGuest(),
                     ),
                     const SizedBox(height: AppSpacing.s6),
                     _SignupFooter(onTap: () => context.push('/signup')),
