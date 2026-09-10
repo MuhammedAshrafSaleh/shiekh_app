@@ -19,6 +19,8 @@ import '../../../core/utils/media_duration.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_progress_bar.dart';
 import '../cubit/lesson_cubit.dart';
+import '../data/lesson_repository.dart';
+import 'media_tab.dart';
 import 'resume_snackbar.dart';
 
 // States managed locally — playback is display-only, not business state
@@ -45,7 +47,11 @@ class AudioTab extends StatefulWidget {
   State<AudioTab> createState() => _AudioTabState();
 }
 
-class _AudioTabState extends State<AudioTab> {
+class _AudioTabState extends State<AudioTab>
+    with MediaTabController, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   final _player = AudioPlayer();
   final _dio = Dio();
   CancelToken? _cancelToken;
@@ -153,8 +159,11 @@ class _AudioTabState extends State<AudioTab> {
   void _savePosition() {
     if (widget.previewMode || !mounted) return;
     // The cubit ignores a position of 0, so we never overwrite real progress.
-    _lessonCubit?.savePosition(_player.position.inSeconds);
+    _lessonCubit?.savePosition(_player.position.inSeconds, MediaType.audio);
   }
+
+  @override
+  void pausePlayback() => _player.pause();
 
   Future<void> _download(String downloadUrl) async {
     if (mounted) setState(() => _status = _AudioStatus.downloading);
@@ -238,6 +247,7 @@ class _AudioTabState extends State<AudioTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return switch (_status) {
       _AudioStatus.checking => const _AudioChecking(),
       _AudioStatus.idle => _AudioIdle(

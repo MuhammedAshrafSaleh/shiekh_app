@@ -22,6 +22,7 @@ import '../cubit/lesson_cubit.dart';
 import '../cubit/lesson_state.dart';
 import '../../../core/widgets/show_exam_start_dialog.dart';
 import '../widgets/audio_tab.dart';
+import '../widgets/media_tab.dart';
 import '../widgets/pdf_tab.dart';
 import '../widgets/quiz_tab.dart';
 import '../widgets/video_tab.dart';
@@ -206,6 +207,11 @@ class _LessonView extends StatefulWidget {
 class _LessonViewState extends State<_LessonView> {
   bool _quizAnswering = false;
 
+  // Stable keys so the media coordinator can reach the (kept-alive) media tab
+  // states across rebuilds and pause the outgoing player on a video↔audio switch.
+  final GlobalKey _videoTabKey = GlobalKey();
+  final GlobalKey _audioTabKey = GlobalKey();
+
   void _onAnsweringChanged(bool answering) {
     if (_quizAnswering != answering) {
       setState(() => _quizAnswering = answering);
@@ -244,8 +250,10 @@ class _LessonViewState extends State<_LessonView> {
     final lesson = widget.state.lesson;
     final lessonRepo = context.read<LessonRepository>();
     // Always resume from the last saved position — a completed lesson can still
-    // be re-watched from where the student left off. Tabs only seek when > 0.
-    final resumeSeconds = widget.state.lastPositionSeconds;
+    // be re-watched from where the student left off. Each medium resumes from its
+    // own saved position. Tabs only seek when > 0.
+    final videoResumeSeconds = widget.state.videoPositionSeconds;
+    final audioResumeSeconds = widget.state.audioPositionSeconds;
 
     final tabs = <_TabDef>[
       if (lesson.hasVideo)
@@ -255,8 +263,9 @@ class _LessonViewState extends State<_LessonView> {
           completionLabel: 'أكملت الفيديو',
           isVideoTab: true,
           content: VideoTab(
+            key: _videoTabKey,
             videoUrl: lesson.videoUrl!,
-            initialPositionSeconds: resumeSeconds,
+            initialPositionSeconds: videoResumeSeconds,
           ),
         ),
       if (lesson.hasAudio)
@@ -264,10 +273,12 @@ class _LessonViewState extends State<_LessonView> {
           label: 'صوت',
           icon: Icons.headphones_outlined,
           completionLabel: 'أكملت الصوت',
+          isAudioTab: true,
           content: AudioTab(
+            key: _audioTabKey,
             audioUrl: lesson.audioUrl!,
             lessonTitle: lesson.title,
-            initialPositionSeconds: resumeSeconds,
+            initialPositionSeconds: audioResumeSeconds,
           ),
         ),
       if (lesson.hasPdf)
@@ -332,6 +343,11 @@ class _LessonViewState extends State<_LessonView> {
           backgroundColor: AppColors.paper,
           body: Column(
             children: [
+              _MediaTabCoordinator(
+                tabs: tabs,
+                videoTabKey: _videoTabKey,
+                audioTabKey: _audioTabKey,
+              ),
               _LessonHeader(
                 state: widget.state,
                 onAskTap: () => _openAskSheet(context),
@@ -650,6 +666,74 @@ class _LessonActionBarState extends State<_LessonActionBar> {
   }
 }
 
+// ── Media tab coordinator ─────────────────────────────────────────────────────
+//
+// Renders nothing. Lives inside the DefaultTabController subtree so it can reach
+// the controller. Media tabs are kept alive, so playback continues in the
+// background across non-media tabs (quiz/PDF). To avoid two players sounding at
+// once, entering a media tab pauses the OTHER media tab (covers video↔audio
+// directly and the transitive video→PDF→audio case). Position saving is handled
+// by the tabs themselves (15s timer while playing + dispose() on back).
+class _MediaTabCoordinator extends StatefulWidget {
+  final List<_TabDef> tabs;
+  final GlobalKey videoTabKey;
+  final GlobalKey audioTabKey;
+
+  const _MediaTabCoordinator({
+    required this.tabs,
+    required this.videoTabKey,
+    required this.audioTabKey,
+  });
+
+  @override
+  State<_MediaTabCoordinator> createState() => _MediaTabCoordinatorState();
+}
+
+class _MediaTabCoordinatorState extends State<_MediaTabCoordinator> {
+  TabController? _controller;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final controller = DefaultTabController.maybeOf(context);
+    if (controller != null && _controller != controller) {
+      _controller?.removeListener(_onTabChanged);
+      _controller = controller;
+      _controller!.addListener(_onTabChanged);
+    }
+  }
+
+  void _onTabChanged() {
+    final controller = _controller;
+    if (controller == null || !controller.indexIsChanging) return;
+    final entering = controller.index;
+    if (entering < 0 || entering >= widget.tabs.length) return;
+    final tab = widget.tabs[entering];
+    // Entering a media tab pauses the other media player; entering a non-media
+    // tab (quiz/PDF) pauses nothing, so the current media keeps playing.
+    if (tab.isVideoTab) {
+      _pause(widget.audioTabKey);
+    } else if (tab.isAudioTab) {
+      _pause(widget.videoTabKey);
+    }
+  }
+
+  void _pause(GlobalKey key) {
+    if (key.currentState case final MediaTabController tab) {
+      tab.pausePlayback();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
 // ── Tab definition ────────────────────────────────────────────────────────────
 
 class _TabDef {
@@ -658,6 +742,7 @@ class _TabDef {
   final String? completionLabel;
   final Widget content;
   final bool isVideoTab;
+  final bool isAudioTab;
 
   const _TabDef({
     required this.label,
@@ -665,6 +750,7 @@ class _TabDef {
     required this.completionLabel,
     required this.content,
     this.isVideoTab = false,
+    this.isAudioTab = false,
   });
 }
 

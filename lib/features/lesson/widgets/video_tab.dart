@@ -15,7 +15,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../cubit/lesson_cubit.dart';
+import '../data/lesson_repository.dart';
 import '../data/video_stream_repository.dart';
+import 'media_tab.dart';
 import 'resume_snackbar.dart';
 
 /// Plays a YouTube video inline by resolving its direct stream URL (via
@@ -47,8 +49,12 @@ class VideoTab extends StatefulWidget {
 
 enum _Status { loading, ready, error }
 
-class _VideoTabState extends State<VideoTab> {
+class _VideoTabState extends State<VideoTab>
+    with MediaTabController, AutomaticKeepAliveClientMixin {
   static final _log = Logger('VideoTab');
+
+  @override
+  bool get wantKeepAlive => true;
 
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
@@ -151,8 +157,11 @@ class _VideoTabState extends State<VideoTab> {
     if (widget.previewMode || !mounted) return;
     final value = _videoController?.value;
     if (value == null || !value.isInitialized) return;
-    _lessonCubit?.savePosition(value.position.inSeconds);
+    _lessonCubit?.savePosition(value.position.inSeconds, MediaType.video);
   }
+
+  @override
+  void pausePlayback() => _videoController?.pause();
 
   Future<void> _openInYoutube() async {
     final uri = Uri.parse(widget.videoUrl);
@@ -173,6 +182,7 @@ class _VideoTabState extends State<VideoTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return switch (_status) {
       _Status.loading => Center(
           child: CircularProgressIndicator(color: AppColors.primary),

@@ -80,6 +80,8 @@ class LessonLoaded extends LessonState {
 
   bool get isCompleted => progress?.completed ?? false;
   int get lastPositionSeconds => progress?.lastPositionSeconds ?? 0;
+  int get videoPositionSeconds => progress?.videoPositionSeconds ?? 0;
+  int get audioPositionSeconds => progress?.audioPositionSeconds ?? 0;
   bool get quizAttempted => quizAttemptsUsed > 0;
   bool get quizExhausted => quizAttemptsUsed >= 2;
 

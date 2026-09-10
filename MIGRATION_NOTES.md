@@ -115,6 +115,26 @@ white block inside the cream heritage fields. **Fixed at source:**
   **only** by the theme-preview entrypoint. Global wiring happens once screens are
   migrated; at that point `AppTheme` is removed.
 
+## Dormant columns (drop after confirmed stable)
+
+- **`lesson_progress.last_position_seconds`** — superseded by
+  `video_position_seconds` / `audio_position_seconds` (migration
+  `0009_split_media_position.sql`). Video and audio previously shared this single
+  column, so each medium's position-save timer overwrote the other's resume point.
+  The new per-medium columns fix that. The column is now **dormant**: no code
+  writes it, and the only remaining reads are the fallback getters
+  `LessonProgressEntity.lastPositionSeconds` /
+  `LessonWithProgressEntity.lastPositionSeconds` (neither is consumed by any UI).
+  **Teardown (run only after confirming no legacy code reads it and the new
+  columns are stable in production):**
+
+  ```sql
+  ALTER TABLE lesson_progress DROP COLUMN last_position_seconds;
+  ```
+
+  When dropped, also remove the `lastPositionSeconds` field/getter from
+  `lesson_progress_entity.dart` and `lesson_with_progress_entity.dart`.
+
 ## Known gaps — Guest Mode (Stage 3 fix pending)
 
 - **Lesson quiz not enrollment-gated at the data layer.** The

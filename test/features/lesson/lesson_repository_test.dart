@@ -127,7 +127,8 @@ void main() {
 
       final result = await repo.saveProgress(
         lessonId: 'lesson-id',
-        lastPositionSeconds: 120,
+        mediaType: MediaType.video,
+        positionSeconds: 120,
         completed: false,
       );
 
@@ -140,7 +141,8 @@ void main() {
 
       final result = await repo.saveProgress(
         lessonId: 'lesson-id',
-        lastPositionSeconds: 60,
+        mediaType: MediaType.audio,
+        positionSeconds: 60,
         completed: false,
       );
 
@@ -157,7 +159,8 @@ void main() {
 
       final result = await repo.saveProgress(
         lessonId: 'lesson-id',
-        lastPositionSeconds: 300,
+        mediaType: MediaType.video,
+        positionSeconds: 300,
         completed: true,
       );
 

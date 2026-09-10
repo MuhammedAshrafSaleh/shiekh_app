@@ -12,6 +12,10 @@ import '../../../models/lesson_progress_entity.dart';
 import '../../../models/lesson_quiz_attempt_entity.dart';
 import '../../../models/quiz_question_entity.dart';
 
+/// The medium a resume position belongs to. Video and audio positions are stored
+/// in separate columns so one tab's save never overwrites the other's.
+enum MediaType { video, audio }
+
 class QuizGradeResult {
   final int correct;
   final int total;
@@ -180,10 +184,12 @@ class LessonRepository {
     }
   }
 
-  // CC-21: upsert on (user_id, lesson_id)
+  // CC-21: upsert on (user_id, lesson_id). Writes only the column for [mediaType]
+  // so the other medium's saved resume position is left untouched.
   Future<Either<Failure, Unit>> saveProgress({
     required String lessonId,
-    required int lastPositionSeconds,
+    required MediaType mediaType,
+    required int positionSeconds,
     required bool completed,
   }) async {
     final networkError = _checkNetwork<Unit>();
@@ -194,11 +200,14 @@ class LessonRepository {
       if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
 
       final now = DateTime.now().toIso8601String();
+      final column = mediaType == MediaType.video
+          ? 'video_position_seconds'
+          : 'audio_position_seconds';
       await _client.from('lesson_progress').upsert({
         'user_id': userId,
         'lesson_id': lessonId,
         'completed': completed,
-        'last_position_seconds': lastPositionSeconds,
+        column: positionSeconds,
         if (completed) 'completed_at': now,
         'updated_at': now,
       }, onConflict: 'user_id,lesson_id');
