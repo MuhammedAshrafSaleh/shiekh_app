@@ -11,6 +11,10 @@ class StudentQuestionEntity extends Equatable {
   final DateTime? answeredAt;
   final DateTime createdAt;
 
+  /// Asker's full name — populated only in admin contexts that join
+  /// `users(full_name)`. Null elsewhere (and for guest/anonymous askers).
+  final String? askerName;
+
   const StudentQuestionEntity({
     required this.id,
     required this.bookId,
@@ -20,6 +24,7 @@ class StudentQuestionEntity extends Equatable {
     required this.status,
     this.answeredAt,
     required this.createdAt,
+    this.askerName,
   });
 
   bool get isAnswered => status == 'answered';
@@ -36,18 +41,21 @@ class StudentQuestionEntity extends Equatable {
           ? DateTime.parse(json['answered_at'] as String)
           : null,
       createdAt: DateTime.parse(json['created_at'] as String),
+      askerName:
+          (json['users'] as Map<String, dynamic>?)?['full_name'] as String?,
     );
   }
 
   @override
   List<Object?> get props => [
-        id,
-        bookId,
-        lessonId,
-        questionText,
-        answerText,
-        status,
-        answeredAt,
-        createdAt,
-      ];
+    id,
+    bookId,
+    lessonId,
+    questionText,
+    answerText,
+    status,
+    answeredAt,
+    createdAt,
+    askerName,
+  ];
 }

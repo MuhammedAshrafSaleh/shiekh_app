@@ -512,10 +512,17 @@ GoRouter buildRouter(AuthCubit authCubit) {
         builder: (context, state) {
           final bookId = state.pathParameters['bookId']!;
           final bookTitle = state.uri.queryParameters['title'] ?? 'الكتاب';
+          final initialTab = state.uri.queryParameters['tab'] == 'questions'
+              ? 2
+              : 0;
           return BlocProvider(
             create: (ctx) =>
                 AdminStatsCubit(ctx.read<AdminStatsRepository>())..load(bookId),
-            child: AdminBookDashboardPage(bookId: bookId, bookTitle: bookTitle),
+            child: AdminBookDashboardPage(
+              bookId: bookId,
+              bookTitle: bookTitle,
+              initialTab: initialTab,
+            ),
           );
         },
       ),
@@ -751,11 +758,14 @@ class _AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          const OfflineBanner(),
-          Expanded(child: child),
-        ],
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(child: child),
+          ],
+        ),
       ),
       bottomNavigationBar: Theme(
         // Gold active pill for admin shell

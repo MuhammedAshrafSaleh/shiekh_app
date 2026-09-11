@@ -18,16 +18,16 @@ class AdminStatsLoading extends AdminStatsState {}
 class AdminStatsLoaded extends AdminStatsState {
   final List<LessonEntity> lessons;
   final BookStats stats;
-  final List<StudentQuestionEntity> recentQuestions;
+  final List<StudentQuestionEntity> questions;
 
   const AdminStatsLoaded({
     required this.lessons,
     required this.stats,
-    required this.recentQuestions,
+    required this.questions,
   });
 
   @override
-  List<Object?> get props => [lessons, stats, recentQuestions];
+  List<Object?> get props => [lessons, stats, questions];
 }
 
 class AdminStatsError extends AdminStatsState {

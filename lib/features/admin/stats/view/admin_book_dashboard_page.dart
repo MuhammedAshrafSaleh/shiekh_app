@@ -17,11 +17,13 @@ import '../data/admin_stats_repository.dart';
 class AdminBookDashboardPage extends StatelessWidget {
   final String bookId;
   final String bookTitle;
+  final int initialTab;
 
   const AdminBookDashboardPage({
     super.key,
     required this.bookId,
     required this.bookTitle,
+    this.initialTab = 0,
   });
 
   @override
@@ -29,50 +31,84 @@ class AdminBookDashboardPage extends StatelessWidget {
     return BlocConsumer<AdminStatsCubit, AdminStatsState>(
       listener: (context, state) {
         if (state is AdminStatsError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       builder: (context, state) {
+        final questionCount = state is AdminStatsLoaded
+            ? state.questions.length
+            : 0;
         return DefaultTabController(
           length: 3,
+          initialIndex: initialTab,
           child: Scaffold(
             appBar: AppBar(
               title: Text(bookTitle),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
-                  onPressed: () =>
-                      context.read<AdminStatsCubit>().load(bookId),
+                  onPressed: () => context.read<AdminStatsCubit>().load(bookId),
                 ),
               ],
-              bottom: const TabBar(tabs: [
-                Tab(icon: Icon(Icons.list_alt_outlined), text: 'الدروس'),
-                Tab(icon: Icon(Icons.bar_chart_outlined), text: 'الإحصاءات'),
-                Tab(
-                    icon: Icon(Icons.question_answer_outlined),
-                    text: 'الأسئلة'),
-              ]),
+              bottom: TabBar(
+                tabs: [
+                  const Tab(
+                    icon: Icon(Icons.list_alt_outlined),
+                    text: 'الدروس',
+                  ),
+                  const Tab(
+                    icon: Icon(Icons.bar_chart_outlined),
+                    text: 'الإحصاءات',
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.question_answer_outlined),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('الأسئلة'),
+                        if (questionCount > 0) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          CircleAvatar(
+                            radius: 9,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: Text(
+                              '$questionCount',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             body: switch (state) {
-              AdminStatsLoading() =>
-                const Center(child: CircularProgressIndicator()),
+              AdminStatsLoading() => const Center(
+                child: CircularProgressIndicator(),
+              ),
               AdminStatsError() => ErrorState(
-                  message: state.message,
-                  onRetry: () =>
-                      context.read<AdminStatsCubit>().load(bookId),
-                ),
+                message: state.message,
+                onRetry: () => context.read<AdminStatsCubit>().load(bookId),
+              ),
               AdminStatsLoaded() => TabBarView(
-                  children: [
-                    _LessonsTab(
-                        lessons: state.lessons, bookId: bookId),
-                    _StatsTab(stats: state.stats),
-                    _QuestionsTab(questions: state.recentQuestions),
-                  ],
-                ),
+                children: [
+                  _LessonsTab(lessons: state.lessons, bookId: bookId),
+                  _StatsTab(stats: state.stats),
+                  _QuestionsTab(questions: state.questions),
+                ],
+              ),
               _ => const Center(child: CircularProgressIndicator()),
             },
           ),
@@ -104,8 +140,7 @@ class _LessonsTab extends StatelessWidget {
             FilledButton.icon(
               icon: const Icon(Icons.add),
               label: const Text('إضافة درس'),
-              onPressed: () =>
-                  context.push('/admin/books/$bookId/lessons'),
+              onPressed: () => context.push('/admin/books/$bookId/lessons'),
             ),
           ],
         ),
@@ -122,8 +157,7 @@ class _LessonsTab extends StatelessWidget {
             child: FilledButton.icon(
               icon: const Icon(Icons.edit_outlined),
               label: const Text('إدارة الدروس'),
-              onPressed: () =>
-                  context.push('/admin/books/$bookId/lessons'),
+              onPressed: () => context.push('/admin/books/$bookId/lessons'),
             ),
           );
         }
@@ -151,13 +185,14 @@ class _LessonSummaryTile extends StatelessWidget {
           backgroundColor: isPublished
               ? Theme.of(context).colorScheme.primaryContainer
               : Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: Text('$index',
-              style: Theme.of(context).textTheme.labelSmall),
+          child: Text('$index', style: Theme.of(context).textTheme.labelSmall),
         ),
         title: Text(lesson.title),
         trailing: Container(
           padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
           decoration: BoxDecoration(
             color: isPublished
                 ? Colors.green.withValues(alpha: 0.1)
@@ -234,10 +269,9 @@ class _StatsTab extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         Text(
           'تسجيلات الطلاب (آخر 30 يوم)',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: AppSpacing.md),
         SizedBox(
@@ -278,18 +312,20 @@ class _StatCard extends StatelessWidget {
                 Icon(icon, size: 18, color: color),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
-                  child: Text(label,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             Text(
               value,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold, color: color),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -315,11 +351,14 @@ class _EnrollmentChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -367,41 +406,292 @@ class _QuestionsTab extends StatelessWidget {
       return const Center(child: Text('لا توجد أسئلة حتى الآن'));
     }
 
-    return ListView.builder(
-      padding: const EdgeInsetsDirectional.all(AppSpacing.md),
-      itemCount: questions.length,
-      itemBuilder: (context, i) {
-        final q = questions[i];
-        return Card(
-          margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: q.isAnswered
-                  ? Colors.green.withValues(alpha: 0.1)
-                  : Colors.orange.withValues(alpha: 0.1),
-              child: Icon(
-                q.isAnswered
-                    ? Icons.check_circle_outline
-                    : Icons.pending_outlined,
-                color: q.isAnswered ? Colors.green : Colors.orange,
-                size: 20,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'عدد الأسئلة: ${questions.length}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            title: Text(
-              q.questionText,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              q.isAnswered ? 'تمت الإجابة' : 'في الانتظار',
-              style: TextStyle(
-                color: q.isAnswered ? Colors.green : Colors.orange,
-                fontSize: 12,
+              TextButton.icon(
+                icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                label: const Text('مسح كل الأسئلة'),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () => _confirmClearAll(context),
               ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsetsDirectional.only(
+              start: AppSpacing.md,
+              end: AppSpacing.md,
+              bottom: AppSpacing.md,
+            ),
+            itemCount: questions.length,
+            itemBuilder: (context, i) {
+              final q = questions[i];
+              return Card(
+                margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: q.isAnswered
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.orange.withValues(alpha: 0.1),
+                    child: Icon(
+                      q.isAnswered
+                          ? Icons.check_circle_outline
+                          : Icons.pending_outlined,
+                      color: q.isAnswered ? Colors.green : Colors.orange,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    q.questionText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${q.askerName ?? 'طالب مجهول'} · '
+                    '${q.isAnswered ? 'تمت الإجابة' : 'في الانتظار'} · '
+                    '${_formatDate(q.createdAt)}',
+                    style: TextStyle(
+                      color: q.isAnswered ? Colors.green : Colors.orange,
+                      fontSize: 12,
+                    ),
+                  ),
+                  onTap: () => _openQuestionSheet(context, q),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmClearAll(BuildContext context) {
+    final cubit = context.read<AdminStatsCubit>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('مسح كل الأسئلة'),
+        content: const Text(
+          'هل أنت متأكد من مسح جميع أسئلة هذا الكتاب؟ لا يمكن التراجع.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              final ok = await cubit.clearBookQuestions();
+              if (ok && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم مسح جميع الأسئلة'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            child: const Text('مسح نهائياً'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openQuestionSheet(BuildContext context, StudentQuestionEntity q) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetCtx) => BlocProvider.value(
+        value: context.read<AdminStatsCubit>(),
+        child: _QuestionSheet(question: q),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
+    if (diff.inHours < 24) return 'منذ ${diff.inHours} ساعة';
+    return 'منذ ${diff.inDays} يوم';
+  }
+}
+
+// ── Question view / edit / delete bottom sheet ──────────────────────────────
+
+class _QuestionSheet extends StatefulWidget {
+  final StudentQuestionEntity question;
+  const _QuestionSheet({required this.question});
+
+  @override
+  State<_QuestionSheet> createState() => _QuestionSheetState();
+}
+
+class _QuestionSheetState extends State<_QuestionSheet> {
+  late final TextEditingController _answerCtrl;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _answerCtrl = TextEditingController(text: widget.question.answerText ?? '');
+  }
+
+  @override
+  void dispose() {
+    _answerCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final text = _answerCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _saving = true);
+    final cubit = context.read<AdminStatsCubit>();
+    final ok = widget.question.isAnswered
+        ? await cubit.editAnswer(
+            questionId: widget.question.id,
+            answerText: text,
+          )
+        : await cubit.answerQuestion(
+            questionId: widget.question.id,
+            answerText: text,
+          );
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم حفظ الإجابة'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  void _confirmDelete() {
+    final cubit = context.read<AdminStatsCubit>();
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('حذف السؤال'),
+        content: const Text('هل أنت متأكد من حذف هذا السؤال؟ لا يمكن التراجع.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              final ok = await cubit.deleteQuestion(widget.question.id);
+              if (!mounted) return;
+              Navigator.of(context).pop();
+              if (ok) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم حذف السؤال'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            child: const Text('حذف نهائياً'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = widget.question;
+    return Padding(
+      padding: EdgeInsetsDirectional.only(
+        start: AppSpacing.md,
+        end: AppSpacing.md,
+        top: AppSpacing.md,
+        bottom: AppSpacing.md + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.help_outline, size: 18),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  q.askerName ?? 'طالب مجهول',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  tooltip: 'حذف السؤال',
+                  onPressed: _confirmDelete,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(q.questionText),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'الإجابة',
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            TextField(
+              controller: _answerCtrl,
+              decoration: const InputDecoration(hintText: 'اكتب الإجابة...'),
+              maxLines: 5,
+              autofocus: !q.isAnswered,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: Text(q.isAnswered ? 'حفظ التعديل' : 'إرسال الإجابة'),
+                onPressed: _saving ? null : _save,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -46,8 +46,7 @@ class AdminStatsRepository {
     return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
   }
 
-  Future<Either<Failure, List<LessonEntity>>> getLessons(
-      String bookId) async {
+  Future<Either<Failure, List<LessonEntity>>> getLessons(String bookId) async {
     final net = _checkNetwork<List<LessonEntity>>();
     if (net != null) return net;
     try {
@@ -57,9 +56,11 @@ class AdminStatsRepository {
           .eq('book_id', bookId)
           .order('order_index', ascending: true)
           .limit(200);
-      return Right((data as List)
-          .map((e) => LessonEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map((e) => LessonEntity.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getLessons: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -68,23 +69,123 @@ class AdminStatsRepository {
     }
   }
 
-  Future<Either<Failure, List<StudentQuestionEntity>>> getRecentQuestions(
-      String bookId) async {
+  /// All questions for a book (admin context), newest first, with the asker's
+  /// name joined from `users`. Admin RLS permits selecting the base table.
+  Future<Either<Failure, List<StudentQuestionEntity>>> getBookQuestions(
+    String bookId,
+  ) async {
     final net = _checkNetwork<List<StudentQuestionEntity>>();
     if (net != null) return net;
     try {
       final data = await _client
           .from('student_questions')
-          .select()
+          .select('*, users(full_name)')
           .eq('book_id', bookId)
           .order('created_at', ascending: false)
-          .limit(20);
-      return Right((data as List)
-          .map((e) =>
-              StudentQuestionEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+          .limit(200);
+      return Right(
+        (data as List)
+            .map(
+              (e) => StudentQuestionEntity.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      );
     } on PostgrestException catch (e) {
-      _log.warning('getRecentQuestions: ${e.message}');
+      _log.warning('getBookQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// First-time answer: sets answer + status + answered_at, then notifies the
+  /// asking student (scoped via target_user_id).
+  Future<Either<Failure, StudentQuestionEntity>> answerQuestion({
+    required String questionId,
+    required String answerText,
+  }) async {
+    final net = _checkNetwork<StudentQuestionEntity>();
+    if (net != null) return net;
+    try {
+      final now = DateTime.now().toIso8601String();
+      final data = await _client
+          .from('student_questions')
+          .update({
+            'answer_text': answerText,
+            'status': 'answered',
+            'answered_at': now,
+          })
+          .eq('id', questionId)
+          .select()
+          .single();
+
+      try {
+        await _client.from('notifications').insert({
+          'type': 'general',
+          'title': 'تمت الإجابة على سؤالك',
+          'body': 'الشيخ أجاب على سؤالك في الكتاب',
+          'send_at': now,
+          'target_user_id': data['user_id'] as String,
+        });
+      } on PostgrestException catch (e) {
+        _log.warning('answerQuestion notification insert: ${e.message}');
+      }
+
+      return Right(StudentQuestionEntity.fromJson(data));
+    } on PostgrestException catch (e) {
+      _log.warning('answerQuestion: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Silent edit of an already-answered question: updates answer text only.
+  /// No status change and no re-notification.
+  Future<Either<Failure, StudentQuestionEntity>> editAnswer({
+    required String questionId,
+    required String answerText,
+  }) async {
+    final net = _checkNetwork<StudentQuestionEntity>();
+    if (net != null) return net;
+    try {
+      final data = await _client
+          .from('student_questions')
+          .update({'answer_text': answerText})
+          .eq('id', questionId)
+          .select()
+          .single();
+      return Right(StudentQuestionEntity.fromJson(data));
+    } on PostgrestException catch (e) {
+      _log.warning('editAnswer: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, Unit>> deleteQuestion(String questionId) async {
+    final net = _checkNetwork<Unit>();
+    if (net != null) return net;
+    try {
+      await _client.from('student_questions').delete().eq('id', questionId);
+      return const Right(unit);
+    } on PostgrestException catch (e) {
+      _log.warning('deleteQuestion: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, Unit>> clearBookQuestions(String bookId) async {
+    final net = _checkNetwork<Unit>();
+    if (net != null) return net;
+    try {
+      await _client.from('student_questions').delete().eq('book_id', bookId);
+      return const Right(unit);
+    } on PostgrestException catch (e) {
+      _log.warning('clearBookQuestions: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
@@ -132,17 +233,20 @@ class AdminStatsRepository {
                   (sum, e) =>
                       sum +
                       ((e as Map<String, dynamic>)['score_percentage'] as int)
-                          .toDouble()) /
-              attempts.length;
+                          .toDouble(),
+                ) /
+                attempts.length;
 
-      return Right(BookStats(
-        totalStudents: totalStudents,
-        completedStudents: completedStudents,
-        completionRate: completionRate,
-        avgScore: avgScore,
-        totalAttempts: totalAttempts,
-        enrollmentTrend: trend,
-      ));
+      return Right(
+        BookStats(
+          totalStudents: totalStudents,
+          completedStudents: completedStudents,
+          completionRate: completionRate,
+          avgScore: avgScore,
+          totalAttempts: totalAttempts,
+          enrollmentTrend: trend,
+        ),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getBookStats: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -159,8 +263,10 @@ class AdminStatsRepository {
       counts[d] = 0;
     }
     for (final row in enrollData) {
-      final at = DateTime.tryParse(
-              (row as Map<String, dynamic>)['enrolled_at'] as String? ?? '') ??
+      final at =
+          DateTime.tryParse(
+            (row as Map<String, dynamic>)['enrolled_at'] as String? ?? '',
+          ) ??
           now;
       final day = DateTime(at.year, at.month, at.day);
       if (counts.containsKey(day)) counts[day] = (counts[day] ?? 0) + 1;

@@ -21,17 +21,21 @@ class AdminDashboardPage extends StatelessWidget {
     return BlocConsumer<AdminDashboardCubit, AdminDashboardState>(
       listener: (context, state) {
         if (state is AdminDashboardError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         } else if (state is AdminDashboardDeleteSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('تم حذف الكتاب بنجاح'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم حذف الكتاب بنجاح'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -41,23 +45,22 @@ class AdminDashboardPage extends StatelessWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: () =>
-                    context.read<AdminDashboardCubit>().load(),
+                onPressed: () => context.read<AdminDashboardCubit>().load(),
               ),
             ],
           ),
           body: switch (state) {
             AdminDashboardLoading() => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: CircularProgressIndicator(),
+            ),
             AdminDashboardError() => ErrorState(
-                message: state.message,
-                onRetry: () => context.read<AdminDashboardCubit>().load(),
-              ),
+              message: state.message,
+              onRetry: () => context.read<AdminDashboardCubit>().load(),
+            ),
             AdminDashboardLoaded() => _LoadedBody(
-                stats: state.stats,
-                books: state.books,
-              ),
+              stats: state.stats,
+              books: state.books,
+            ),
             _ => const Center(child: CircularProgressIndicator()),
           },
         );
@@ -85,9 +88,9 @@ class _LoadedBody extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           Text(
             'كتبي',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.sm),
           if (books.isEmpty)
@@ -192,9 +195,9 @@ class _StatCard extends StatelessWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ],
           ),
@@ -212,9 +215,9 @@ class _QuickActions extends StatelessWidget {
       children: [
         Text(
           'إجراءات سريعة',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: AppSpacing.sm),
         Row(
@@ -315,10 +318,9 @@ class _BookListItem extends StatelessWidget {
         ),
         title: Text(
           book.title,
-          style: Theme.of(context)
-              .textTheme
-              .bodyLarge
-              ?.copyWith(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Padding(
           padding: const EdgeInsetsDirectional.only(top: AppSpacing.xs),
@@ -335,14 +337,19 @@ class _BookListItem extends StatelessWidget {
                     ? BadgeStatus.completed
                     : BadgeStatus.inReview,
               ),
-              if (book.isFeatured)
-                const StatusBadge(status: BadgeStatus.published),
             ],
           ),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            IconButton(
+              icon: const Icon(Icons.question_answer_outlined),
+              onPressed: () => context.push(
+                '/admin/books/${book.id}/dashboard?title=${Uri.encodeComponent(book.title)}&tab=questions',
+              ),
+              tooltip: 'أسئلة الطلاب',
+            ),
             IconButton(
               icon: const Icon(Icons.quiz_outlined),
               onPressed: () => context.push(
@@ -352,8 +359,7 @@ class _BookListItem extends StatelessWidget {
             ),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
-              onPressed: () =>
-                  context.push('/admin/books/${book.id}/edit'),
+              onPressed: () => context.push('/admin/books/${book.id}/edit'),
               tooltip: 'تعديل',
             ),
             IconButton(

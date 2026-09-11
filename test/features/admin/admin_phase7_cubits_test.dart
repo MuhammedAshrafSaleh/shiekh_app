@@ -40,10 +40,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // Mock repositories
 // ---------------------------------------------------------------------------
 class _MockLessonRepo extends Mock implements AdminLessonRepository {}
+
 class _MockExamRepo extends Mock implements AdminExamRepository {}
+
 class _MockQaRepo extends Mock implements AdminQaRepository {}
+
 class _MockStatsRepo extends Mock implements AdminStatsRepository {}
+
 class _MockNotifRepo extends Mock implements AdminNotificationsRepository {}
+
 class _MockRealtimeChannel extends Mock implements RealtimeChannel {}
 
 // ---------------------------------------------------------------------------
@@ -158,8 +163,9 @@ void main() {
     // ── load ─────────────────────────────────────────────────────────────────
     group('load', () {
       test('emits Loading then Loaded on success', () async {
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([_lesson, _lesson2]));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([_lesson, _lesson2]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -171,12 +177,16 @@ void main() {
         await cubit.load('book-1');
         await expectation;
 
-        expect((cubit.state as AdminLessonListLoaded).lessons, [_lesson, _lesson2]);
+        expect((cubit.state as AdminLessonListLoaded).lessons, [
+          _lesson,
+          _lesson2,
+        ]);
       });
 
       test('emits Loading then Empty when no lessons', () async {
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -190,8 +200,9 @@ void main() {
       });
 
       test('emits Loading then Error on failure', () async {
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -203,17 +214,22 @@ void main() {
         await cubit.load('book-1');
         await expectation;
 
-        expect((cubit.state as AdminLessonListError).message, _serverFailure.message);
+        expect(
+          (cubit.state as AdminLessonListError).message,
+          _serverFailure.message,
+        );
       });
     });
 
     // ── togglePublish ─────────────────────────────────────────────────────────
     group('togglePublish', () {
       test('refreshes list (emits Loading → Loaded) on success', () async {
-        when(() => repo.togglePublish(any(), any()))
-            .thenAnswer((_) async => const Right(unit));
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([_lesson2]));
+        when(
+          () => repo.togglePublish(any(), any()),
+        ).thenAnswer((_) async => const Right(unit));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([_lesson2]));
 
         // Prime _bookId
         cubit.load('book-1');
@@ -227,10 +243,12 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.togglePublish(any(), any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([_lesson]));
+        when(
+          () => repo.togglePublish(any(), any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([_lesson]));
 
         cubit.load('book-1');
 
@@ -246,10 +264,12 @@ void main() {
     // ── delete ────────────────────────────────────────────────────────────────
     group('delete', () {
       test('refreshes list on success', () async {
-        when(() => repo.deleteLesson(any()))
-            .thenAnswer((_) async => const Right(unit));
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.deleteLesson(any()),
+        ).thenAnswer((_) async => const Right(unit));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([]));
 
         cubit.load('book-1');
 
@@ -262,10 +282,12 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.deleteLesson(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([_lesson]));
+        when(
+          () => repo.deleteLesson(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([_lesson]));
 
         cubit.load('book-1');
 
@@ -281,8 +303,9 @@ void main() {
     // ── CC-5 reorder ──────────────────────────────────────────────────────────
     group('reorder (CC-5)', () {
       test('returns true on successful transactional reorder', () async {
-        when(() => repo.reorderLessons(any()))
-            .thenAnswer((_) async => const Right(unit));
+        when(
+          () => repo.reorderLessons(any()),
+        ).thenAnswer((_) async => const Right(unit));
 
         final ok = await cubit.reorder([
           (id: 'les-2', orderIndex: 1),
@@ -292,8 +315,9 @@ void main() {
       });
 
       test('returns false on reorder failure', () async {
-        when(() => repo.reorderLessons(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.reorderLessons(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final ok = await cubit.reorder([(id: 'les-1', orderIndex: 1)]);
         expect(ok, isFalse);
@@ -317,49 +341,58 @@ void main() {
 
     // ── load (new lesson) ─────────────────────────────────────────────────────
     group('load (new lesson)', () {
-      test('emits Loading then Loaded with null lesson and empty quiz', () async {
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminLessonFormLoading>(),
-            isA<AdminLessonFormLoaded>(),
-          ]),
-        );
-        await cubit.load();
-        await expectation;
+      test(
+        'emits Loading then Loaded with null lesson and empty quiz',
+        () async {
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([
+              isA<AdminLessonFormLoading>(),
+              isA<AdminLessonFormLoaded>(),
+            ]),
+          );
+          await cubit.load();
+          await expectation;
 
-        final loaded = cubit.state as AdminLessonFormLoaded;
-        expect(loaded.lesson, isNull);
-        expect(loaded.quizQuestions, isEmpty);
-      });
+          final loaded = cubit.state as AdminLessonFormLoaded;
+          expect(loaded.lesson, isNull);
+          expect(loaded.quizQuestions, isEmpty);
+        },
+      );
     });
 
     // ── load (existing lesson) ────────────────────────────────────────────────
     group('load (existing lesson)', () {
-      test('emits Loading then Loaded with lesson and quiz questions', () async {
-        when(() => repo.getLesson(any()))
-            .thenAnswer((_) async => const Right(_lesson));
-        when(() => repo.getQuizQuestions(any()))
-            .thenAnswer((_) async => const Right([_quizQ]));
+      test(
+        'emits Loading then Loaded with lesson and quiz questions',
+        () async {
+          when(
+            () => repo.getLesson(any()),
+          ).thenAnswer((_) async => const Right(_lesson));
+          when(
+            () => repo.getQuizQuestions(any()),
+          ).thenAnswer((_) async => const Right([_quizQ]));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminLessonFormLoading>(),
-            isA<AdminLessonFormLoaded>(),
-          ]),
-        );
-        await cubit.load(lessonId: 'les-1');
-        await expectation;
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([
+              isA<AdminLessonFormLoading>(),
+              isA<AdminLessonFormLoaded>(),
+            ]),
+          );
+          await cubit.load(lessonId: 'les-1');
+          await expectation;
 
-        final loaded = cubit.state as AdminLessonFormLoaded;
-        expect(loaded.lesson, _lesson);
-        expect(loaded.quizQuestions, [_quizQ]);
-      });
+          final loaded = cubit.state as AdminLessonFormLoaded;
+          expect(loaded.lesson, _lesson);
+          expect(loaded.quizQuestions, [_quizQ]);
+        },
+      );
 
       test('emits Error when getLesson fails', () async {
-        when(() => repo.getLesson(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getLesson(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -373,10 +406,12 @@ void main() {
       });
 
       test('emits Error when getQuizQuestions fails', () async {
-        when(() => repo.getLesson(any()))
-            .thenAnswer((_) async => const Right(_lesson));
-        when(() => repo.getQuizQuestions(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getLesson(any()),
+        ).thenAnswer((_) async => const Right(_lesson));
+        when(
+          () => repo.getQuizQuestions(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -393,16 +428,18 @@ void main() {
     // ── save (create) ─────────────────────────────────────────────────────────
     group('save (create)', () {
       test('emits Saving then Saved on success', () async {
-        when(() => repo.createLesson(
-              bookId: any(named: 'bookId'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              videoUrl: any(named: 'videoUrl'),
-              audioUrl: any(named: 'audioUrl'),
-              pdfUrl: any(named: 'pdfUrl'),
-              audioOnly: any(named: 'audioOnly'),
-              status: any(named: 'status'),
-            )).thenAnswer((_) async => const Right(_lesson));
+        when(
+          () => repo.createLesson(
+            bookId: any(named: 'bookId'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            videoUrl: any(named: 'videoUrl'),
+            audioUrl: any(named: 'audioUrl'),
+            pdfUrl: any(named: 'pdfUrl'),
+            audioOnly: any(named: 'audioOnly'),
+            status: any(named: 'status'),
+          ),
+        ).thenAnswer((_) async => const Right(_lesson));
 
         final expectation = expectLater(
           cubit.stream,
@@ -423,16 +460,18 @@ void main() {
       });
 
       test('emits Saving then Error on failure', () async {
-        when(() => repo.createLesson(
-              bookId: any(named: 'bookId'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              videoUrl: any(named: 'videoUrl'),
-              audioUrl: any(named: 'audioUrl'),
-              pdfUrl: any(named: 'pdfUrl'),
-              audioOnly: any(named: 'audioOnly'),
-              status: any(named: 'status'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.createLesson(
+            bookId: any(named: 'bookId'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            videoUrl: any(named: 'videoUrl'),
+            audioUrl: any(named: 'audioUrl'),
+            pdfUrl: any(named: 'pdfUrl'),
+            audioOnly: any(named: 'audioOnly'),
+            status: any(named: 'status'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -454,16 +493,18 @@ void main() {
     // ── save (update) ─────────────────────────────────────────────────────────
     group('save (update)', () {
       test('emits Saving then Saved on success', () async {
-        when(() => repo.updateLesson(
-              id: any(named: 'id'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              videoUrl: any(named: 'videoUrl'),
-              audioUrl: any(named: 'audioUrl'),
-              pdfUrl: any(named: 'pdfUrl'),
-              audioOnly: any(named: 'audioOnly'),
-              status: any(named: 'status'),
-            )).thenAnswer((_) async => const Right(_lesson));
+        when(
+          () => repo.updateLesson(
+            id: any(named: 'id'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            videoUrl: any(named: 'videoUrl'),
+            audioUrl: any(named: 'audioUrl'),
+            pdfUrl: any(named: 'pdfUrl'),
+            audioOnly: any(named: 'audioOnly'),
+            status: any(named: 'status'),
+          ),
+        ).thenAnswer((_) async => const Right(_lesson));
 
         final expectation = expectLater(
           cubit.stream,
@@ -487,21 +528,25 @@ void main() {
     group('addQuizQuestion', () {
       test('appends question to Loaded state on success', () async {
         // Prime with a loaded state
-        when(() => repo.getLesson(any()))
-            .thenAnswer((_) async => const Right(_lesson));
-        when(() => repo.getQuizQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getLesson(any()),
+        ).thenAnswer((_) async => const Right(_lesson));
+        when(
+          () => repo.getQuizQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
         await cubit.load(lessonId: 'les-1');
 
-        when(() => repo.createQuizQuestion(
-              lessonId: any(named: 'lessonId'),
-              questionText: any(named: 'questionText'),
-              choiceA: any(named: 'choiceA'),
-              choiceB: any(named: 'choiceB'),
-              choiceC: any(named: 'choiceC'),
-              choiceD: any(named: 'choiceD'),
-              correctChoice: any(named: 'correctChoice'),
-            )).thenAnswer((_) async => const Right(_quizQ));
+        when(
+          () => repo.createQuizQuestion(
+            lessonId: any(named: 'lessonId'),
+            questionText: any(named: 'questionText'),
+            choiceA: any(named: 'choiceA'),
+            choiceB: any(named: 'choiceB'),
+            choiceC: any(named: 'choiceC'),
+            choiceD: any(named: 'choiceD'),
+            correctChoice: any(named: 'correctChoice'),
+          ),
+        ).thenAnswer((_) async => const Right(_quizQ));
 
         final expectation = expectLater(
           cubit.stream,
@@ -523,21 +568,25 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.getLesson(any()))
-            .thenAnswer((_) async => const Right(_lesson));
-        when(() => repo.getQuizQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getLesson(any()),
+        ).thenAnswer((_) async => const Right(_lesson));
+        when(
+          () => repo.getQuizQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
         await cubit.load(lessonId: 'les-1');
 
-        when(() => repo.createQuizQuestion(
-              lessonId: any(named: 'lessonId'),
-              questionText: any(named: 'questionText'),
-              choiceA: any(named: 'choiceA'),
-              choiceB: any(named: 'choiceB'),
-              choiceC: any(named: 'choiceC'),
-              choiceD: any(named: 'choiceD'),
-              correctChoice: any(named: 'correctChoice'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.createQuizQuestion(
+            lessonId: any(named: 'lessonId'),
+            questionText: any(named: 'questionText'),
+            choiceA: any(named: 'choiceA'),
+            choiceB: any(named: 'choiceB'),
+            choiceC: any(named: 'choiceC'),
+            choiceD: any(named: 'choiceD'),
+            correctChoice: any(named: 'correctChoice'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -559,14 +608,17 @@ void main() {
     // ── deleteQuizQuestion ────────────────────────────────────────────────────
     group('deleteQuizQuestion', () {
       test('removes question from Loaded state on success', () async {
-        when(() => repo.getLesson(any()))
-            .thenAnswer((_) async => const Right(_lesson));
-        when(() => repo.getQuizQuestions(any()))
-            .thenAnswer((_) async => const Right([_quizQ]));
+        when(
+          () => repo.getLesson(any()),
+        ).thenAnswer((_) async => const Right(_lesson));
+        when(
+          () => repo.getQuizQuestions(any()),
+        ).thenAnswer((_) async => const Right([_quizQ]));
         await cubit.load(lessonId: 'les-1');
 
-        when(() => repo.deleteQuizQuestion(any()))
-            .thenAnswer((_) async => const Right(unit));
+        when(
+          () => repo.deleteQuizQuestion(any()),
+        ).thenAnswer((_) async => const Right(unit));
 
         final expectation = expectLater(
           cubit.stream,
@@ -580,14 +632,17 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.getLesson(any()))
-            .thenAnswer((_) async => const Right(_lesson));
-        when(() => repo.getQuizQuestions(any()))
-            .thenAnswer((_) async => const Right([_quizQ]));
+        when(
+          () => repo.getLesson(any()),
+        ).thenAnswer((_) async => const Right(_lesson));
+        when(
+          () => repo.getQuizQuestions(any()),
+        ).thenAnswer((_) async => const Right([_quizQ]));
         await cubit.load(lessonId: 'les-1');
 
-        when(() => repo.deleteQuizQuestion(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.deleteQuizQuestion(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -616,17 +671,16 @@ void main() {
     // ── load ──────────────────────────────────────────────────────────────────
     group('load', () {
       test('emits Loading then Loaded with settings and questions', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([_examQ]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([_examQ]));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminExamLoading>(),
-            isA<AdminExamLoaded>(),
-          ]),
+          emitsInOrder([isA<AdminExamLoading>(), isA<AdminExamLoaded>()]),
         );
         await cubit.load('book-1');
         await expectation;
@@ -637,17 +691,16 @@ void main() {
       });
 
       test('emits Loaded with null settings when no settings exist', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(null));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(null));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminExamLoading>(),
-            isA<AdminExamLoaded>(),
-          ]),
+          emitsInOrder([isA<AdminExamLoading>(), isA<AdminExamLoaded>()]),
         );
         await cubit.load('book-1');
         await expectation;
@@ -656,32 +709,29 @@ void main() {
       });
 
       test('emits Error when getSettings fails', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminExamLoading>(),
-            isA<AdminExamError>(),
-          ]),
+          emitsInOrder([isA<AdminExamLoading>(), isA<AdminExamError>()]),
         );
         await cubit.load('book-1');
         await expectation;
       });
 
       test('emits Error when getQuestions fails', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminExamLoading>(),
-            isA<AdminExamError>(),
-          ]),
+          emitsInOrder([isA<AdminExamLoading>(), isA<AdminExamError>()]),
         );
         await cubit.load('book-1');
         await expectation;
@@ -692,19 +742,23 @@ void main() {
     group('saveSettings (CC-14/CC-16)', () {
       test('reloads (emits Loading → Loaded) on success', () async {
         // Prime book id
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([_examQ]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([_examQ]));
         await cubit.load('book-1');
 
-        when(() => repo.upsertSettings(
-              bookId: any(named: 'bookId'),
-              timeLimitMinutes: any(named: 'timeLimitMinutes'),
-              passingPercentage: any(named: 'passingPercentage'),
-              maxAttempts: any(named: 'maxAttempts'),
-              isPublished: any(named: 'isPublished'),
-            )).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.upsertSettings(
+            bookId: any(named: 'bookId'),
+            timeLimitMinutes: any(named: 'timeLimitMinutes'),
+            passingPercentage: any(named: 'passingPercentage'),
+            maxAttempts: any(named: 'maxAttempts'),
+            isPublished: any(named: 'isPublished'),
+          ),
+        ).thenAnswer((_) async => const Right(_settings));
 
         final expectation = expectLater(
           cubit.stream,
@@ -724,26 +778,27 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
         await cubit.load('book-1');
 
-        when(() => repo.upsertSettings(
-              bookId: any(named: 'bookId'),
-              timeLimitMinutes: any(named: 'timeLimitMinutes'),
-              passingPercentage: any(named: 'passingPercentage'),
-              maxAttempts: any(named: 'maxAttempts'),
-              isPublished: any(named: 'isPublished'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.upsertSettings(
+            bookId: any(named: 'bookId'),
+            timeLimitMinutes: any(named: 'timeLimitMinutes'),
+            passingPercentage: any(named: 'passingPercentage'),
+            maxAttempts: any(named: 'maxAttempts'),
+            isPublished: any(named: 'isPublished'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminExamSaving>(),
-            isA<AdminExamError>(),
-          ]),
+          emitsInOrder([isA<AdminExamSaving>(), isA<AdminExamError>()]),
         );
         await cubit.saveSettings(
           timeLimitMinutes: 60,
@@ -758,22 +813,26 @@ void main() {
     // ── addQuestion ───────────────────────────────────────────────────────────
     group('addQuestion', () {
       test('appends question to Loaded state on success', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
         await cubit.load('book-1');
 
-        when(() => repo.createQuestion(
-              bookId: any(named: 'bookId'),
-              questionText: any(named: 'questionText'),
-              choiceA: any(named: 'choiceA'),
-              choiceB: any(named: 'choiceB'),
-              choiceC: any(named: 'choiceC'),
-              choiceD: any(named: 'choiceD'),
-              correctChoice: any(named: 'correctChoice'),
-              sourceQuizQuestionId: any(named: 'sourceQuizQuestionId'),
-            )).thenAnswer((_) async => const Right(_examQ));
+        when(
+          () => repo.createQuestion(
+            bookId: any(named: 'bookId'),
+            questionText: any(named: 'questionText'),
+            choiceA: any(named: 'choiceA'),
+            choiceB: any(named: 'choiceB'),
+            choiceC: any(named: 'choiceC'),
+            choiceD: any(named: 'choiceD'),
+            correctChoice: any(named: 'correctChoice'),
+            sourceQuizQuestionId: any(named: 'sourceQuizQuestionId'),
+          ),
+        ).thenAnswer((_) async => const Right(_examQ));
 
         final expectation = expectLater(
           cubit.stream,
@@ -794,22 +853,26 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
         await cubit.load('book-1');
 
-        when(() => repo.createQuestion(
-              bookId: any(named: 'bookId'),
-              questionText: any(named: 'questionText'),
-              choiceA: any(named: 'choiceA'),
-              choiceB: any(named: 'choiceB'),
-              choiceC: any(named: 'choiceC'),
-              choiceD: any(named: 'choiceD'),
-              correctChoice: any(named: 'correctChoice'),
-              sourceQuizQuestionId: any(named: 'sourceQuizQuestionId'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.createQuestion(
+            bookId: any(named: 'bookId'),
+            questionText: any(named: 'questionText'),
+            choiceA: any(named: 'choiceA'),
+            choiceB: any(named: 'choiceB'),
+            choiceC: any(named: 'choiceC'),
+            choiceD: any(named: 'choiceD'),
+            correctChoice: any(named: 'correctChoice'),
+            sourceQuizQuestionId: any(named: 'sourceQuizQuestionId'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -830,14 +893,17 @@ void main() {
     // ── deleteQuestion ────────────────────────────────────────────────────────
     group('deleteQuestion', () {
       test('removes question from Loaded state on success', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([_examQ]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([_examQ]));
         await cubit.load('book-1');
 
-        when(() => repo.deleteQuestion(any()))
-            .thenAnswer((_) async => const Right(unit));
+        when(
+          () => repo.deleteQuestion(any()),
+        ).thenAnswer((_) async => const Right(unit));
 
         final expectation = expectLater(
           cubit.stream,
@@ -851,14 +917,17 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([_examQ]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([_examQ]));
         await cubit.load('book-1');
 
-        when(() => repo.deleteQuestion(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.deleteQuestion(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -872,39 +941,44 @@ void main() {
     // ── importFromBank ────────────────────────────────────────────────────────
     group('importFromBank', () {
       test('reloads after successful import', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
         await cubit.load('book-1');
 
-        when(() => repo.importBankQuestions(
-              bookId: any(named: 'bookId'),
-              questions: any(named: 'questions'),
-            )).thenAnswer((_) async => const Right(1));
+        when(
+          () => repo.importBankQuestions(
+            bookId: any(named: 'bookId'),
+            questions: any(named: 'questions'),
+          ),
+        ).thenAnswer((_) async => const Right(1));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminExamLoading>(),
-            isA<AdminExamLoaded>(),
-          ]),
+          emitsInOrder([isA<AdminExamLoading>(), isA<AdminExamLoaded>()]),
         );
         await cubit.importFromBank([_quizQ]);
         await expectation;
       });
 
       test('emits Error on import failure', () async {
-        when(() => repo.getSettings(any()))
-            .thenAnswer((_) async => const Right(_settings));
-        when(() => repo.getQuestions(any()))
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([]));
         await cubit.load('book-1');
 
-        when(() => repo.importBankQuestions(
-              bookId: any(named: 'bookId'),
-              questions: any(named: 'questions'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.importBankQuestions(
+            bookId: any(named: 'bookId'),
+            questions: any(named: 'questions'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -937,54 +1011,73 @@ void main() {
 
     // ── load ──────────────────────────────────────────────────────────────────
     group('load', () {
-      test('emits Loading then Loaded with pending and answered tabs', () async {
-        when(() => repo.getQuestions(status: 'pending', limit: any(named: 'limit'), offset: any(named: 'offset')))
-            .thenAnswer((_) async => Right([_studentQ]));
-        when(() => repo.getQuestions(status: 'answered', limit: any(named: 'limit'), offset: any(named: 'offset')))
-            .thenAnswer((_) async => Right([_answeredQ]));
+      test(
+        'emits Loading then Loaded with pending and answered tabs',
+        () async {
+          when(
+            () => repo.getQuestions(
+              status: 'pending',
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
+            ),
+          ).thenAnswer((_) async => Right([_studentQ]));
+          when(
+            () => repo.getQuestions(
+              status: 'answered',
+              limit: any(named: 'limit'),
+              offset: any(named: 'offset'),
+            ),
+          ).thenAnswer((_) async => Right([_answeredQ]));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminQaLoading>(),
-            isA<AdminQaLoaded>(),
-          ]),
-        );
-        await cubit.load();
-        await expectation;
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([isA<AdminQaLoading>(), isA<AdminQaLoaded>()]),
+          );
+          await cubit.load();
+          await expectation;
 
-        final loaded = cubit.state as AdminQaLoaded;
-        expect(loaded.pending, [_studentQ]);
-        expect(loaded.answered, [_answeredQ]);
-      });
+          final loaded = cubit.state as AdminQaLoaded;
+          expect(loaded.pending, [_studentQ]);
+          expect(loaded.answered, [_answeredQ]);
+        },
+      );
 
       test('emits Error when pending fetch fails', () async {
-        when(() => repo.getQuestions(status: 'pending', limit: any(named: 'limit'), offset: any(named: 'offset')))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getQuestions(
+            status: 'pending',
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminQaLoading>(),
-            isA<AdminQaError>(),
-          ]),
+          emitsInOrder([isA<AdminQaLoading>(), isA<AdminQaError>()]),
         );
         await cubit.load();
         await expectation;
       });
 
       test('emits Error when answered fetch fails', () async {
-        when(() => repo.getQuestions(status: 'pending', limit: any(named: 'limit'), offset: any(named: 'offset')))
-            .thenAnswer((_) async => Right([_studentQ]));
-        when(() => repo.getQuestions(status: 'answered', limit: any(named: 'limit'), offset: any(named: 'offset')))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getQuestions(
+            status: 'pending',
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => Right([_studentQ]));
+        when(
+          () => repo.getQuestions(
+            status: 'answered',
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminQaLoading>(),
-            isA<AdminQaError>(),
-          ]),
+          emitsInOrder([isA<AdminQaLoading>(), isA<AdminQaError>()]),
         );
         await cubit.load();
         await expectation;
@@ -994,14 +1087,26 @@ void main() {
     // ── answerQuestion ────────────────────────────────────────────────────────
     group('answerQuestion', () {
       test('returns true and reloads on success', () async {
-        when(() => repo.answerQuestion(
-              questionId: any(named: 'questionId'),
-              answerText: any(named: 'answerText'),
-            )).thenAnswer((_) async => Right(_answeredQ));
-        when(() => repo.getQuestions(status: 'pending', limit: any(named: 'limit'), offset: any(named: 'offset')))
-            .thenAnswer((_) async => const Right([]));
-        when(() => repo.getQuestions(status: 'answered', limit: any(named: 'limit'), offset: any(named: 'offset')))
-            .thenAnswer((_) async => Right([_answeredQ]));
+        when(
+          () => repo.answerQuestion(
+            questionId: any(named: 'questionId'),
+            answerText: any(named: 'answerText'),
+          ),
+        ).thenAnswer((_) async => Right(_answeredQ));
+        when(
+          () => repo.getQuestions(
+            status: 'pending',
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getQuestions(
+            status: 'answered',
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => Right([_answeredQ]));
 
         final ok = await cubit.answerQuestion(
           questionId: 'sq-1',
@@ -1011,10 +1116,12 @@ void main() {
       });
 
       test('returns false and emits Error on failure', () async {
-        when(() => repo.answerQuestion(
-              questionId: any(named: 'questionId'),
-              answerText: any(named: 'answerText'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.answerQuestion(
+            questionId: any(named: 'questionId'),
+            answerText: any(named: 'answerText'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -1047,76 +1154,76 @@ void main() {
 
     // ── load ──────────────────────────────────────────────────────────────────
     group('load', () {
-      test('emits Loading then Loaded with lessons, stats, and questions', () async {
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([_lesson, _lesson2]));
-        when(() => repo.getBookStats(any()))
-            .thenAnswer((_) async => Right(_bookStats));
-        when(() => repo.getRecentQuestions(any()))
-            .thenAnswer((_) async => Right([_studentQ]));
+      test(
+        'emits Loading then Loaded with lessons, stats, and questions',
+        () async {
+          when(
+            () => repo.getLessons(any()),
+          ).thenAnswer((_) async => const Right([_lesson, _lesson2]));
+          when(
+            () => repo.getBookStats(any()),
+          ).thenAnswer((_) async => Right(_bookStats));
+          when(
+            () => repo.getBookQuestions(any()),
+          ).thenAnswer((_) async => Right([_studentQ]));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminStatsLoading>(),
-            isA<AdminStatsLoaded>(),
-          ]),
-        );
-        await cubit.load('book-1');
-        await expectation;
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([isA<AdminStatsLoading>(), isA<AdminStatsLoaded>()]),
+          );
+          await cubit.load('book-1');
+          await expectation;
 
-        final loaded = cubit.state as AdminStatsLoaded;
-        expect(loaded.lessons, [_lesson, _lesson2]);
-        expect(loaded.stats.totalStudents, 20);
-        expect(loaded.recentQuestions, [_studentQ]);
-      });
+          final loaded = cubit.state as AdminStatsLoaded;
+          expect(loaded.lessons, [_lesson, _lesson2]);
+          expect(loaded.stats.totalStudents, 20);
+          expect(loaded.questions, [_studentQ]);
+        },
+      );
 
       test('emits Error when getLessons fails', () async {
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminStatsLoading>(),
-            isA<AdminStatsError>(),
-          ]),
+          emitsInOrder([isA<AdminStatsLoading>(), isA<AdminStatsError>()]),
         );
         await cubit.load('book-1');
         await expectation;
       });
 
       test('emits Error when getBookStats fails', () async {
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([_lesson]));
-        when(() => repo.getBookStats(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([_lesson]));
+        when(
+          () => repo.getBookStats(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminStatsLoading>(),
-            isA<AdminStatsError>(),
-          ]),
+          emitsInOrder([isA<AdminStatsLoading>(), isA<AdminStatsError>()]),
         );
         await cubit.load('book-1');
         await expectation;
       });
 
-      test('emits Error when getRecentQuestions fails', () async {
-        when(() => repo.getLessons(any()))
-            .thenAnswer((_) async => const Right([_lesson]));
-        when(() => repo.getBookStats(any()))
-            .thenAnswer((_) async => Right(_bookStats));
-        when(() => repo.getRecentQuestions(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+      test('emits Error when getBookQuestions fails', () async {
+        when(
+          () => repo.getLessons(any()),
+        ).thenAnswer((_) async => const Right([_lesson]));
+        when(
+          () => repo.getBookStats(any()),
+        ).thenAnswer((_) async => Right(_bookStats));
+        when(
+          () => repo.getBookQuestions(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminStatsLoading>(),
-            isA<AdminStatsError>(),
-          ]),
+          emitsInOrder([isA<AdminStatsLoading>(), isA<AdminStatsError>()]),
         );
         await cubit.load('book-1');
         await expectation;
@@ -1141,8 +1248,9 @@ void main() {
     // ── load ──────────────────────────────────────────────────────────────────
     group('load', () {
       test('emits Loading then Loaded on success', () async {
-        when(() => repo.getNotifications())
-            .thenAnswer((_) async => Right([_notification]));
+        when(
+          () => repo.getNotifications(),
+        ).thenAnswer((_) async => Right([_notification]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -1159,8 +1267,9 @@ void main() {
       });
 
       test('emits Loading then Empty when list is empty', () async {
-        when(() => repo.getNotifications())
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getNotifications(),
+        ).thenAnswer((_) async => const Right([]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -1174,8 +1283,9 @@ void main() {
       });
 
       test('emits Loading then Error on failure', () async {
-        when(() => repo.getNotifications())
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getNotifications(),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -1187,50 +1297,61 @@ void main() {
         await cubit.load();
         await expectation;
 
-        expect((cubit.state as AdminNotificationsError).message, _serverFailure.message);
+        expect(
+          (cubit.state as AdminNotificationsError).message,
+          _serverFailure.message,
+        );
       });
     });
 
     // ── send ──────────────────────────────────────────────────────────────────
     group('send', () {
-      test('returns true and emits Sending → Sent → Loaded on success', () async {
-        when(() => repo.createNotification(
+      test(
+        'returns true and emits Sending → Sent → Loaded on success',
+        () async {
+          when(
+            () => repo.createNotification(
               type: any(named: 'type'),
               title: any(named: 'title'),
               body: any(named: 'body'),
               linkUrl: any(named: 'linkUrl'),
               sendAt: any(named: 'sendAt'),
-            )).thenAnswer((_) async => Right(_notification));
-        when(() => repo.getNotifications())
-            .thenAnswer((_) async => Right([_notification]));
+            ),
+          ).thenAnswer((_) async => Right(_notification));
+          when(
+            () => repo.getNotifications(),
+          ).thenAnswer((_) async => Right([_notification]));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminNotificationsSending>(),
-            isA<AdminNotificationsSent>(),
-            isA<AdminNotificationsLoading>(),
-            isA<AdminNotificationsLoaded>(),
-          ]),
-        );
-        final ok = await cubit.send(
-          type: 'general',
-          title: 'إشعار',
-          body: 'نص',
-          sendAt: DateTime(2024, 6),
-        );
-        await expectation;
-        expect(ok, isTrue);
-      });
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([
+              isA<AdminNotificationsSending>(),
+              isA<AdminNotificationsSent>(),
+              isA<AdminNotificationsLoading>(),
+              isA<AdminNotificationsLoaded>(),
+            ]),
+          );
+          final ok = await cubit.send(
+            type: 'general',
+            title: 'إشعار',
+            body: 'نص',
+            sendAt: DateTime(2024, 6),
+          );
+          await expectation;
+          expect(ok, isTrue);
+        },
+      );
 
       test('returns false and emits Sending → Error on failure', () async {
-        when(() => repo.createNotification(
-              type: any(named: 'type'),
-              title: any(named: 'title'),
-              body: any(named: 'body'),
-              linkUrl: any(named: 'linkUrl'),
-              sendAt: any(named: 'sendAt'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.createNotification(
+            type: any(named: 'type'),
+            title: any(named: 'title'),
+            body: any(named: 'body'),
+            linkUrl: any(named: 'linkUrl'),
+            sendAt: any(named: 'sendAt'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -1253,10 +1374,12 @@ void main() {
     // ── delete ────────────────────────────────────────────────────────────────
     group('delete', () {
       test('reloads list on success', () async {
-        when(() => repo.deleteNotification(any()))
-            .thenAnswer((_) async => const Right(unit));
-        when(() => repo.getNotifications())
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.deleteNotification(any()),
+        ).thenAnswer((_) async => const Right(unit));
+        when(
+          () => repo.getNotifications(),
+        ).thenAnswer((_) async => const Right([]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -1270,8 +1393,9 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.deleteNotification(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.deleteNotification(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
