@@ -4,7 +4,11 @@
 // Sizes md(48) / sm(38). Disabled when onPressed == null. Loading shows a
 // spinner while keeping the button's footprint. Specs: DESIGN_SYSTEM.md §5.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../audio/app_sound.dart';
+import '../audio/sound_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
@@ -80,9 +84,18 @@ class SheikhyButton extends StatelessWidget {
   bool get _disabled => onPressed == null || isLoading;
   double get _height => size == SheikhyButtonSize.md ? 48 : 38;
 
+  VoidCallback? _effectiveTap(BuildContext context) {
+    if (_disabled) return null;
+    return () {
+      HapticFeedback.lightImpact();
+      context.read<SoundService>().play(AppSound.tap);
+      onPressed?.call();
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (variant == SheikhyButtonVariant.text) return _buildText();
+    if (variant == SheikhyButtonVariant.text) return _buildText(context);
 
     final isPrimary = variant == SheikhyButtonVariant.primary;
     final isGold = variant == SheikhyButtonVariant.gold;
@@ -150,7 +163,7 @@ class SheikhyButton extends StatelessWidget {
       color: bg,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.rMd, side: side),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(onTap: _disabled ? null : onPressed, child: content),
+      child: InkWell(onTap: _effectiveTap(context), child: content),
     );
 
     return fullWidth
@@ -158,10 +171,10 @@ class SheikhyButton extends StatelessWidget {
         : IntrinsicWidth(child: button);
   }
 
-  Widget _buildText() {
+  Widget _buildText(BuildContext context) {
     final color = _disabled ? AppColors.inkFaint : AppColors.goldDeep;
     return InkWell(
-      onTap: _disabled ? null : onPressed,
+      onTap: _effectiveTap(context),
       borderRadius: AppRadii.rMd,
       child: Container(
         constraints: BoxConstraints(minHeight: _height),

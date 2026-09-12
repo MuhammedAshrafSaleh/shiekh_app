@@ -5,7 +5,10 @@
 // (Aref Ruqaa), subtitle, animated loading dots, and a bottom tagline.
 // Visual-only migration — no auth logic here. Spec: design/screens/auth/1a.
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/audio/app_sound.dart';
+import '../../../core/audio/sound_service.dart';
 import '../../../core/config/brand.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -33,6 +36,9 @@ class _SplashPageState extends State<SplashPage>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<SoundService>().play(AppSound.splash);
+    });
   }
 
   @override
