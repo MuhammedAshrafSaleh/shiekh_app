@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/bloc_providers.dart';
+import 'core/audio/sound_service.dart';
 import 'core/config/app_config.dart';
 
 final _log = Logger('main');
@@ -32,9 +33,14 @@ Future<void> main() async {
 
   await _smokeTestConnection();
 
+  // Preload UI sound effects before the first frame. Failures here are
+  // swallowed inside the service and must never block startup.
+  final soundService = SoundService();
+  await soundService.init();
+
   FlutterNativeSplash.remove();
 
-  runApp(const SheikhyProviders());
+  runApp(SheikhyProviders(soundService: soundService));
 }
 
 Future<void> _smokeTestConnection() async {

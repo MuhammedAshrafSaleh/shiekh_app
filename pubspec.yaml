@@ -39,6 +39,10 @@ dependencies:
   dio: ^5.8.0+1
   path_provider: ^2.1.5
 
+  # UI sound effects (SFX) — independent engine; mixes with lesson media,
+  # never requests audio focus (see lib/core/audio/sound_service.dart)
+  audioplayers: ^6.8.1
+
   # PDF
   pdfx: ^2.9.2
   pdf: ^3.11.3
@@ -124,3 +128,6 @@ flutter:
     # Per-deployment white-label sheikh photo (splash). Replace per sheikh.
     # See MIGRATION_NOTES.md. Falls back to initials if the file is absent.
     - assets/images/
+    # UI sound effects. splash/success are white-label (per-sheikh voice),
+    # the rest are shared. See lib/core/audio/app_sound.dart.
+    - assets/sounds/

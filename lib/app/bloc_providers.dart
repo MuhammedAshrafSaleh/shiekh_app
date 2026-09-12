@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/audio/sound_service.dart';
 import '../core/theme/theme_cubit.dart';
 import '../features/achievements/data/achievements_repository.dart';
 import '../features/admin/banners/data/admin_banner_repository.dart';
@@ -33,7 +34,11 @@ import '../features/sections/data/section_repository.dart';
 import 'app.dart';
 
 class SheikhyProviders extends StatelessWidget {
-  const SheikhyProviders({super.key});
+  const SheikhyProviders({super.key, required this.soundService});
+
+  /// Preloaded in `main` before `runApp` and shared app-wide via
+  /// [RepositoryProvider].
+  final SoundService soundService;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +54,7 @@ class SheikhyProviders extends StatelessWidget {
           final connectivity = ctx.read<ConnectivityCubit>();
           return MultiRepositoryProvider(
             providers: [
+              RepositoryProvider<SoundService>.value(value: soundService),
               RepositoryProvider<AuthRepository>(
                 create: (_) => AuthRepository(supabase),
               ),
