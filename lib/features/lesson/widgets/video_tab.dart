@@ -82,9 +82,9 @@ class _VideoTabState extends State<VideoTab>
   Future<void> _load() async {
     // Resolution is deduped/cached by the repository (usually already prefetched
     // when the lesson opened), so this typically returns instantly.
-    final result = await context
-        .read<VideoStreamRepository>()
-        .resolveStreamUrl(widget.videoUrl);
+    final result = await context.read<VideoStreamRepository>().resolveStreamUrl(
+      widget.videoUrl,
+    );
     if (!mounted) return;
 
     final url = result.fold((failure) {
@@ -185,23 +185,23 @@ class _VideoTabState extends State<VideoTab>
     super.build(context);
     return switch (_status) {
       _Status.loading => Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
       _Status.error => _VideoMessage(
-          icon: _invalidUrl
-              ? Icons.videocam_off_outlined
-              : Icons.smart_display_outlined,
-          message: _invalidUrl
-              ? 'رابط الفيديو غير صحيح، تواصل مع الإدارة'
-              : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
-          onOpenYoutube: _invalidUrl ? null : _openInYoutube,
-        ),
+        icon: _invalidUrl
+            ? Icons.videocam_off_outlined
+            : Icons.smart_display_outlined,
+        message: _invalidUrl
+            ? 'رابط الفيديو غير صحيح، تواصل مع الإدارة'
+            : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
+        onOpenYoutube: _invalidUrl ? null : _openInYoutube,
+      ),
       _Status.ready => Center(
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Chewie(controller: _chewieController!),
-          ),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Chewie(controller: _chewieController!),
         ),
+      ),
     };
   }
 }

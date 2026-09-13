@@ -30,13 +30,15 @@ class ValidationFailure extends Failure {
 }
 
 class EnrollmentRequiredFailure extends Failure {
-  const EnrollmentRequiredFailure(
-      [super.message = 'يجب التسجيل في الكتاب أولاً']);
+  const EnrollmentRequiredFailure([
+    super.message = 'يجب التسجيل في الكتاب أولاً',
+  ]);
 }
 
 class AttemptsExhaustedFailure extends Failure {
-  const AttemptsExhaustedFailure(
-      [super.message = 'لقد استنفدت جميع محاولاتك المسموحة']);
+  const AttemptsExhaustedFailure([
+    super.message = 'لقد استنفدت جميع محاولاتك المسموحة',
+  ]);
 }
 
 class NotEnrolledFailure extends Failure {
@@ -44,5 +46,7 @@ class NotEnrolledFailure extends Failure {
 }
 
 class DeleteRestrictedFailure extends Failure {
-  const DeleteRestrictedFailure([super.message = 'لا يمكن الحذف لوجود بيانات مرتبطة']);
+  const DeleteRestrictedFailure([
+    super.message = 'لا يمكن الحذف لوجود بيانات مرتبطة',
+  ]);
 }

@@ -15,7 +15,9 @@ import 'package:sheikhy_app/models/section_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _MockSupabaseClient extends Mock implements SupabaseClient {}
+
 class _MockGoTrueClient extends Mock implements GoTrueClient {}
+
 class _MockConnectivityCubit extends Mock implements ConnectivityCubit {}
 
 const _offline = ConnectivityState(isOffline: true);
@@ -49,8 +51,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'db error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'db error'));
 
       final result = await repo.getSections();
 
@@ -63,8 +66,9 @@ void main() {
 
     test('queries sections table', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'ok'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.getSections();
 
@@ -88,8 +92,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'insert error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'insert error'));
 
       final result = await repo.createSection(
         name: 'علوم الحديث',
@@ -122,8 +127,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'update error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'update error'));
 
       final result = await repo.updateSection(
         id: 'sec-id',
@@ -150,28 +156,30 @@ void main() {
       verifyNever(() => client.from(any()));
     });
 
-    test('CC-3: returns DeleteRestrictedFailure on FK violation (23503)', () async {
-      when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'fk', code: '23503'));
+    test(
+      'CC-3: returns DeleteRestrictedFailure on FK violation (23503)',
+      () async {
+        when(() => connectivity.state).thenReturn(_online);
+        when(
+          () => client.from(any()),
+        ).thenThrow(const PostgrestException(message: 'fk', code: '23503'));
 
-      final result = await repo.deleteSection('sec-id');
+        final result = await repo.deleteSection('sec-id');
 
-      expect(result.isLeft(), true);
-      result.fold(
-        (f) {
+        expect(result.isLeft(), true);
+        result.fold((f) {
           expect(f, isA<DeleteRestrictedFailure>());
           // Error message mentions books
           expect(f.message, contains('كتب'));
-        },
-        (_) => fail('expected Left(DeleteRestrictedFailure)'),
-      );
-    });
+        }, (_) => fail('expected Left(DeleteRestrictedFailure)'));
+      },
+    );
 
     test('returns ServerFailure on other PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'perm', code: '42501'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'perm', code: '42501'));
 
       final result = await repo.deleteSection('sec-id');
 

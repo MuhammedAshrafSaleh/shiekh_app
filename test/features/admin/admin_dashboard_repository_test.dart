@@ -16,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // Mocks
 // ---------------------------------------------------------------------------
 class _MockSupabaseClient extends Mock implements SupabaseClient {}
+
 class _MockConnectivityCubit extends Mock implements ConnectivityCubit {}
 
 const _offline = ConnectivityState(isOffline: true);
@@ -48,8 +49,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'stats error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'stats error'));
 
       final result = await repo.getStats();
 
@@ -74,8 +76,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'db error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'db error'));
 
       final result = await repo.getAllBooks();
 
@@ -88,8 +91,9 @@ void main() {
 
     test('queries the books table', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'ok'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.getAllBooks();
 
@@ -108,24 +112,29 @@ void main() {
       verifyNever(() => client.from(any()));
     });
 
-    test('returns DeleteRestrictedFailure on FK-violation (code 23503)', () async {
-      when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'fk error', code: '23503'));
+    test(
+      'returns DeleteRestrictedFailure on FK-violation (code 23503)',
+      () async {
+        when(() => connectivity.state).thenReturn(_online);
+        when(() => client.from(any())).thenThrow(
+          const PostgrestException(message: 'fk error', code: '23503'),
+        );
 
-      final result = await repo.deleteBook('book-id');
+        final result = await repo.deleteBook('book-id');
 
-      expect(result.isLeft(), true);
-      result.fold(
-        (f) => expect(f, isA<DeleteRestrictedFailure>()),
-        (_) => fail('expected Left(DeleteRestrictedFailure)'),
-      );
-    });
+        expect(result.isLeft(), true);
+        result.fold(
+          (f) => expect(f, isA<DeleteRestrictedFailure>()),
+          (_) => fail('expected Left(DeleteRestrictedFailure)'),
+        );
+      },
+    );
 
     test('returns ServerFailure on other PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'other error', code: '42501'));
+      when(() => client.from(any())).thenThrow(
+        const PostgrestException(message: 'other error', code: '42501'),
+      );
 
       final result = await repo.deleteBook('book-id');
 

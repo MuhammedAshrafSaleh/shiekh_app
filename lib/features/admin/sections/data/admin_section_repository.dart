@@ -25,8 +25,11 @@ class AdminSectionRepository {
     final net = _checkNetwork<List<SectionEntity>>();
     if (net != null) return net;
     try {
-      final raw =
-          await _client.from('sections').select().order('name', ascending: true).limit(50);
+      final raw = await _client
+          .from('sections')
+          .select()
+          .order('name', ascending: true)
+          .limit(50);
 
       final booksRaw = await _client
           .from('books')
@@ -40,10 +43,12 @@ class AdminSectionRepository {
       }
 
       final sections = (raw as List)
-          .map((e) => SectionEntity.fromJson(
-                e as Map<String, dynamic>,
-                bookCount: countBySection[e['id'] as String] ?? 0,
-              ))
+          .map(
+            (e) => SectionEntity.fromJson(
+              e as Map<String, dynamic>,
+              bookCount: countBySection[e['id'] as String] ?? 0,
+            ),
+          )
           .toList();
 
       return Right(sections);
@@ -94,11 +99,7 @@ class AdminSectionRepository {
     try {
       final data = await _client
           .from('sections')
-          .update({
-            'name': name,
-            'icon': icon,
-            'description': description,
-          })
+          .update({'name': name, 'icon': icon, 'description': description})
           .eq('id', id)
           .select()
           .single();
@@ -120,8 +121,11 @@ class AdminSectionRepository {
     } on PostgrestException catch (e) {
       _log.warning('deleteSection: ${e.message}');
       if (e.code == '23503') {
-        return Left(DeleteRestrictedFailure(
-            'لا يمكن حذف القسم لأنه يحتوي على كتب مرتبطة. يرجى حذف أو نقل الكتب أولاً.'));
+        return Left(
+          DeleteRestrictedFailure(
+            'لا يمكن حذف القسم لأنه يحتوي على كتب مرتبطة. يرجى حذف أو نقل الكتب أولاً.',
+          ),
+        );
       }
       return Left(ServerFailure(e.message));
     } on SocketException {

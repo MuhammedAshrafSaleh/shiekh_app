@@ -27,6 +27,11 @@ class FinalExamSettingsEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [bookId, timeLimitMinutes, passingPercentage, maxAttempts, isPublished];
+  List<Object?> get props => [
+    bookId,
+    timeLimitMinutes,
+    passingPercentage,
+    maxAttempts,
+    isPublished,
+  ];
 }

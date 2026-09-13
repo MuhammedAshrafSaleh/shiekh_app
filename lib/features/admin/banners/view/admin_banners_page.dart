@@ -19,11 +19,13 @@ class AdminBannersPage extends StatelessWidget {
     return BlocConsumer<AdminBannerCubit, AdminBannerState>(
       listener: (context, state) {
         if (state is AdminBannerError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
           context.read<AdminBannerCubit>().load();
         }
       },
@@ -38,12 +40,10 @@ class AdminBannersPage extends StatelessWidget {
               ),
             ],
           ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.startFloat,
+          floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
-              final loaded =
-                  state is AdminBannerLoaded ? state : null;
+              final loaded = state is AdminBannerLoaded ? state : null;
               await context.push(
                 '/admin/banners/new',
                 extra: loaded?.books ?? [],
@@ -57,40 +57,35 @@ class AdminBannersPage extends StatelessWidget {
           ),
           body: switch (state) {
             AdminBannerLoading() => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: CircularProgressIndicator(),
+            ),
             AdminBannerError() => ErrorState(
-                message: state.message,
-                onRetry: () => context.read<AdminBannerCubit>().load(),
-              ),
+              message: state.message,
+              onRetry: () => context.read<AdminBannerCubit>().load(),
+            ),
             AdminBannerLoaded() when state.banners.isEmpty => EmptyState(
-                icon: Icons.view_carousel_outlined,
-                message: 'لا توجد بانرات بعد',
-                actionLabel: 'إضافة بانر',
-                onAction: () async {
-                  await context.push(
-                    '/admin/banners/new',
-                    extra: state.books,
-                  );
-                  if (context.mounted) {
-                    context.read<AdminBannerCubit>().load();
-                  }
-                },
-              ),
+              icon: Icons.view_carousel_outlined,
+              message: 'لا توجد بانرات بعد',
+              actionLabel: 'إضافة بانر',
+              onAction: () async {
+                await context.push('/admin/banners/new', extra: state.books);
+                if (context.mounted) {
+                  context.read<AdminBannerCubit>().load();
+                }
+              },
+            ),
             AdminBannerLoaded() => RefreshIndicator(
-                onRefresh: () =>
-                    context.read<AdminBannerCubit>().load(),
-                child: ListView.builder(
-                  padding:
-                      const EdgeInsetsDirectional.all(AppSpacing.md),
-                  itemCount: state.banners.length,
-                  itemBuilder: (context, i) => _BannerListItem(
-                    key: ValueKey(state.banners[i].id),
-                    banner: state.banners[i],
-                    books: state.books,
-                  ),
+              onRefresh: () => context.read<AdminBannerCubit>().load(),
+              child: ListView.builder(
+                padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+                itemCount: state.banners.length,
+                itemBuilder: (context, i) => _BannerListItem(
+                  key: ValueKey(state.banners[i].id),
+                  banner: state.banners[i],
+                  books: state.books,
                 ),
               ),
+            ),
             _ => const Center(child: CircularProgressIndicator()),
           },
         );
@@ -132,19 +127,16 @@ class _BannerListItem extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.image_outlined),
               ),
         title: Text(
           banner.title,
-          style: Theme.of(context)
-              .textTheme
-              .bodyLarge
-              ?.copyWith(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,8 +152,8 @@ class _BannerListItem extends StatelessWidget {
                 Text(
                   banner.isActive ? 'نشط' : 'مخفي',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: banner.isActive ? Colors.green : Colors.grey,
-                      ),
+                    color: banner.isActive ? Colors.green : Colors.grey,
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
@@ -171,21 +163,15 @@ class _BannerListItem extends StatelessWidget {
               ],
             ),
             if (banner.linkedBookId != null)
-              Text(
-                'مرتبط بكتاب',
-                style: Theme.of(context).textTheme.bodySmall,
-              )
+              Text('مرتبط بكتاب', style: Theme.of(context).textTheme.bodySmall)
             else if (banner.externalLink != null)
-              Text(
-                'رابط خارجي',
-                style: Theme.of(context).textTheme.bodySmall,
-              )
+              Text('رابط خارجي', style: Theme.of(context).textTheme.bodySmall)
             else
               Text(
                 'بدون رابط',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
           ],
         ),
@@ -206,8 +192,7 @@ class _BannerListItem extends StatelessWidget {
               tooltip: 'تعديل',
             ),
             IconButton(
-              icon:
-                  const Icon(Icons.delete_outline, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: () => _confirmDelete(context),
               tooltip: 'حذف',
             ),

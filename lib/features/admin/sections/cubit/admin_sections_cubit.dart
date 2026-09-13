@@ -54,9 +54,6 @@ class AdminSectionsCubit extends Cubit<AdminSectionsState> {
 
   Future<void> deleteSection(String id) async {
     final result = await _repo.deleteSection(id);
-    result.fold(
-      (f) => emit(AdminSectionsError(f.message)),
-      (_) => load(),
-    );
+    result.fold((f) => emit(AdminSectionsError(f.message)), (_) => load());
   }
 }

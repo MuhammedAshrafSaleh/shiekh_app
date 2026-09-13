@@ -21,8 +21,7 @@ class AchievementsData {
   });
 
   // Estimated hours: ~15 minutes per completed lesson
-  int get estimatedStudyHours =>
-      ((completedLessons * 15) / 60).ceil();
+  int get estimatedStudyHours => ((completedLessons * 15) / 60).ceil();
 }
 
 class AchievementsRepository {
@@ -64,8 +63,11 @@ class AchievementsRepository {
           .eq('user_id', userId)
           .limit(200);
 
-      final results =
-          await Future.wait([progressFuture, certsFuture, attemptsFuture]);
+      final results = await Future.wait([
+        progressFuture,
+        certsFuture,
+        attemptsFuture,
+      ]);
 
       final progressRows = results[0] as List;
       final certsRows = results[1] as List;
@@ -96,18 +98,20 @@ class AchievementsRepository {
         final bucket = count >= 8
             ? 4
             : count >= 5
-                ? 3
-                : count >= 3
-                    ? 2
-                    : 1;
+            ? 3
+            : count >= 3
+            ? 2
+            : 1;
         return MapEntry(day, bucket);
       });
 
-      return Right(AchievementsData(
-        completedLessons: completedLessons,
-        certificateCount: certificateCount,
-        activityByDate: activityBucketed,
-      ));
+      return Right(
+        AchievementsData(
+          completedLessons: completedLessons,
+          certificateCount: certificateCount,
+          activityByDate: activityBucketed,
+        ),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getAchievementsData: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -132,8 +136,7 @@ class AchievementsRepository {
           .limit(50);
 
       final certs = (response as List)
-          .map((e) =>
-              CertificateEntity.fromJson(e as Map<String, dynamic>))
+          .map((e) => CertificateEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(certs);

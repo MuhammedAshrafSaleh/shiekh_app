@@ -14,8 +14,7 @@ class AdminNotificationFormPage extends StatefulWidget {
       _AdminNotificationFormPageState();
 }
 
-class _AdminNotificationFormPageState
-    extends State<AdminNotificationFormPage> {
+class _AdminNotificationFormPageState extends State<AdminNotificationFormPage> {
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
   final _linkCtrl = TextEditingController();
@@ -39,29 +38,31 @@ class _AdminNotificationFormPageState
     final title = _titleCtrl.text.trim();
     final body = _bodyCtrl.text.trim();
     if (title.isEmpty || body.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('العنوان والنص مطلوبان'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('العنوان والنص مطلوبان'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
     final sendAt = _isImmediate ? DateTime.now() : _scheduledAt;
     final ok = await context.read<AdminNotificationsCubit>().send(
-          type: _type,
-          title: title,
-          body: body,
-          linkUrl: _linkCtrl.text.trim().isEmpty
-              ? null
-              : _linkCtrl.text.trim(),
-          sendAt: sendAt,
-        );
+      type: _type,
+      title: title,
+      body: body,
+      linkUrl: _linkCtrl.text.trim().isEmpty ? null : _linkCtrl.text.trim(),
+      sendAt: sendAt,
+    );
     if (ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('تم إرسال الإشعار بنجاح'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم إرسال الإشعار بنجاح'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
       Navigator.of(context).pop();
     }
   }
@@ -81,7 +82,12 @@ class _AdminNotificationFormPageState
     if (time == null) return;
     setState(() {
       _scheduledAt = DateTime(
-          date.year, date.month, date.day, time.hour, time.minute);
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
     });
   }
 
@@ -97,11 +103,13 @@ class _AdminNotificationFormPageState
     return BlocConsumer<AdminNotificationsCubit, AdminNotificationsState>(
       listener: (context, state) {
         if (state is AdminNotificationsError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -115,11 +123,12 @@ class _AdminNotificationFormPageState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Type selector
-                Text('نوع الإشعار',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'نوع الإشعار',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 Wrap(
                   spacing: AppSpacing.sm,
@@ -143,14 +152,16 @@ class _AdminNotificationFormPageState
                     controller: _titleCtrl,
                     decoration: InputDecoration(
                       labelText: 'عنوان الإشعار *',
-                      counterText:
-                          '${_titleCtrl.text.length}/$_titleMax',
+                      counterText: '${_titleCtrl.text.length}/$_titleMax',
                     ),
                     maxLength: _titleMax,
-                    buildCounter: (_, {required currentLength,
-                        required isFocused,
-                        maxLength}) =>
-                        null,
+                    buildCounter:
+                        (
+                          _, {
+                          required currentLength,
+                          required isFocused,
+                          maxLength,
+                        }) => null,
                     textInputAction: TextInputAction.next,
                   ),
                 ),
@@ -175,10 +186,13 @@ class _AdminNotificationFormPageState
                     ),
                     maxLines: 4,
                     maxLength: _bodyMax,
-                    buildCounter: (_, {required currentLength,
-                        required isFocused,
-                        maxLength}) =>
-                        null,
+                    buildCounter:
+                        (
+                          _, {
+                          required currentLength,
+                          required isFocused,
+                          maxLength,
+                        }) => null,
                     textInputAction: TextInputAction.next,
                   ),
                 ),
@@ -204,11 +218,12 @@ class _AdminNotificationFormPageState
                 const SizedBox(height: AppSpacing.lg),
 
                 // Timing
-                Text('توقيت الإرسال',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'توقيت الإرسال',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 SegmentedButton<bool>(
                   segments: const [
@@ -233,9 +248,8 @@ class _AdminNotificationFormPageState
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                       side: BorderSide(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outlineVariant),
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                     ),
                   ),
                 ],
@@ -255,7 +269,10 @@ class _AdminNotificationFormPageState
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.send_outlined),
                   label: Text(_isImmediate ? 'إرسال الآن' : 'جدولة الإشعار'),
                   onPressed: isSending ? null : _send,
@@ -293,11 +310,12 @@ class _NotificationPreview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('معاينة',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          'معاينة',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: AppSpacing.sm),
         ListenableBuilder(
           listenable: Listenable.merge([titleCtrl, bodyCtrl]),
@@ -305,12 +323,12 @@ class _NotificationPreview extends StatelessWidget {
             padding: const EdgeInsetsDirectional.all(AppSpacing.md),
             decoration: BoxDecoration(
               border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant),
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               borderRadius: BorderRadius.circular(12),
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,10 +349,9 @@ class _NotificationPreview extends StatelessWidget {
                         titleCtrl.text.isEmpty
                             ? 'عنوان الإشعار'
                             : titleCtrl.text,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(

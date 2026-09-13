@@ -3,21 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/status_badge.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/lesson_entity.dart';
 import '../cubit/admin_lesson_cubit.dart';
 import '../cubit/admin_lesson_state.dart';
+import '../cubit/generate_questions_cubit.dart';
+import '../data/admin_lesson_repository.dart';
 import 'admin_lesson_preview_page.dart';
+import 'generate_questions_page.dart';
 
 class AdminLessonFormPage extends StatefulWidget {
   final String bookId;
   final String? lessonId;
 
-  const AdminLessonFormPage({
-    super.key,
-    required this.bookId,
-    this.lessonId,
-  });
+  const AdminLessonFormPage({super.key, required this.bookId, this.lessonId});
 
   @override
   State<AdminLessonFormPage> createState() => _AdminLessonFormPageState();
@@ -42,9 +43,7 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _currentLessonId = widget.lessonId;
-    context
-        .read<AdminLessonFormCubit>()
-        .load(lessonId: widget.lessonId);
+    context.read<AdminLessonFormCubit>().load(lessonId: widget.lessonId);
   }
 
   @override
@@ -73,27 +72,26 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
   Future<void> _save() async {
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('عنوان الدرس مطلوب'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('عنوان الدرس مطلوب'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
     await context.read<AdminLessonFormCubit>().save(
-          lessonId: widget.lessonId,
-          bookId: widget.bookId,
-          title: title,
-          description:
-              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-          videoUrl:
-              _videoCtrl.text.trim().isEmpty ? null : _videoCtrl.text.trim(),
-          audioUrl:
-              _audioCtrl.text.trim().isEmpty ? null : _audioCtrl.text.trim(),
-          pdfUrl: _pdfCtrl.text.trim().isEmpty ? null : _pdfCtrl.text.trim(),
-          audioOnly: _audioOnly,
-          status: _status,
-        );
+      lessonId: widget.lessonId,
+      bookId: widget.bookId,
+      title: title,
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      videoUrl: _videoCtrl.text.trim().isEmpty ? null : _videoCtrl.text.trim(),
+      audioUrl: _audioCtrl.text.trim().isEmpty ? null : _audioCtrl.text.trim(),
+      pdfUrl: _pdfCtrl.text.trim().isEmpty ? null : _pdfCtrl.text.trim(),
+      audioOnly: _audioOnly,
+      status: _status,
+    );
   }
 
   void _openPreview() {
@@ -101,30 +99,35 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
     final audio = _audioCtrl.text.trim();
     final pdf = _pdfCtrl.text.trim();
     final hasVideo = !_audioOnly && video.isNotEmpty;
-    final hasContent = hasVideo ||
+    final hasContent =
+        hasVideo ||
         audio.isNotEmpty ||
         pdf.isNotEmpty ||
         _currentLessonId != null;
 
     if (!hasContent) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('أضف رابط محتوى أولاً للمعاينة'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('أضف رابط محتوى أولاً للمعاينة'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
 
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => AdminLessonPreviewPage(
-        title: _titleCtrl.text.trim(),
-        videoUrl: video.isEmpty ? null : video,
-        audioUrl: audio.isEmpty ? null : audio,
-        pdfUrl: pdf.isEmpty ? null : pdf,
-        audioOnly: _audioOnly,
-        lessonId: _currentLessonId,
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AdminLessonPreviewPage(
+          title: _titleCtrl.text.trim(),
+          videoUrl: video.isEmpty ? null : video,
+          audioUrl: audio.isEmpty ? null : audio,
+          pdfUrl: pdf.isEmpty ? null : pdf,
+          audioOnly: _audioOnly,
+          lessonId: _currentLessonId,
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -147,22 +150,24 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
             _audioOnly = state.lesson.audioOnly;
             _status = state.lesson.status;
           }
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('تم حفظ الدرس بنجاح'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم حفظ الدرس بنجاح'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
           // Reload to get quiz questions
-          context
-              .read<AdminLessonFormCubit>()
-              .load(lessonId: state.lesson.id);
+          context.read<AdminLessonFormCubit>().load(lessonId: state.lesson.id);
         }
         if (state is AdminLessonFormError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -179,7 +184,8 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
         return Scaffold(
           appBar: AppBar(
             title: Text(
-                widget.lessonId == null ? 'إضافة درس جديد' : 'تعديل الدرس'),
+              widget.lessonId == null ? 'إضافة درس جديد' : 'تعديل الدرس',
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.visibility_outlined),
@@ -208,8 +214,7 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
                       videoCtrl: _videoCtrl,
                       audioOnly: _audioOnly,
                       status: _status,
-                      onAudioOnlyChanged: (v) =>
-                          setState(() => _audioOnly = v),
+                      onAudioOnlyChanged: (v) => setState(() => _audioOnly = v),
                       onStatusChanged: (v) => setState(() => _status = v!),
                     ),
                     _AudioTab(audioCtrl: _audioCtrl),
@@ -224,7 +229,11 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
           bottomNavigationBar: SafeArea(
             child: Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
               child: FilledButton.icon(
                 icon: isSaving
                     ? const SizedBox(
@@ -421,19 +430,35 @@ class _QuizTab extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(
-              AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
-          child: Row(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'أسئلة الاختبار القصير (${questions.length})',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const Spacer(),
-              FilledButton.icon(
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('إضافة سؤال'),
-                onPressed: () =>
-                    _showQuestionDialog(context, lessonId: lessonId!),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.auto_awesome, size: 16),
+                    label: const Text('توليد بالذكاء الاصطناعي'),
+                    onPressed: () => _openGenerate(context, lessonId!),
+                  ),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('إضافة سؤال'),
+                    onPressed: () =>
+                        _showQuestionDialog(context, lessonId: lessonId!),
+                  ),
+                ],
               ),
             ],
           ),
@@ -445,10 +470,11 @@ class _QuizTab extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.quiz_outlined,
-                          size: 48,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.quiz_outlined,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       const Text('لا توجد أسئلة بعد'),
                     ],
@@ -456,7 +482,11 @@ class _QuizTab extends StatelessWidget {
                 )
               : ListView.builder(
                   padding: const EdgeInsetsDirectional.fromSTEB(
-                      AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
                   itemCount: questions.length,
                   itemBuilder: (context, i) => _QuestionTile(
                     question: questions[i],
@@ -482,6 +512,27 @@ class _QuizTab extends StatelessWidget {
       ),
     );
   }
+
+  static Future<void> _openGenerate(
+    BuildContext context,
+    String lessonId,
+  ) async {
+    // Capture cubit + repo before awaiting navigation.
+    final formCubit = context.read<AdminLessonFormCubit>();
+    final repo = context.read<AdminLessonRepository>();
+    final generated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => BlocProvider<GenerateQuestionsCubit>(
+          create: (_) => GenerateQuestionsCubit(repo),
+          child: GenerateQuestionsPage(lessonId: lessonId),
+        ),
+      ),
+    );
+    // On success, refetch so the new pending questions appear in the list.
+    if (generated == true) {
+      formCubit.load(lessonId: lessonId);
+    }
+  }
 }
 
 class _QuestionTile extends StatelessWidget {
@@ -498,28 +549,51 @@ class _QuestionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final choices = ['a', 'b', 'c', 'd'];
+    final isPending = question.isPendingReview;
     return Card(
       margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
+      // Subtle gold tint distinguishes AI questions awaiting review.
+      color: isPending ? AppColors.gold.withValues(alpha: 0.08) : null,
       child: Padding(
         padding: const EdgeInsetsDirectional.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (isPending) ...[
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 14,
+                    color: AppColors.gold,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'AI',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  const StatusBadge(status: BadgeStatus.inReview),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             Row(
               children: [
                 CircleAvatar(
                   radius: 12,
-                  child: Text('$index',
-                      style: const TextStyle(fontSize: 11)),
+                  child: Text('$index', style: const TextStyle(fontSize: 11)),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     question.questionText,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -532,10 +606,14 @@ class _QuestionTile extends StatelessWidget {
                   tooltip: 'تعديل',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: Colors.red, size: 18),
-                  onPressed: () =>
-                      context.read<AdminLessonFormCubit>().deleteQuizQuestion(question.id),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: 18,
+                  ),
+                  onPressed: () => context
+                      .read<AdminLessonFormCubit>()
+                      .deleteQuizQuestion(question.id),
                   tooltip: 'حذف',
                 ),
               ],
@@ -546,7 +624,8 @@ class _QuestionTile extends StatelessWidget {
               final isCorrect = question.correctChoice == key;
               return Padding(
                 padding: const EdgeInsetsDirectional.only(
-                    bottom: AppSpacing.xs),
+                  bottom: AppSpacing.xs,
+                ),
                 child: Row(
                   children: [
                     Icon(
@@ -631,10 +710,12 @@ class _QuestionDialogState extends State<_QuestionDialog> {
     final c = _cCtrl.text.trim();
     final d = _dCtrl.text.trim();
     if (q.isEmpty || a.isEmpty || b.isEmpty || c.isEmpty || d.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('يجب ملء جميع الحقول'),
-        backgroundColor: Colors.orange,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يجب ملء جميع الحقول'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
     setState(() => _saving = true);
@@ -687,32 +768,34 @@ class _QuestionDialogState extends State<_QuestionDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: ['a', 'b', 'c', 'd']
-                    .map((key) => Padding(
-                          padding: const EdgeInsetsDirectional.only(
-                              bottom: AppSpacing.sm),
-                          child: Row(
-                            children: [
-                              Radio<String>(value: key),
-                              Expanded(
-                                child: TextField(
-                                  controller: controllers[key],
-                                  decoration: InputDecoration(
-                                    labelText: 'الخيار ${labels[key]} *',
-                                  ),
-                                  textInputAction: key == 'd'
-                                      ? TextInputAction.done
-                                      : TextInputAction.next,
+                    .map(
+                      (key) => Padding(
+                        padding: const EdgeInsetsDirectional.only(
+                          bottom: AppSpacing.sm,
+                        ),
+                        child: Row(
+                          children: [
+                            Radio<String>(value: key),
+                            Expanded(
+                              child: TextField(
+                                controller: controllers[key],
+                                decoration: InputDecoration(
+                                  labelText: 'الخيار ${labels[key]} *',
                                 ),
+                                textInputAction: key == 'd'
+                                    ? TextInputAction.done
+                                    : TextInputAction.next,
                               ),
-                            ],
-                          ),
-                        ))
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
             Padding(
-              padding:
-                  const EdgeInsetsDirectional.only(top: AppSpacing.xs),
+              padding: const EdgeInsetsDirectional.only(top: AppSpacing.xs),
               child: Text(
                 'حدد الإجابة الصحيحة بالنقر على الدائرة',
                 style: Theme.of(context).textTheme.bodySmall,
@@ -733,7 +816,10 @@ class _QuestionDialogState extends State<_QuestionDialog> {
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('حفظ'),
         ),
       ],

@@ -29,59 +29,68 @@ class BookProgressCard extends StatelessWidget {
         children: [
           InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: isAvailable ? () => context.go('/books/${item.book.id}') : null,
+            onTap: isAvailable
+                ? () => context.go('/books/${item.book.id}')
+                : null,
             child: Opacity(
               opacity: isAvailable ? 1.0 : 0.45,
               child: Padding(
-              padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 64,
-                      height: 80,
-                      child: item.book.coverImageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: item.book.coverImageUrl!,
-                              fit: BoxFit.cover,
-                              placeholder: (_, _) =>
-                                  _ThumbnailPlaceholder(title: item.book.title, theme: theme),
-                              errorWidget: (_, _, _) =>
-                                  _ThumbnailPlaceholder(title: item.book.title, theme: theme),
-                            )
-                          : _ThumbnailPlaceholder(title: item.book.title, theme: theme),
+                padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 64,
+                        height: 80,
+                        child: item.book.coverImageUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: item.book.coverImageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) => _ThumbnailPlaceholder(
+                                  title: item.book.title,
+                                  theme: theme,
+                                ),
+                                errorWidget: (_, _, _) => _ThumbnailPlaceholder(
+                                  title: item.book.title,
+                                  theme: theme,
+                                ),
+                              )
+                            : _ThumbnailPlaceholder(
+                                title: item.book.title,
+                                theme: theme,
+                              ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.book.title,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.book.title,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          '$progressPercent٪',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            '$progressPercent٪',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        ProgressBar(value: item.progress),
-                      ],
+                          const SizedBox(height: AppSpacing.xs),
+                          ProgressBar(value: item.progress),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
           ),
           // CC-2: show unavailable badge when book has been unpublished
           if (!isAvailable)

@@ -48,15 +48,15 @@ class LessonEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        bookId,
-        orderIndex,
-        title,
-        description,
-        videoUrl,
-        audioUrl,
-        pdfUrl,
-        audioOnly,
-        status,
-      ];
+    id,
+    bookId,
+    orderIndex,
+    title,
+    description,
+    videoUrl,
+    audioUrl,
+    pdfUrl,
+    audioOnly,
+    status,
+  ];
 }

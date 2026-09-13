@@ -32,7 +32,11 @@ class _PdfTabState extends State<PdfTab> {
   }
 
   Future<void> _loadPdf() async {
-    if (mounted) setState(() { _hasError = false; _isLoading = true; });
+    if (mounted)
+      setState(() {
+        _hasError = false;
+        _isLoading = true;
+      });
     try {
       final downloadUrl = toDirectDownloadUrl(widget.pdfUrl);
       final response = await Dio().get<List<int>>(
@@ -42,7 +46,11 @@ class _PdfTabState extends State<PdfTab> {
 
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
-        if (mounted) setState(() { _hasError = true; _isLoading = false; });
+        if (mounted)
+          setState(() {
+            _hasError = true;
+            _isLoading = false;
+          });
         return;
       }
 
@@ -62,7 +70,11 @@ class _PdfTabState extends State<PdfTab> {
         controller.dispose();
       }
     } catch (_) {
-      if (mounted) setState(() { _hasError = true; _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
     }
   }
 
@@ -148,20 +160,16 @@ class _PdfError extends StatelessWidget {
             color: Theme.of(context).colorScheme.error,
           ),
           const SizedBox(height: AppSpacing.md),
-          const Text(
-            'تعذّر تحميل ملف PDF',
-            textAlign: TextAlign.center,
-          ),
+          const Text('تعذّر تحميل ملف PDF', textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'يرجى التواصل مع الإدارة لمراجعة الرابط',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.55),
-                ),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.55),
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           FilledButton.icon(

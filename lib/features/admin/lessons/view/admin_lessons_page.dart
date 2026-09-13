@@ -24,11 +24,13 @@ class AdminLessonsPage extends StatelessWidget {
     return BlocConsumer<AdminLessonListCubit, AdminLessonListState>(
       listener: (context, state) {
         if (state is AdminLessonListError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -43,8 +45,7 @@ class AdminLessonsPage extends StatelessWidget {
               ),
             ],
           ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.startFloat,
+          floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             icon: const Icon(Icons.add),
             label: const Text('درس جديد'),
@@ -57,28 +58,27 @@ class AdminLessonsPage extends StatelessWidget {
           ),
           body: switch (state) {
             AdminLessonListLoading() => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: CircularProgressIndicator(),
+            ),
             AdminLessonListError() => ErrorState(
-                message: state.message,
-                onRetry: () =>
-                    context.read<AdminLessonListCubit>().load(bookId),
-              ),
+              message: state.message,
+              onRetry: () => context.read<AdminLessonListCubit>().load(bookId),
+            ),
             AdminLessonListEmpty() => EmptyState(
-                icon: Icons.play_lesson_outlined,
-                message: 'لا توجد دروس بعد',
-                actionLabel: 'إضافة درس',
-                onAction: () async {
-                  await context.push('/admin/books/$bookId/lessons/new');
-                  if (context.mounted) {
-                    context.read<AdminLessonListCubit>().refresh();
-                  }
-                },
-              ),
+              icon: Icons.play_lesson_outlined,
+              message: 'لا توجد دروس بعد',
+              actionLabel: 'إضافة درس',
+              onAction: () async {
+                await context.push('/admin/books/$bookId/lessons/new');
+                if (context.mounted) {
+                  context.read<AdminLessonListCubit>().refresh();
+                }
+              },
+            ),
             AdminLessonListLoaded() => _ReorderableList(
-                lessons: state.lessons,
-                bookId: bookId,
-              ),
+              lessons: state.lessons,
+              bookId: bookId,
+            ),
             _ => const SizedBox.shrink(),
           },
         );
@@ -123,22 +123,27 @@ class _ReorderableListState extends State<_ReorderableList> {
         .toList();
     final ok = await context.read<AdminLessonListCubit>().reorder(updates);
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('فشل إعادة الترتيب'),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('فشل إعادة الترتيب'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: () =>
-          context.read<AdminLessonListCubit>().load(widget.bookId),
+      onRefresh: () => context.read<AdminLessonListCubit>().load(widget.bookId),
       child: ReorderableListView.builder(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.md, AppSpacing.md, 100),
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          100,
+        ),
         itemCount: _lessons.length,
         onReorderItem: (oldIndex, newIndex) => _onReorder(oldIndex, newIndex),
         itemBuilder: (context, index) {
@@ -178,75 +183,77 @@ class _LessonTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () async {
-          await context
-              .push('/admin/books/$bookId/lessons/${lesson.id}/edit');
+          await context.push('/admin/books/$bookId/lessons/${lesson.id}/edit');
           onRefresh();
         },
         child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.drag_handle, color: scheme.onSurfaceVariant),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    lesson.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyLarge
-                        ?.copyWith(fontWeight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.drag_handle, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      lesson.title,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              children: [
-                _MediaChip(
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  _MediaChip(
                     icon: Icons.videocam_outlined,
-                    active: lesson.hasVideo && !lesson.audioOnly),
-                const SizedBox(width: AppSpacing.xs),
-                _MediaChip(
+                    active: lesson.hasVideo && !lesson.audioOnly,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  _MediaChip(
                     icon: Icons.audiotrack_outlined,
-                    active: lesson.hasAudio),
-                const SizedBox(width: AppSpacing.xs),
-                _MediaChip(
+                    active: lesson.hasAudio,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  _MediaChip(
                     icon: Icons.picture_as_pdf_outlined,
-                    active: lesson.hasPdf),
-                const Spacer(),
-                Switch(
-                  value: isPublished,
-                  activeThumbColor: scheme.primary,
-                  onChanged: (v) => context
-                      .read<AdminLessonListCubit>()
-                      .togglePublish(lesson.id, v),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () async {
-                    await context.push(
-                        '/admin/books/$bookId/lessons/${lesson.id}/edit');
-                    onRefresh();
-                  },
-                  tooltip: 'تعديل',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => _confirmDelete(context),
-                  tooltip: 'حذف',
-                ),
-              ],
-            ),
-          ],
+                    active: lesson.hasPdf,
+                  ),
+                  const Spacer(),
+                  Switch(
+                    value: isPublished,
+                    activeThumbColor: scheme.primary,
+                    onChanged: (v) => context
+                        .read<AdminLessonListCubit>()
+                        .togglePublish(lesson.id, v),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () async {
+                      await context.push(
+                        '/admin/books/$bookId/lessons/${lesson.id}/edit',
+                      );
+                      onRefresh();
+                    },
+                    tooltip: 'تعديل',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => _confirmDelete(context),
+                    tooltip: 'حذف',
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-        ),
     );
   }
 
@@ -256,7 +263,8 @@ class _LessonTile extends StatelessWidget {
       builder: (dialogCtx) => AlertDialog(
         title: const Text('تأكيد الحذف'),
         content: Text(
-            'هل تريد حذف درس "${lesson.title}"؟ سيتم حذف أسئلة الاختبار القصير أيضاً.'),
+          'هل تريد حذف درس "${lesson.title}"؟ سيتم حذف أسئلة الاختبار القصير أيضاً.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),

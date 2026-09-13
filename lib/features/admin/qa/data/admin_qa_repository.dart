@@ -36,10 +36,13 @@ class AdminQaRepository {
       final data = await baseQuery
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
-      return Right((data as List)
-          .map((e) =>
-              StudentQuestionEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map(
+              (e) => StudentQuestionEntity.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getQuestions: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -67,16 +70,19 @@ class AdminQaRepository {
           .select()
           .single();
 
-      // Notify the asker
+      // Notify the asker — target_user_id scopes this to the asking student only
       try {
+        _log.info('DEBUG answerQuestion: full data map = $data');
+        _log.info('DEBUG answerQuestion: data[user_id] = ${data['user_id']}');
         await _client.from('notifications').insert({
           'type': 'general',
           'title': 'تمت الإجابة على سؤالك',
           'body': 'الشيخ أجاب على سؤالك في الكتاب',
           'send_at': now,
+          'target_user_id': data['user_id'] as String,
         });
-      } catch (_) {
-        // Notification failure is non-fatal
+      } catch (e) {
+        _log.warning('DEBUG answerQuestion: notification insert threw: $e');
       }
 
       return Right(StudentQuestionEntity.fromJson(data));
@@ -90,7 +96,8 @@ class AdminQaRepository {
 
   /// Subscribe to new Q&A inserts (admin inbox realtime).
   RealtimeChannel subscribeToNewQuestions(
-      void Function(Map<String, dynamic>) onInsert) {
+    void Function(Map<String, dynamic>) onInsert,
+  ) {
     return _client
         .channel('admin:student_questions')
         .onPostgresChanges(

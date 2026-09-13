@@ -15,6 +15,7 @@ import 'package:sheikhy_app/models/banner_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _MockSupabaseClient extends Mock implements SupabaseClient {}
+
 class _MockConnectivityCubit extends Mock implements ConnectivityCubit {}
 
 const _offline = ConnectivityState(isOffline: true);
@@ -44,19 +45,24 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'db error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'db error'));
 
       final result = await repo.getBanners();
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
 
     test('queries home_banners table', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'ok'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.getBanners();
 
@@ -77,13 +83,17 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'error'));
 
       final result = await repo.getPublishedBooks();
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
   });
 
@@ -104,8 +114,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'insert error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'insert error'));
 
       final result = await repo.createBanner(
         title: 'بانر',
@@ -117,13 +128,17 @@ void main() {
       );
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
 
     test('CC-26: queries home_banners even when target is null', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'ok'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.createBanner(
         title: 'بانر بدون رابط',
@@ -155,8 +170,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'update error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'update error'));
 
       final result = await repo.updateBanner(
         id: 'banner-id',
@@ -166,7 +182,10 @@ void main() {
       );
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
   });
 
@@ -183,19 +202,24 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'delete error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'delete error'));
 
       final result = await repo.deleteBanner('banner-id');
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
 
     test('queries home_banners table', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'ok'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.deleteBanner('banner-id');
 
@@ -228,25 +252,28 @@ void main() {
       expect(entity.isActive, true);
     });
 
-    test('CC-26: parses a banner with null linked_book_id and null external_link', () {
-      final json = {
-        'id': 'ban-2',
-        'title': 'بانر إعلاني',
-        'description': null,
-        'image_url': null,
-        'linked_book_id': null, // CC-26: nullable target
-        'external_link': null,  // CC-26: nullable target
-        'order_index': 1,
-        'is_active': false,
-        'created_at': '2024-01-01T00:00:00.000Z',
-      };
+    test(
+      'CC-26: parses a banner with null linked_book_id and null external_link',
+      () {
+        final json = {
+          'id': 'ban-2',
+          'title': 'بانر إعلاني',
+          'description': null,
+          'image_url': null,
+          'linked_book_id': null, // CC-26: nullable target
+          'external_link': null, // CC-26: nullable target
+          'order_index': 1,
+          'is_active': false,
+          'created_at': '2024-01-01T00:00:00.000Z',
+        };
 
-      final entity = BannerEntity.fromJson(json);
+        final entity = BannerEntity.fromJson(json);
 
-      expect(entity.linkedBookId, isNull);
-      expect(entity.externalLink, isNull);
-      expect(entity.isActive, false);
-    });
+        expect(entity.linkedBookId, isNull);
+        expect(entity.externalLink, isNull);
+        expect(entity.isActive, false);
+      },
+    );
 
     test('parses a banner with external link', () {
       final json = {

@@ -83,9 +83,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'settings not found'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'settings not found'));
 
       final result = await repo.getExamMeta('book-id');
 
@@ -111,24 +111,26 @@ void main() {
     });
 
     // CC-18: student view must be queried, not the base table
-    test('queries final_exam_questions_student view, not base table (CC-18)',
-        () async {
-      when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.from('final_exam_questions_student')).thenThrow(
-        const PostgrestException(message: 'view error'),
-      );
+    test(
+      'queries final_exam_questions_student view, not base table (CC-18)',
+      () async {
+        when(() => connectivity.state).thenReturn(_onlineState);
+        when(
+          () => client.from('final_exam_questions_student'),
+        ).thenThrow(const PostgrestException(message: 'view error'));
 
-      await repo.getQuestions('book-id');
+        await repo.getQuestions('book-id');
 
-      verify(() => client.from('final_exam_questions_student')).called(1);
-      verifyNever(() => client.from('final_exam_questions'));
-    });
+        verify(() => client.from('final_exam_questions_student')).called(1);
+        verifyNever(() => client.from('final_exam_questions'));
+      },
+    );
 
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'view error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'view error'));
 
       final result = await repo.getQuestions('book-id');
 
@@ -147,11 +149,9 @@ void main() {
     test('returns NetworkFailure when offline', () async {
       when(() => connectivity.state).thenReturn(_offlineState);
 
-      final result = await repo.submitExam(
-        'book-id',
-        {'q1': 'a'},
-        DateTime.now(),
-      );
+      final result = await repo.submitExam('book-id', {
+        'q1': 'a',
+      }, DateTime.now());
 
       expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
       verifyNever(() => client.rpc(any()));
@@ -163,79 +163,66 @@ void main() {
         const PostgrestException(message: 'NOT_ENROLLED', code: 'P0001'),
       );
 
-      final result = await repo.submitExam(
-        'book-id',
-        {},
-        DateTime.now(),
-      );
+      final result = await repo.submitExam('book-id', {}, DateTime.now());
 
       expect(result.isLeft(), true);
-      result.fold(
-        (f) {
-          expect(f, isA<ServerFailure>());
-          expect(f.message, 'يجب التسجيل في الكتاب أولاً');
-        },
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) {
+        expect(f, isA<ServerFailure>());
+        expect(f.message, 'يجب التسجيل في الكتاب أولاً');
+      }, (_) => fail('expected Left'));
     });
 
-    test('maps P0003 (ATTEMPTS_EXHAUSTED) to Arabic attempts message (CC-13)',
-        () async {
-      when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.rpc(any(), params: any(named: 'params'))).thenThrow(
-        const PostgrestException(message: 'ATTEMPTS_EXHAUSTED', code: 'P0003'),
-      );
+    test(
+      'maps P0003 (ATTEMPTS_EXHAUSTED) to Arabic attempts message (CC-13)',
+      () async {
+        when(() => connectivity.state).thenReturn(_onlineState);
+        when(() => client.rpc(any(), params: any(named: 'params'))).thenThrow(
+          const PostgrestException(
+            message: 'ATTEMPTS_EXHAUSTED',
+            code: 'P0003',
+          ),
+        );
 
-      final result = await repo.submitExam(
-        'book-id',
-        {},
-        DateTime.now(),
-      );
+        final result = await repo.submitExam('book-id', {}, DateTime.now());
 
-      expect(result.isLeft(), true);
-      result.fold(
-        (f) {
+        expect(result.isLeft(), true);
+        result.fold((f) {
           expect(f, isA<ServerFailure>());
           expect(f.message, 'لقد استنفدت جميع محاولاتك');
-        },
-        (_) => fail('expected Left'),
-      );
-    });
+        }, (_) => fail('expected Left'));
+      },
+    );
 
     test('maps unknown PostgrestException to generic Arabic message', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.rpc(any(), params: any(named: 'params'))).thenThrow(
-        const PostgrestException(message: 'unknown error'),
-      );
+      when(
+        () => client.rpc(any(), params: any(named: 'params')),
+      ).thenThrow(const PostgrestException(message: 'unknown error'));
 
-      final result = await repo.submitExam(
-        'book-id',
-        {},
-        DateTime.now(),
-      );
+      final result = await repo.submitExam('book-id', {}, DateTime.now());
 
       expect(result.isLeft(), true);
-      result.fold(
-        (f) {
-          expect(f, isA<ServerFailure>());
-          expect(f.message, 'حدث خطأ أثناء تسليم الاختبار');
-        },
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) {
+        expect(f, isA<ServerFailure>());
+        expect(f.message, 'حدث خطأ أثناء تسليم الاختبار');
+      }, (_) => fail('expected Left'));
     });
 
-    test('calls submit_final_exam RPC (never grades client-side — CC-18)',
-        () async {
-      when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.rpc('submit_final_exam',
-              params: any(named: 'params')))
-          .thenThrow(const PostgrestException(message: 'rpc error'));
+    test(
+      'calls submit_final_exam RPC (never grades client-side — CC-18)',
+      () async {
+        when(() => connectivity.state).thenReturn(_onlineState);
+        when(
+          () => client.rpc('submit_final_exam', params: any(named: 'params')),
+        ).thenThrow(const PostgrestException(message: 'rpc error'));
 
-      await repo.submitExam('book-id', {'q1': 'a'}, DateTime.now());
+        await repo.submitExam('book-id', {'q1': 'a'}, DateTime.now());
 
-      verify(() => client.rpc('submit_final_exam',
-          params: any(named: 'params'))).called(1);
-    });
+        verify(
+          () => client.rpc('submit_final_exam', params: any(named: 'params')),
+        ).called(1);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -264,9 +251,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'certs query error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'certs query error'));
 
       final result = await repo.getCertificates();
 
@@ -293,8 +280,10 @@ void main() {
     test('saveSession → loadSession round-trip preserves all fields', () async {
       SharedPreferences.setMockInitialValues({});
 
-      final startedAt =
-          DateTime.fromMillisecondsSinceEpoch(1700000000000, isUtc: true);
+      final startedAt = DateTime.fromMillisecondsSinceEpoch(
+        1700000000000,
+        isUtc: true,
+      );
       final session = ExamSession(
         startedAt: startedAt,
         answers: {'q1': 'a', 'q2': 'b'},
@@ -305,8 +294,10 @@ void main() {
       final loaded = await repo.loadSession('book-id');
 
       expect(loaded, isNotNull);
-      expect(loaded!.startedAt.millisecondsSinceEpoch,
-          startedAt.millisecondsSinceEpoch);
+      expect(
+        loaded!.startedAt.millisecondsSinceEpoch,
+        startedAt.millisecondsSinceEpoch,
+      );
       expect(loaded.answers, {'q1': 'a', 'q2': 'b'});
       expect(loaded.currentIndex, 2);
     });
@@ -316,8 +307,7 @@ void main() {
 
       await repo.saveSession(
         'book-id',
-        ExamSession(
-            startedAt: DateTime.now(), answers: {}, currentIndex: 0),
+        ExamSession(startedAt: DateTime.now(), answers: {}, currentIndex: 0),
       );
 
       await repo.clearSession('book-id');
@@ -326,28 +316,32 @@ void main() {
       expect(loaded, isNull);
     });
 
-    test('sessions are keyed per bookId — different books do not collide',
-        () async {
-      SharedPreferences.setMockInitialValues({});
+    test(
+      'sessions are keyed per bookId — different books do not collide',
+      () async {
+        SharedPreferences.setMockInitialValues({});
 
-      final s1 = ExamSession(
+        final s1 = ExamSession(
           startedAt: DateTime.now(),
           answers: {'q1': 'a'},
-          currentIndex: 0);
-      final s2 = ExamSession(
+          currentIndex: 0,
+        );
+        final s2 = ExamSession(
           startedAt: DateTime.now(),
           answers: {'q9': 'd'},
-          currentIndex: 5);
+          currentIndex: 5,
+        );
 
-      await repo.saveSession('book-1', s1);
-      await repo.saveSession('book-2', s2);
+        await repo.saveSession('book-1', s1);
+        await repo.saveSession('book-2', s2);
 
-      final loaded1 = await repo.loadSession('book-1');
-      final loaded2 = await repo.loadSession('book-2');
+        final loaded1 = await repo.loadSession('book-1');
+        final loaded2 = await repo.loadSession('book-2');
 
-      expect(loaded1!.answers, {'q1': 'a'});
-      expect(loaded2!.answers, {'q9': 'd'});
-    });
+        expect(loaded1!.answers, {'q1': 'a'});
+        expect(loaded2!.answers, {'q9': 'd'});
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -387,14 +381,16 @@ void main() {
       expect(entity.choiceLabel('z'), '');
     });
 
-    test('entity has no correct_choice field — CC-18 guaranteed by model type',
-        () {
-      // If the view accidentally exposed correct_choice it would cause a
-      // compile error here because FinalExamQuestionEntity has no such field.
-      final entity = FinalExamQuestionEntity.fromJson(json);
-      // ignore: unnecessary_type_check
-      expect(entity is FinalExamQuestionEntity, true);
-    });
+    test(
+      'entity has no correct_choice field — CC-18 guaranteed by model type',
+      () {
+        // If the view accidentally exposed correct_choice it would cause a
+        // compile error here because FinalExamQuestionEntity has no such field.
+        final entity = FinalExamQuestionEntity.fromJson(json);
+        // ignore: unnecessary_type_check
+        expect(entity is FinalExamQuestionEntity, true);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------

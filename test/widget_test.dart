@@ -32,10 +32,7 @@ Widget _wrap(Widget child) {
   return MaterialApp(
     locale: const Locale('ar'),
     theme: AppTheme.light(primaryColor: const Color(0xFF1B5E20)),
-    home: BlocProvider<AuthCubit>(
-      create: (_) => _stubCubit(),
-      child: child,
-    ),
+    home: BlocProvider<AuthCubit>(create: (_) => _stubCubit(), child: child),
   );
 }
 
@@ -91,7 +88,9 @@ void main() {
   });
 
   testWidgets('ResetSentPage shows email and resend UI', (tester) async {
-    await tester.pumpWidget(_wrap(const ResetSentPage(email: 'test@example.com')));
+    await tester.pumpWidget(
+      _wrap(const ResetSentPage(email: 'test@example.com')),
+    );
     await tester.pump();
     expect(find.text('تم إرسال الرابط بنجاح'), findsOneWidget);
     expect(find.text('test@example.com'), findsOneWidget);

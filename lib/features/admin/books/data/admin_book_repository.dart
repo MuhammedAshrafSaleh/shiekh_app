@@ -26,11 +26,16 @@ class AdminBookRepository {
     final net = _checkNetwork<List<SectionEntity>>();
     if (net != null) return net;
     try {
-      final raw =
-          await _client.from('sections').select().order('name', ascending: true).limit(50);
-      return Right((raw as List)
-          .map((e) => SectionEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      final raw = await _client
+          .from('sections')
+          .select()
+          .order('name', ascending: true)
+          .limit(50);
+      return Right(
+        (raw as List)
+            .map((e) => SectionEntity.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getSections: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -40,14 +45,11 @@ class AdminBookRepository {
   }
 
   /// Returns count of currently featured books (not counting [excludeId]).
-  Future<Either<Failure, int>> getFeaturedCount({
-    String? excludeId,
-  }) async {
+  Future<Either<Failure, int>> getFeaturedCount({String? excludeId}) async {
     final net = _checkNetwork<int>();
     if (net != null) return net;
     try {
-      var query =
-          _client.from('books').select('id').eq('is_featured', true);
+      var query = _client.from('books').select('id').eq('is_featured', true);
       if (excludeId != null) {
         query = query.neq('id', excludeId);
       }
@@ -84,15 +86,15 @@ class AdminBookRepository {
     try {
       final file = File(localPath);
       final ext = localPath.split('.').last.toLowerCase();
-      final fileName =
-          'covers/${DateTime.now().millisecondsSinceEpoch}.$ext';
-      await _client.storage.from('media').upload(
+      final fileName = 'covers/${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await _client.storage
+          .from('media')
+          .upload(
             fileName,
             file,
             fileOptions: FileOptions(contentType: 'image/$ext'),
           );
-      final publicUrl =
-          _client.storage.from('media').getPublicUrl(fileName);
+      final publicUrl = _client.storage.from('media').getPublicUrl(fileName);
       return Right(publicUrl);
     } on StorageException catch (e) {
       _log.warning('uploadCoverImage: ${e.message}');

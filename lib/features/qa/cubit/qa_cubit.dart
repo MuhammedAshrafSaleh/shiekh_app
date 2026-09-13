@@ -14,8 +14,7 @@ class QaCubit extends Cubit<QaState> {
     final result = await _repo.getBookQuestions(bookId);
     result.fold(
       (failure) => emit(QaError(failure.message)),
-      (questions) =>
-          emit(questions.isEmpty ? QaEmpty() : QaLoaded(questions)),
+      (questions) => emit(questions.isEmpty ? QaEmpty() : QaLoaded(questions)),
     );
   }
 }

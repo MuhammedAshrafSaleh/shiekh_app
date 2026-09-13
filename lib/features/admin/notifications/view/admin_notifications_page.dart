@@ -18,11 +18,13 @@ class AdminNotificationsPage extends StatelessWidget {
     return BlocConsumer<AdminNotificationsCubit, AdminNotificationsState>(
       listener: (context, state) {
         if (state is AdminNotificationsError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -32,13 +34,11 @@ class AdminNotificationsPage extends StatelessWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: () =>
-                    context.read<AdminNotificationsCubit>().load(),
+                onPressed: () => context.read<AdminNotificationsCubit>().load(),
               ),
             ],
           ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.startFloat,
+          floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             icon: const Icon(Icons.add_alert_outlined),
             label: const Text('إشعار جديد'),
@@ -50,35 +50,33 @@ class AdminNotificationsPage extends StatelessWidget {
             },
           ),
           body: switch (state) {
-            AdminNotificationsLoading() =>
-              const Center(child: CircularProgressIndicator()),
+            AdminNotificationsLoading() => const Center(
+              child: CircularProgressIndicator(),
+            ),
             AdminNotificationsError() => ErrorState(
-                message: state.message,
-                onRetry: () =>
-                    context.read<AdminNotificationsCubit>().load(),
-              ),
+              message: state.message,
+              onRetry: () => context.read<AdminNotificationsCubit>().load(),
+            ),
             AdminNotificationsEmpty() => EmptyState(
-                icon: Icons.notifications_none_outlined,
-                message: 'لا توجد إشعارات بعد',
-                actionLabel: 'إرسال إشعار',
-                onAction: () =>
-                    context.push('/admin/notifications/new'),
-              ),
+              icon: Icons.notifications_none_outlined,
+              message: 'لا توجد إشعارات بعد',
+              actionLabel: 'إرسال إشعار',
+              onAction: () => context.push('/admin/notifications/new'),
+            ),
             AdminNotificationsLoaded() => RefreshIndicator(
-                onRefresh: () =>
-                    context.read<AdminNotificationsCubit>().load(),
-                child: ListView.builder(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                      AppSpacing.md,
-                      AppSpacing.md,
-                      AppSpacing.md,
-                      100),
-                  itemCount: state.notifications.length,
-                  itemBuilder: (context, i) => _NotificationTile(
-                    notification: state.notifications[i],
-                  ),
+              onRefresh: () => context.read<AdminNotificationsCubit>().load(),
+              child: ListView.builder(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  100,
                 ),
+                itemCount: state.notifications.length,
+                itemBuilder: (context, i) =>
+                    _NotificationTile(notification: state.notifications[i]),
               ),
+            ),
             _ => const SizedBox.shrink(),
           },
         );
@@ -121,10 +119,9 @@ class _NotificationTile extends StatelessWidget {
         ),
         title: Text(
           notification.title,
-          style: Theme.of(context)
-              .textTheme
-              .bodyLarge
-              ?.copyWith(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,11 +137,11 @@ class _NotificationTile extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsetsDirectional.symmetric(
-                      horizontal: AppSpacing.sm, vertical: 2),
+                    horizontal: AppSpacing.sm,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer,
+                    color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -187,14 +184,13 @@ class _NotificationTile extends StatelessWidget {
         content: const Text('هل تريد حذف هذا الإشعار نهائياً؟'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: const Text('إلغاء')),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('إلغاء'),
+          ),
           TextButton(
             onPressed: () {
               Navigator.of(dialogCtx).pop();
-              context
-                  .read<AdminNotificationsCubit>()
-                  .delete(notification.id);
+              context.read<AdminNotificationsCubit>().delete(notification.id);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('حذف'),

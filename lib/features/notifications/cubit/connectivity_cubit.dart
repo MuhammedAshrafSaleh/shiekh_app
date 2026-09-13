@@ -12,8 +12,7 @@ class ConnectivityState {
 class ConnectivityCubit extends Cubit<ConnectivityState> {
   StreamSubscription<List<ConnectivityResult>>? _sub;
 
-  ConnectivityCubit()
-      : super(const ConnectivityState(isOffline: false)) {
+  ConnectivityCubit() : super(const ConnectivityState(isOffline: false)) {
     _sub = Connectivity().onConnectivityChanged.listen(_onChanged);
   }
 

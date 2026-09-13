@@ -38,8 +38,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final success = await context.read<ProfileCubit>().updateName(
-          _nameController.text.trim(),
-        );
+      _nameController.text.trim(),
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -95,9 +95,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     isLoading: isUpdating,
                     onPressed: _save,
                   ),
-                  SizedBox(
-                    height: MediaQuery.viewInsetsOf(context).bottom,
-                  ),
+                  SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
                 ],
               ),
             ),

@@ -63,9 +63,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     if (!_validate()) return;
 
     final success = await context.read<ProfileCubit>().changePassword(
-          currentPassword: _currentPwCtrl.text,
-          newPassword: _newPwCtrl.text,
-        );
+      currentPassword: _currentPwCtrl.text,
+      newPassword: _newPwCtrl.text,
+    );
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -163,9 +163,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         onPressed: isUpdating ? null : _submit,
                         fullWidth: true,
                       ),
-                      SizedBox(
-                        height: MediaQuery.viewInsetsOf(context).bottom,
-                      ),
+                      SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
                     ],
                   ),
                 );

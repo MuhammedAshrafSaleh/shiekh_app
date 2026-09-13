@@ -53,8 +53,14 @@ class ExamMetaLoaded extends ExamState {
   }
 
   @override
-  List<Object?> get props =>
-      [bookId, settings, questionCount, attemptsUsed, pastAttempts, isStarting];
+  List<Object?> get props => [
+    bookId,
+    settings,
+    questionCount,
+    attemptsUsed,
+    pastAttempts,
+    isStarting,
+  ];
 }
 
 // Active exam session
@@ -113,15 +119,15 @@ class ExamInProgress extends ExamState {
 
   @override
   List<Object?> get props => [
-        bookId,
-        settings,
-        questions,
-        answers,
-        currentIndex,
-        secondsRemaining,
-        startedAt,
-        isSubmitting,
-      ];
+    bookId,
+    settings,
+    questions,
+    answers,
+    currentIndex,
+    secondsRemaining,
+    startedAt,
+    isSubmitting,
+  ];
 }
 
 // RPC returned — navigate to result screen

@@ -30,8 +30,7 @@ class _AdminSectionFormPageState extends State<AdminSectionFormPage> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
-    _descCtrl =
-        TextEditingController(text: widget.existing?.description ?? '');
+    _descCtrl = TextEditingController(text: widget.existing?.description ?? '');
     _selectedIcon = widget.existing?.icon ?? SectionIcons.keys.first;
   }
 
@@ -47,25 +46,27 @@ class _AdminSectionFormPageState extends State<AdminSectionFormPage> {
     return BlocListener<AdminSectionsCubit, AdminSectionsState>(
       listener: (context, state) {
         if (state is AdminSectionMutationSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(_isEdit ? 'تم تحديث القسم' : 'تم إضافة القسم'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_isEdit ? 'تم تحديث القسم' : 'تم إضافة القسم'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
           if (mounted) Navigator.of(context).pop();
         } else if (state is AdminSectionsError) {
           setState(() => _saving = false);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(_isEdit ? 'تعديل القسم' : 'قسم جديد'),
-        ),
+        appBar: AppBar(title: Text(_isEdit ? 'تعديل القسم' : 'قسم جديد')),
         body: SingleChildScrollView(
           padding: const EdgeInsetsDirectional.all(AppSpacing.md),
           child: Form(
@@ -91,10 +92,7 @@ class _AdminSectionFormPageState extends State<AdminSectionFormPage> {
                   maxLines: 3,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'الأيقونة',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                Text('الأيقونة', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: AppSpacing.sm),
                 _IconPicker(
                   selected: _selectedIcon,
@@ -119,21 +117,21 @@ class _AdminSectionFormPageState extends State<AdminSectionFormPage> {
     setState(() => _saving = true);
     if (_isEdit) {
       context.read<AdminSectionsCubit>().updateSection(
-            id: widget.existing!.id,
-            name: _nameCtrl.text.trim(),
-            icon: _selectedIcon,
-            description: _descCtrl.text.trim().isEmpty
-                ? null
-                : _descCtrl.text.trim(),
-          );
+        id: widget.existing!.id,
+        name: _nameCtrl.text.trim(),
+        icon: _selectedIcon,
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
+      );
     } else {
       context.read<AdminSectionsCubit>().createSection(
-            name: _nameCtrl.text.trim(),
-            icon: _selectedIcon,
-            description: _descCtrl.text.trim().isEmpty
-                ? null
-                : _descCtrl.text.trim(),
-          );
+        name: _nameCtrl.text.trim(),
+        icon: _selectedIcon,
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
+      );
     }
   }
 }
@@ -183,12 +181,10 @@ class _IconPicker extends StatelessWidget {
                 Text(
                   SectionIcons.labels[key] ?? key,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: isSelected
-                            ? Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer
-                            : null,
-                      ),
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.onPrimaryContainer
+                        : null,
+                  ),
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                 ),

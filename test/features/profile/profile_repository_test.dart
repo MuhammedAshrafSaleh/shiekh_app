@@ -77,9 +77,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'users query error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'users query error'));
 
       final result = await repo.getProfileStats();
 
@@ -117,9 +117,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'update error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'update error'));
 
       final result = await repo.updateFullName('New Name');
 
@@ -173,13 +173,10 @@ void main() {
         newPassword: 'new123',
       );
 
-      result.fold(
-        (f) {
-          expect(f, isA<AuthFailure>());
-          expect(f.message, 'كلمة المرور الحالية غير صحيحة');
-        },
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) {
+        expect(f, isA<AuthFailure>());
+        expect(f.message, 'كلمة المرور الحالية غير صحيحة');
+      }, (_) => fail('expected Left'));
     });
   });
 

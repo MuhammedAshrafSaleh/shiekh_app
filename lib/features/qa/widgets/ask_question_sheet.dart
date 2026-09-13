@@ -13,11 +13,7 @@ import '../cubit/qa_cubit.dart';
 import '../cubit/qa_state.dart';
 
 class AskQuestionSheet extends StatefulWidget {
-  const AskQuestionSheet({
-    super.key,
-    required this.bookId,
-    this.lessonId,
-  });
+  const AskQuestionSheet({super.key, required this.bookId, this.lessonId});
 
   final String bookId;
   final String? lessonId;
@@ -159,10 +155,10 @@ class _AskQuestionSheetState extends State<AskQuestionSheet> {
                         isLoading: isSubmitting,
                         onPressed: canSubmit
                             ? () => context.read<AskQuestionCubit>().submit(
-                                  bookId: widget.bookId,
-                                  lessonId: widget.lessonId,
-                                  questionText: _controller.text.trim(),
-                                )
+                                bookId: widget.bookId,
+                                lessonId: widget.lessonId,
+                                questionText: _controller.text.trim(),
+                              )
                             : null,
                         fullWidth: true,
                       );
@@ -216,9 +212,13 @@ class _HeritageTextArea extends StatelessWidget {
                 enabled: enabled,
                 maxLines: 5,
                 maxLength: maxChars,
-                buildCounter: (_, {required currentLength,
-                    required isFocused, maxLength}) =>
-                    null,
+                buildCounter:
+                    (
+                      _, {
+                      required currentLength,
+                      required isFocused,
+                      maxLength,
+                    }) => null,
                 style: AppTextStyles.body.copyWith(color: AppColors.ink),
                 cursorColor: AppColors.gold,
                 decoration: InputDecoration(

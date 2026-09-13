@@ -65,9 +65,9 @@ void main() {
 
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'lesson not found'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'lesson not found'));
 
       final result = await repo.getLesson('lesson-id');
 
@@ -104,9 +104,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'progress query error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'progress query error'));
 
       final result = await repo.getLessonProgress('lesson-id');
 
@@ -153,9 +153,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'upsert failed'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'upsert failed'));
 
       final result = await repo.saveProgress(
         lessonId: 'lesson-id',
@@ -187,9 +187,9 @@ void main() {
 
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'view not found'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'view not found'));
 
       final result = await repo.getQuizQuestions('lesson-id');
 
@@ -216,9 +216,9 @@ void main() {
 
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.rpc(any(), params: any(named: 'params'))).thenThrow(
-        const PostgrestException(message: 'rpc error'),
-      );
+      when(
+        () => client.rpc(any(), params: any(named: 'params')),
+      ).thenThrow(const PostgrestException(message: 'rpc error'));
 
       final result = await repo.gradeQuiz('lesson-id', {'q1': 'b'});
 
@@ -244,9 +244,9 @@ void main() {
 
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'query failed'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'query failed'));
 
       final result = await repo.getNextLesson('book-id', 2);
 

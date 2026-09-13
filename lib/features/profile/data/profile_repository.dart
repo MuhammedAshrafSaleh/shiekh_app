@@ -71,13 +71,15 @@ class ProfileRepository {
       final lessons = await lessonsFuture;
       final certs = await certsFuture;
 
-      return Right(ProfileStats(
-        fullName: user['full_name'] as String? ?? '',
-        email: user['email'] as String? ?? '',
-        enrolledBooks: enrolled.length,
-        completedLessons: lessons.length,
-        certificates: certs.length,
-      ));
+      return Right(
+        ProfileStats(
+          fullName: user['full_name'] as String? ?? '',
+          email: user['email'] as String? ?? '',
+          enrolledBooks: enrolled.length,
+          completedLessons: lessons.length,
+          certificates: certs.length,
+        ),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getProfileStats: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -133,9 +135,7 @@ class ProfileRepository {
         password: currentPassword,
       );
 
-      await _client.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
       return const Right(null);
     } on AuthException catch (e) {
       _log.warning('changePassword: ${e.message}');

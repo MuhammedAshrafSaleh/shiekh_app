@@ -1,8 +1,13 @@
 // lib/features/lesson/widgets/quiz_tab.dart
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/audio/app_sound.dart';
+import '../../../core/audio/sound_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
@@ -19,6 +24,8 @@ import '../../../features/lesson/cubit/lesson_cubit.dart';
 import '../../../features/lesson/cubit/lesson_state.dart';
 import '../../../features/lesson/data/lesson_repository.dart';
 import '../../../models/lesson_quiz_attempt_entity.dart';
+
+const int _kLessonQuizDurationSeconds = 75; // DEBUG: shortened for tick-sound testing (restore to 900)
 
 enum _QuizPhase { intro, loading, error, answering, submitted, review }
 
@@ -46,7 +53,7 @@ class QuizTab extends StatefulWidget {
   State<QuizTab> createState() => _QuizTabState();
 }
 
-class _QuizTabState extends State<QuizTab> {
+class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
   _QuizPhase _phase = _QuizPhase.intro;
   _ReviewOrigin _reviewOrigin = _ReviewOrigin.result;
 
@@ -57,6 +64,12 @@ class _QuizTabState extends State<QuizTab> {
   String? _errorMessage;
 
   List<QuizReviewQuestion> _reviewQuestions = [];
+
+  Timer? _quizTimer;
+  DateTime? _quizEndAt;
+
+  @override
+  bool get wantKeepAlive => _phase == _QuizPhase.answering;
 
   @override
   void initState() {
@@ -72,16 +85,58 @@ class _QuizTabState extends State<QuizTab> {
       also?.call();
     });
     widget.onAnsweringChanged?.call(newPhase == _QuizPhase.answering);
+    updateKeepAlive();
   }
 
   @override
   void dispose() {
+    _cancelQuizTimer();
     // Ensure the parent is notified that we are no longer in answering phase
     // if the widget is removed (e.g., tab changed, page popped).
     if (_phase == _QuizPhase.answering) {
       widget.onAnsweringChanged?.call(false);
     }
     super.dispose();
+  }
+
+  void _startQuizTimer() {
+    _quizEndAt = DateTime.now().add(
+      const Duration(seconds: _kLessonQuizDurationSeconds),
+    );
+    _quizTimer?.cancel();
+    _quizTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final remaining = _quizEndAt!.difference(DateTime.now()).inSeconds;
+      if (remaining <= 0) {
+        _cancelQuizTimer();
+        setState(() {}); // show 00:00 before submit
+        _submit();
+      } else {
+        if (remaining <= 60) {
+          final soundName = remaining <= 10 ? 'tickUrgent' : 'tick';
+          final sound = remaining <= 10 ? AppSound.tickUrgent : AppSound.tick;
+          // ignore: avoid_print
+          print('[QuizTimer] remaining=$remaining → playing $soundName');
+          try {
+            final svc = context.read<SoundService>();
+            // ignore: avoid_print
+            print('[QuizTimer] SoundService resolved: $svc  muted=${svc.isMuted}');
+            svc.play(sound);
+            // ignore: avoid_print
+            print('[QuizTimer] play() returned (fire-and-forget)');
+          } catch (e, st) {
+            // ignore: avoid_print
+            print('[QuizTimer] ERROR calling play(): $e\n$st');
+          }
+        }
+        setState(() {});
+      }
+    });
+  }
+
+  void _cancelQuizTimer() {
+    _quizTimer?.cancel();
+    _quizTimer = null;
   }
 
   Future<void> _preloadQuestions() async {
@@ -101,21 +156,26 @@ class _QuizTabState extends State<QuizTab> {
         (failure) => _gotoPhase(_QuizPhase.error, () {
           _errorMessage = failure.message;
         }),
-        (questions) => _gotoPhase(_QuizPhase.answering, () {
-          _questions = questions;
-          _currentIndex = 0;
-          _answers.clear();
-        }),
+        (questions) {
+          _gotoPhase(_QuizPhase.answering, () {
+            _questions = questions;
+            _currentIndex = 0;
+            _answers.clear();
+          });
+          _startQuizTimer();
+        },
       );
     } else {
       _gotoPhase(_QuizPhase.answering, () {
         _currentIndex = 0;
         _answers.clear();
       });
+      _startQuizTimer();
     }
   }
 
   Future<void> _submit() async {
+    _cancelQuizTimer();
     _gotoPhase(_QuizPhase.loading);
     final repo = context.read<LessonRepository>();
 
@@ -142,9 +202,10 @@ class _QuizTabState extends State<QuizTab> {
               passed: grade.percentage >= 60,
               submittedAt: DateTime.now(),
             );
-            context
-                .read<LessonCubit>()
-                .markQuizAttempted(grade.attemptsUsed, newAttempt);
+            context.read<LessonCubit>().markQuizAttempted(
+              grade.attemptsUsed,
+              newAttempt,
+            );
           }
         }
       },
@@ -181,6 +242,7 @@ class _QuizTabState extends State<QuizTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // required by AutomaticKeepAliveClientMixin
     if (_phase == _QuizPhase.loading) {
       return Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
@@ -257,12 +319,20 @@ class _QuizTabState extends State<QuizTab> {
     final question = _questions[_currentIndex];
     final total = _questions.length;
     final isLast = _currentIndex == total - 1;
+    final secondsRemaining = _quizEndAt == null
+        ? _kLessonQuizDurationSeconds
+        : max(0, _quizEndAt!.difference(DateTime.now()).inSeconds);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Question bar
-        _QuizBar(currentIndex: _currentIndex, total: total, ar: _ar),
+        _QuizBar(
+          currentIndex: _currentIndex,
+          total: total,
+          ar: _ar,
+          secondsRemaining: secondsRemaining,
+        ),
         const Divider(height: 1, color: AppColors.border),
 
         // Scrollable question + options
@@ -279,8 +349,9 @@ class _QuizTabState extends State<QuizTab> {
               children: [
                 Text(
                   question.questionText,
-                  style: AppTextStyles.bodyLg
-                      .copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodyLg.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.s4),
                 for (final choice in ['a', 'b', 'c', 'd'])
@@ -290,8 +361,7 @@ class _QuizTabState extends State<QuizTab> {
                     optionState: _answers[question.id] == choice
                         ? McqOptionState.selected
                         : McqOptionState.idle,
-                    onTap: () =>
-                        setState(() => _answers[question.id] = choice),
+                    onTap: () => setState(() => _answers[question.id] = choice),
                   ),
               ],
             ),
@@ -335,8 +405,7 @@ class _QuizTabState extends State<QuizTab> {
                           fullWidth: true,
                           label: 'التالي',
                           icon: const Icon(Icons.arrow_back_ios, size: 16),
-                          onPressed: () =>
-                              setState(() => _currentIndex++),
+                          onPressed: () => setState(() => _currentIndex++),
                         ),
                 ),
               ],
@@ -348,12 +417,12 @@ class _QuizTabState extends State<QuizTab> {
   }
 
   String _choiceLabel(String key) => switch (key) {
-        'a' => 'أ',
-        'b' => 'ب',
-        'c' => 'ج',
-        'd' => 'د',
-        _ => key,
-      };
+    'a' => 'أ',
+    'b' => 'ب',
+    'c' => 'ج',
+    'd' => 'د',
+    _ => key,
+  };
 
   void _showUnansweredWarning() {
     final unanswered = _questions.length - _answers.length;
@@ -433,15 +502,24 @@ class _QuizBar extends StatelessWidget {
   final int currentIndex;
   final int total;
   final String Function(int) ar;
+  final int secondsRemaining;
 
   const _QuizBar({
     required this.currentIndex,
     required this.total,
     required this.ar,
+    required this.secondsRemaining,
   });
+
+  static String _formatTime(int s) {
+    final m = s ~/ 60;
+    final sec = s % 60;
+    return '${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isUrgent = secondsRemaining <= 60;
     return Container(
       color: AppColors.surface,
       child: SafeArea(
@@ -452,23 +530,38 @@ class _QuizBar extends StatelessWidget {
             padding: const EdgeInsetsDirectional.symmetric(
               horizontal: AppSpacing.s4,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  'سؤال ${ar(currentIndex + 1)} من',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.inkMuted,
-                    letterSpacing: 0,
-                  ),
+                // Question counter (start / right in RTL)
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'سؤال ${ar(currentIndex + 1)} من',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.inkMuted,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    Text(
+                      ar(total),
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
+                    ),
+                  ],
                 ),
+                const Spacer(),
+                // Countdown timer (end / left in RTL)
                 Text(
-                  ar(total),
+                  _formatTime(secondsRemaining),
                   style: AppTextStyles.small.copyWith(
-                    color: AppColors.ink,
+                    color: isUrgent ? AppColors.danger : AppColors.inkMuted,
                     fontWeight: FontWeight.w700,
-                    height: 1,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -531,8 +624,11 @@ class _QuizIntro extends StatelessWidget {
                 color: AppColors.primaryTint,
               ),
               alignment: Alignment.center,
-              child: Icon(Icons.quiz_outlined,
-                  size: 34, color: AppColors.primary),
+              child: Icon(
+                Icons.quiz_outlined,
+                size: 34,
+                color: AppColors.primary,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.s4),
@@ -564,8 +660,8 @@ class _QuizIntro extends StatelessWidget {
             valueColor: attemptsRemaining == 0
                 ? AppColors.danger
                 : attemptsRemaining == 1
-                    ? AppColors.warning
-                    : AppColors.success,
+                ? AppColors.warning
+                : AppColors.success,
           ),
 
           // Past attempts
@@ -646,9 +742,10 @@ class _IntroInfoCard extends StatelessWidget {
           Icon(icon, size: 20, color: AppColors.inkMuted),
           const SizedBox(width: AppSpacing.s4),
           Expanded(
-            child: Text(label,
-                style:
-                    AppTextStyles.small.copyWith(color: AppColors.inkMuted)),
+            child: Text(
+              label,
+              style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+            ),
           ),
           Text(
             value,
@@ -719,10 +816,7 @@ class _AttemptCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s3),
-          SheikhyButton.text(
-            label: 'مراجعة',
-            onPressed: onReview,
-          ),
+          SheikhyButton.text(label: 'مراجعة', onPressed: onReview),
         ],
       ),
     );
@@ -786,8 +880,9 @@ class _QuizResult extends StatelessWidget {
                   const SizedBox(height: AppSpacing.s1),
                   Text(
                     'النتيجة',
-                    style:
-                        AppTextStyles.caption.copyWith(color: AppColors.inkMuted),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.inkMuted,
+                    ),
                   ),
                 ],
               ),
@@ -818,7 +913,9 @@ class _QuizResult extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: AppRadii.rPill,
                 border: Border.all(
-                    color: AppColors.border, width: AppBorders.hairline),
+                  color: AppColors.border,
+                  width: AppBorders.hairline,
+                ),
               ),
               child: Text(
                 '${ar(result.correct)} من ${ar(result.total)} إجابة صحيحة',
@@ -973,12 +1070,12 @@ class _ReviewQuestionCard extends StatelessWidget {
   }
 
   String _choiceLabel(String key) => switch (key) {
-        'a' => 'أ',
-        'b' => 'ب',
-        'c' => 'ج',
-        'd' => 'د',
-        _ => key,
-      };
+    'a' => 'أ',
+    'b' => 'ب',
+    'c' => 'ج',
+    'd' => 'د',
+    _ => key,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -995,7 +1092,9 @@ class _ReviewQuestionCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: AppColors.paperSunk,
                 border: Border.all(
-                    color: AppColors.border, width: AppBorders.hairline),
+                  color: AppColors.border,
+                  width: AppBorders.hairline,
+                ),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -1012,8 +1111,7 @@ class _ReviewQuestionCard extends StatelessWidget {
             Expanded(
               child: Text(
                 question.questionText,
-                style:
-                    AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1022,8 +1120,7 @@ class _ReviewQuestionCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.s2),
           Text(
             'لم تتم الإجابة على هذا السؤال',
-            style:
-                AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
+            style: AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
           ),
         ],
         const SizedBox(height: AppSpacing.s3),

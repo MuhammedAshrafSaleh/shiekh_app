@@ -1,13 +1,20 @@
 // lib/features/admin/lessons/data/admin_lesson_repository.dart
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dartz/dartz.dart';
+// http is a transitive dep of supabase_flutter (functions_client); imported
+// only to catch transport-level ClientException on the long-running
+// generate-questions call.
+// ignore: depend_on_referenced_packages
+import 'package:http/http.dart' show ClientException;
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../../../features/notifications/cubit/connectivity_cubit.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
+import '../../../../models/generated_questions_result_entity.dart';
 import '../../../../models/lesson_entity.dart';
 
 class AdminLessonRepository {
@@ -22,8 +29,7 @@ class AdminLessonRepository {
     return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
   }
 
-  Future<Either<Failure, List<LessonEntity>>> getLessons(
-      String bookId) async {
+  Future<Either<Failure, List<LessonEntity>>> getLessons(String bookId) async {
     final net = _checkNetwork<List<LessonEntity>>();
     if (net != null) return net;
     try {
@@ -33,9 +39,11 @@ class AdminLessonRepository {
           .eq('book_id', bookId)
           .order('order_index', ascending: true)
           .limit(200);
-      return Right((data as List)
-          .map((e) => LessonEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map((e) => LessonEntity.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getLessons: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -85,8 +93,9 @@ class AdminLessonRepository {
       final existingList = existing as List;
       final nextOrder = existingList.isEmpty
           ? 1
-          : ((existingList.first as Map<String, dynamic>)['order_index'] as int) +
-              1;
+          : ((existingList.first as Map<String, dynamic>)['order_index']
+                    as int) +
+                1;
 
       final data = await _client
           .from('lessons')
@@ -164,14 +173,19 @@ class AdminLessonRepository {
   }
 
   Future<Either<Failure, Unit>> togglePublish(
-      String lessonId, bool publish) async {
+    String lessonId,
+    bool publish,
+  ) async {
     final net = _checkNetwork<Unit>();
     if (net != null) return net;
     try {
-      await _client.from('lessons').update({
-        'status': publish ? 'published' : 'draft',
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', lessonId);
+      await _client
+          .from('lessons')
+          .update({
+            'status': publish ? 'published' : 'draft',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', lessonId);
       return const Right(unit);
     } on PostgrestException catch (e) {
       _log.warning('togglePublish: ${e.message}');
@@ -186,7 +200,8 @@ class AdminLessonRepository {
   /// single server-side transaction; a partial network failure cannot leave
   /// the order table in an inconsistent state.
   Future<Either<Failure, Unit>> reorderLessons(
-      List<({String id, int orderIndex})> updates) async {
+    List<({String id, int orderIndex})> updates,
+  ) async {
     final net = _checkNetwork<Unit>();
     if (net != null) return net;
     try {
@@ -206,7 +221,8 @@ class AdminLessonRepository {
   // ── Quiz questions (admin — includes correct_choice) ──────────────────────
 
   Future<Either<Failure, List<AdminQuizQuestionEntity>>> getQuizQuestions(
-      String lessonId) async {
+    String lessonId,
+  ) async {
     final net = _checkNetwork<List<AdminQuizQuestionEntity>>();
     if (net != null) return net;
     try {
@@ -216,10 +232,14 @@ class AdminLessonRepository {
           .eq('lesson_id', lessonId)
           .order('order_index', ascending: true)
           .limit(50);
-      return Right((data as List)
-          .map((e) =>
-              AdminQuizQuestionEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map(
+              (e) =>
+                  AdminQuizQuestionEntity.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getQuizQuestions: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -250,7 +270,7 @@ class AdminLessonRepository {
       final nextOrder = existingQs.isEmpty
           ? 0
           : ((existingQs.first as Map<String, dynamic>)['order_index'] as int) +
-              1;
+                1;
 
       final data = await _client
           .from('lesson_quiz_questions')
@@ -313,14 +333,62 @@ class AdminLessonRepository {
     final net = _checkNetwork<Unit>();
     if (net != null) return net;
     try {
-      await _client
-          .from('lesson_quiz_questions')
-          .delete()
-          .eq('id', questionId);
+      await _client.from('lesson_quiz_questions').delete().eq('id', questionId);
       return const Right(unit);
     } on PostgrestException catch (e) {
       _log.warning('deleteQuizQuestion: ${e.message}');
       return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  // ── AI question generation (generate-questions Edge Function) ──────────────
+
+  /// Invokes the `generate-questions` Edge Function. The admin JWT is attached
+  /// automatically by the Supabase client. Generation is long-running
+  /// (30–130+ s of Gemini calls with retries); the function self-caps at ~150 s,
+  /// so we set a slightly higher client-side deadline and surface a retryable
+  /// failure rather than hanging. Inserted rows land as ai_review_status='pending'.
+  Future<Either<Failure, GeneratedQuestionsResultEntity>> generateQuestions({
+    required String lessonId,
+    required String transcriptText,
+    required int requestedCount,
+    required Map<String, int> difficultyMix,
+  }) async {
+    final net = _checkNetwork<GeneratedQuestionsResultEntity>();
+    if (net != null) return net;
+    try {
+      final res = await _client.functions
+          .invoke(
+            'generate-questions',
+            body: {
+              'lesson_id': lessonId,
+              'transcript_text': transcriptText,
+              'requested_count': requestedCount,
+              'difficulty_mix': difficultyMix,
+            },
+          )
+          .timeout(const Duration(seconds: 160));
+      final data = res.data as Map<String, dynamic>;
+      return Right(GeneratedQuestionsResultEntity.fromJson(data));
+    } on FunctionException catch (e) {
+      // Non-2xx from the function (400/401/403/500). `details` is the decoded
+      // response body, typically { error: '...' }.
+      final details = e.details;
+      final msg = (details is Map && details['error'] != null)
+          ? details['error'].toString()
+          : 'تعذّر توليد الأسئلة، يرجى المحاولة مرة أخرى';
+      _log.warning('generateQuestions http ${e.status}: $msg');
+      return Left(ServerFailure(msg));
+    } on TimeoutException {
+      _log.warning('generateQuestions: client deadline exceeded');
+      return Left(
+        ServerFailure('استغرق التوليد وقتًا أطول من المتوقع، حاول مرة أخرى'),
+      );
+    } on ClientException catch (e) {
+      _log.warning('generateQuestions transport: $e');
+      return Left(NetworkFailure('انقطع الاتصال أثناء التوليد، حاول مرة أخرى'));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
     }

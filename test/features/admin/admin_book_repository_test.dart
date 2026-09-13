@@ -15,7 +15,9 @@ import 'package:sheikhy_app/models/book_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _MockSupabaseClient extends Mock implements SupabaseClient {}
+
 class _MockGoTrueClient extends Mock implements GoTrueClient {}
+
 class _MockConnectivityCubit extends Mock implements ConnectivityCubit {}
 
 class _FakeUser extends Fake implements User {
@@ -53,13 +55,17 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'error'));
 
       final result = await repo.getSections();
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
   });
 
@@ -76,19 +82,24 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'error'));
 
       final result = await repo.getFeaturedCount();
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
 
     test('queries books table with is_featured filter', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'ok'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.getFeaturedCount();
 
@@ -109,13 +120,17 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'not found'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'not found'));
 
       final result = await repo.getBook('book-id');
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
   });
 
@@ -139,8 +154,9 @@ void main() {
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'insert error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'insert error'));
 
       final result = await repo.createBook(
         sectionId: 'sec-id',
@@ -151,7 +167,10 @@ void main() {
       );
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
   });
 
@@ -176,8 +195,9 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => client.from(any()))
-          .thenThrow(const PostgrestException(message: 'update error'));
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'update error'));
 
       final result = await repo.updateBook(
         id: 'book-id',
@@ -189,7 +209,10 @@ void main() {
       );
 
       expect(result.isLeft(), true);
-      result.fold((f) => expect(f, isA<ServerFailure>()), (_) => fail('expected Left'));
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
   });
 

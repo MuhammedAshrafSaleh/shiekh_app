@@ -28,10 +28,7 @@ class AdminLessonListCubit extends Cubit<AdminLessonListState> {
 
   Future<void> togglePublish(String lessonId, bool publish) async {
     final result = await _repo.togglePublish(lessonId, publish);
-    result.fold(
-      (f) => emit(AdminLessonListError(f.message)),
-      (_) => refresh(),
-    );
+    result.fold((f) => emit(AdminLessonListError(f.message)), (_) => refresh());
   }
 
   Future<bool> reorder(List<({String id, int orderIndex})> updates) async {
@@ -41,10 +38,7 @@ class AdminLessonListCubit extends Cubit<AdminLessonListState> {
 
   Future<void> delete(String lessonId) async {
     final result = await _repo.deleteLesson(lessonId);
-    result.fold(
-      (f) => emit(AdminLessonListError(f.message)),
-      (_) => refresh(),
-    );
+    result.fold((f) => emit(AdminLessonListError(f.message)), (_) => refresh());
   }
 }
 
@@ -66,7 +60,8 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
         final qResult = await _repo.getQuizQuestions(lessonId);
         qResult.fold(
           (f) => emit(AdminLessonFormError(f.message)),
-          (qs) => emit(AdminLessonFormLoaded(lesson: lesson, quizQuestions: qs)),
+          (qs) =>
+              emit(AdminLessonFormLoaded(lesson: lesson, quizQuestions: qs)),
         );
       },
     );
@@ -130,17 +125,16 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       choiceD: choiceD,
       correctChoice: correctChoice,
     );
-    result.fold(
-      (f) => emit(AdminLessonFormError(f.message)),
-      (q) {
-        if (current is AdminLessonFormLoaded) {
-          emit(AdminLessonFormLoaded(
+    result.fold((f) => emit(AdminLessonFormError(f.message)), (q) {
+      if (current is AdminLessonFormLoaded) {
+        emit(
+          AdminLessonFormLoaded(
             lesson: current.lesson,
             quizQuestions: [...current.quizQuestions, q],
-          ));
-        }
-      },
-    );
+          ),
+        );
+      }
+    });
   }
 
   Future<void> updateQuizQuestion({
@@ -162,32 +156,26 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       choiceD: choiceD,
       correctChoice: correctChoice,
     );
-    result.fold(
-      (f) => emit(AdminLessonFormError(f.message)),
-      (updated) {
-        if (current is AdminLessonFormLoaded) {
-          final qs = current.quizQuestions
-              .map((q) => q.id == updated.id ? updated : q)
-              .toList();
-          emit(AdminLessonFormLoaded(lesson: current.lesson, quizQuestions: qs));
-        }
-      },
-    );
+    result.fold((f) => emit(AdminLessonFormError(f.message)), (updated) {
+      if (current is AdminLessonFormLoaded) {
+        final qs = current.quizQuestions
+            .map((q) => q.id == updated.id ? updated : q)
+            .toList();
+        emit(AdminLessonFormLoaded(lesson: current.lesson, quizQuestions: qs));
+      }
+    });
   }
 
   Future<void> deleteQuizQuestion(String questionId) async {
     final current = state;
     final result = await _repo.deleteQuizQuestion(questionId);
-    result.fold(
-      (f) => emit(AdminLessonFormError(f.message)),
-      (_) {
-        if (current is AdminLessonFormLoaded) {
-          final qs = current.quizQuestions
-              .where((q) => q.id != questionId)
-              .toList();
-          emit(AdminLessonFormLoaded(lesson: current.lesson, quizQuestions: qs));
-        }
-      },
-    );
+    result.fold((f) => emit(AdminLessonFormError(f.message)), (_) {
+      if (current is AdminLessonFormLoaded) {
+        final qs = current.quizQuestions
+            .where((q) => q.id != questionId)
+            .toList();
+        emit(AdminLessonFormLoaded(lesson: current.lesson, quizQuestions: qs));
+      }
+    });
   }
 }

@@ -58,27 +58,27 @@ class _BookQaPageState extends State<BookQaPage> {
       body: BlocBuilder<QaCubit, QaState>(
         builder: (context, state) {
           return switch (state) {
-            QaInitial() || QaLoading() =>
-              const Center(child: CircularProgressIndicator()),
+            QaInitial() ||
+            QaLoading() => const Center(child: CircularProgressIndicator()),
             QaError(:final message) => ErrorState(
-                message: message,
-                onRetry: () =>
-                    context.read<QaCubit>().loadQuestions(widget.bookId),
-              ),
+              message: message,
+              onRetry: () =>
+                  context.read<QaCubit>().loadQuestions(widget.bookId),
+            ),
             QaEmpty() => const EmptyState(
-                icon: Icons.question_answer_outlined,
-                message: 'لا توجد أسئلة بعد، كن أول من يسأل!',
-              ),
+              icon: Icons.question_answer_outlined,
+              message: 'لا توجد أسئلة بعد، كن أول من يسأل!',
+            ),
             QaLoaded(:final questions) => RefreshIndicator(
-                onRefresh: () =>
-                    context.read<QaCubit>().loadQuestions(widget.bookId),
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: questions.length,
-                  itemBuilder: (_, index) =>
-                      QuestionCard(question: questions[index]),
-                ),
+              onRefresh: () =>
+                  context.read<QaCubit>().loadQuestions(widget.bookId),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: questions.length,
+                itemBuilder: (_, index) =>
+                    QuestionCard(question: questions[index]),
               ),
+            ),
             _ => const SizedBox.shrink(),
           };
         },

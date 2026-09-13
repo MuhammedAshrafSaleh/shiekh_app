@@ -23,27 +23,20 @@ class HomeCubit extends Cubit<HomeState> {
 
     if (isClosed) return;
 
-    final bannersEither =
-        results[0] as Either<Failure, List<BannerEntity>>;
+    final bannersEither = results[0] as Either<Failure, List<BannerEntity>>;
     final featuredEither =
         results[1] as Either<Failure, List<BookWithProgressEntity>>;
 
     String? errorMessage;
 
-    bannersEither.fold(
-      (failure) => errorMessage = failure.message,
-      (_) {},
-    );
+    bannersEither.fold((failure) => errorMessage = failure.message, (_) {});
 
     if (errorMessage != null) {
       emit(HomeError(errorMessage!));
       return;
     }
 
-    featuredEither.fold(
-      (failure) => errorMessage = failure.message,
-      (_) {},
-    );
+    featuredEither.fold((failure) => errorMessage = failure.message, (_) {});
 
     if (errorMessage != null) {
       emit(HomeError(errorMessage!));

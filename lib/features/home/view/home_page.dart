@@ -140,7 +140,10 @@ class _LoadedView extends StatelessWidget {
     return RefreshIndicator(
       color: AppColors.primary,
       backgroundColor: AppColors.surface,
-      onRefresh: () => context.read<HomeCubit>().loadHome(),
+      onRefresh: () => Future.wait([
+        context.read<HomeCubit>().loadHome(),
+        context.read<NotificationsCubit>().loadNotifications(),
+      ]),
       child: CustomScrollView(
         slivers: [
           if (state.data.banners.isNotEmpty)

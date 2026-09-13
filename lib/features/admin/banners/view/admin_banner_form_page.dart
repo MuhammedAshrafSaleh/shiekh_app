@@ -15,11 +15,7 @@ class AdminBannerFormPage extends StatefulWidget {
   final BannerEntity? existing;
   final List<BookEntity> books;
 
-  const AdminBannerFormPage({
-    super.key,
-    this.existing,
-    required this.books,
-  });
+  const AdminBannerFormPage({super.key, this.existing, required this.books});
 
   bool get isEdit => existing != null;
 
@@ -48,10 +44,8 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
     final b = widget.existing;
     _titleCtrl = TextEditingController(text: b?.title ?? '');
     _descCtrl = TextEditingController(text: b?.description ?? '');
-    _orderCtrl =
-        TextEditingController(text: b?.orderIndex.toString() ?? '0');
-    _externalLinkCtrl =
-        TextEditingController(text: b?.externalLink ?? '');
+    _orderCtrl = TextEditingController(text: b?.orderIndex.toString() ?? '0');
+    _externalLinkCtrl = TextEditingController(text: b?.externalLink ?? '');
     _isActive = b?.isActive ?? true;
     _imageUrl = b?.imageUrl;
     if (b?.linkedBookId != null) {
@@ -76,18 +70,24 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
     return BlocListener<AdminBannerCubit, AdminBannerState>(
       listener: (context, state) {
         if (state is AdminBannerMutationSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(widget.isEdit ? 'تم تحديث البانر' : 'تم إضافة البانر'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                widget.isEdit ? 'تم تحديث البانر' : 'تم إضافة البانر',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
           if (mounted) Navigator.of(context).pop();
         } else if (state is AdminBannerError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       child: Scaffold(
@@ -112,7 +112,9 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
                 // Title
                 TextFormField(
                   controller: _titleCtrl,
-                  decoration: const InputDecoration(labelText: 'عنوان البانر *'),
+                  decoration: const InputDecoration(
+                    labelText: 'عنوان البانر *',
+                  ),
                   validator: (v) =>
                       v == null || v.trim().isEmpty ? 'العنوان مطلوب' : null,
                 ),
@@ -121,7 +123,9 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
                 // Description
                 TextFormField(
                   controller: _descCtrl,
-                  decoration: const InputDecoration(labelText: 'الوصف (اختياري)'),
+                  decoration: const InputDecoration(
+                    labelText: 'الوصف (اختياري)',
+                  ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -136,7 +140,8 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'الترتيب مطلوب';
-                    if (int.tryParse(v.trim()) == null) return 'أدخل رقماً صحيحاً';
+                    if (int.tryParse(v.trim()) == null)
+                      return 'أدخل رقماً صحيحاً';
                     return null;
                   },
                 ),
@@ -176,23 +181,25 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
                     DropdownButtonFormField<String?>(
                       key: ValueKey(_linkedBookId),
                       initialValue: _linkedBookId,
-                      decoration:
-                          const InputDecoration(labelText: 'اختر كتاباً'),
+                      decoration: const InputDecoration(
+                        labelText: 'اختر كتاباً',
+                      ),
                       items: [
                         const DropdownMenuItem(
                           value: null,
                           child: Text('— اختر كتاباً —'),
                         ),
-                        ...widget.books.map((b) => DropdownMenuItem(
-                              value: b.id,
-                              child: Text(b.title),
-                            )),
+                        ...widget.books.map(
+                          (b) => DropdownMenuItem(
+                            value: b.id,
+                            child: Text(b.title),
+                          ),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _linkedBookId = v),
-                      validator: (v) =>
-                          _linkType == 'book' && v == null
-                              ? 'اختر كتاباً'
-                              : null,
+                      validator: (v) => _linkType == 'book' && v == null
+                          ? 'اختر كتاباً'
+                          : null,
                     ),
                 ] else if (_linkType == 'external') ...[
                   TextFormField(
@@ -204,9 +211,9 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
                     keyboardType: TextInputType.url,
                     validator: (v) =>
                         _linkType == 'external' &&
-                                (v == null || v.trim().isEmpty)
-                            ? 'الرابط مطلوب'
-                            : null,
+                            (v == null || v.trim().isEmpty)
+                        ? 'الرابط مطلوب'
+                        : null,
                   ),
                 ],
 
@@ -233,9 +240,9 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
     );
     if (picked == null || !mounted) return;
     setState(() => _uploadingImage = true);
-    final url = await context
-        .read<AdminBannerCubit>()
-        .uploadImageAndGetUrl(picked.path);
+    final url = await context.read<AdminBannerCubit>().uploadImageAndGetUrl(
+      picked.path,
+    );
     if (!mounted) return;
     setState(() {
       _uploadingImage = false;
@@ -248,34 +255,35 @@ class _AdminBannerFormPageState extends State<AdminBannerFormPage> {
     final order = int.parse(_orderCtrl.text.trim());
 
     final linkedBookId = _linkType == 'book' ? _linkedBookId : null;
-    final externalLink =
-        _linkType == 'external' ? _externalLinkCtrl.text.trim() : null;
+    final externalLink = _linkType == 'external'
+        ? _externalLinkCtrl.text.trim()
+        : null;
 
     if (widget.isEdit) {
       context.read<AdminBannerCubit>().updateBanner(
-            id: widget.existing!.id,
-            title: _titleCtrl.text.trim(),
-            description: _descCtrl.text.trim().isEmpty
-                ? null
-                : _descCtrl.text.trim(),
-            imageUrl: _imageUrl,
-            linkedBookId: linkedBookId,
-            externalLink: externalLink,
-            orderIndex: order,
-            isActive: _isActive,
-          );
+        id: widget.existing!.id,
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
+        imageUrl: _imageUrl,
+        linkedBookId: linkedBookId,
+        externalLink: externalLink,
+        orderIndex: order,
+        isActive: _isActive,
+      );
     } else {
       context.read<AdminBannerCubit>().createBanner(
-            title: _titleCtrl.text.trim(),
-            description: _descCtrl.text.trim().isEmpty
-                ? null
-                : _descCtrl.text.trim(),
-            imageUrl: _imageUrl,
-            linkedBookId: linkedBookId,
-            externalLink: externalLink,
-            orderIndex: order,
-            isActive: _isActive,
-          );
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
+        imageUrl: _imageUrl,
+        linkedBookId: linkedBookId,
+        externalLink: externalLink,
+        orderIndex: order,
+        isActive: _isActive,
+      );
     }
   }
 }
@@ -302,35 +310,35 @@ class _ImagePickerWidget extends StatelessWidget {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant),
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         child: uploading
             ? const Center(child: CircularProgressIndicator())
             : imageUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.add_photo_alternate_outlined,
-                        size: 36,
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'إضافة صورة البانر',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 36,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'إضافة صورة البانر',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
       ),
     );
   }

@@ -80,9 +80,7 @@ class AdminLessonPreviewPage extends StatelessWidget {
 
     if (tabs.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(title.isEmpty ? 'معاينة الدرس' : title),
-        ),
+        appBar: AppBar(title: Text(title.isEmpty ? 'معاينة الدرس' : title)),
         body: const Column(
           children: [
             _PreviewBanner(),
@@ -112,9 +110,7 @@ class AdminLessonPreviewPage extends StatelessWidget {
           children: [
             const _PreviewBanner(),
             Expanded(
-              child: TabBarView(
-                children: tabs.map((t) => t.content).toList(),
-              ),
+              child: TabBarView(children: tabs.map((t) => t.content).toList()),
             ),
           ],
         ),

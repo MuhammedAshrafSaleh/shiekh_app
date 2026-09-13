@@ -97,9 +97,9 @@ class _ResetSentPageState extends State<ResetSentPage> {
       listenWhen: (_, curr) => curr is AuthError,
       listener: (context, state) {
         if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
         }
       },
       child: Scaffold(

@@ -44,38 +44,32 @@ final _settings = FinalExamSettingsEntity(
   isPublished: true,
 );
 
-FinalExamQuestionEntity _makeQuestion(int index) =>
-    FinalExamQuestionEntity(
-      id: 'q$index',
-      bookId: 'book-1',
-      orderIndex: index,
-      questionText: 'سؤال $index',
-      choiceA: 'أ',
-      choiceB: 'ب',
-      choiceC: 'ج',
-      choiceD: 'د',
-    );
+FinalExamQuestionEntity _makeQuestion(int index) => FinalExamQuestionEntity(
+  id: 'q$index',
+  bookId: 'book-1',
+  orderIndex: index,
+  questionText: 'سؤال $index',
+  choiceA: 'أ',
+  choiceB: 'ب',
+  choiceC: 'ج',
+  choiceD: 'د',
+);
 
-final _questions = [
-  _makeQuestion(0),
-  _makeQuestion(1),
-  _makeQuestion(2),
-];
+final _questions = [_makeQuestion(0), _makeQuestion(1), _makeQuestion(2)];
 
 ExamInProgress _inProgressState({
   Map<String, String>? answers,
   int currentIndex = 0,
   int secondsRemaining = 120,
-}) =>
-    ExamInProgress(
-      bookId: 'book-1',
-      settings: _settings,
-      questions: _questions,
-      answers: answers ?? const {},
-      currentIndex: currentIndex,
-      secondsRemaining: secondsRemaining,
-      startedAt: DateTime(2026, 7, 1, 10, 0),
-    );
+}) => ExamInProgress(
+  bookId: 'book-1',
+  settings: _settings,
+  questions: _questions,
+  answers: answers ?? const {},
+  currentIndex: currentIndex,
+  secondsRemaining: secondsRemaining,
+  startedAt: DateTime(2026, 7, 1, 10, 0),
+);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -89,15 +83,18 @@ Future<void> _driveToInProgress(
 }) async {
   when(() => repo.loadSession(any())).thenAnswer((_) async => null);
   when(() => repo.getExamMeta(any())).thenAnswer(
-    (_) async => Right(ExamMeta(
-      settings: _settings,
-      questionCount: _questions.length,
-      attemptsUsed: 0,
-      pastAttempts: [],
-    )),
+    (_) async => Right(
+      ExamMeta(
+        settings: _settings,
+        questionCount: _questions.length,
+        attemptsUsed: 0,
+        pastAttempts: [],
+      ),
+    ),
   );
-  when(() => repo.getQuestions(any()))
-      .thenAnswer((_) async => Right(_questions));
+  when(
+    () => repo.getQuestions(any()),
+  ).thenAnswer((_) async => Right(_questions));
   when(() => repo.saveSession(any(), any())).thenAnswer((_) async {});
   when(() => repo.clearSession(any())).thenAnswer((_) async {});
 
@@ -147,14 +144,13 @@ void main() {
       expect(state.questionStatus(1), 'current');
     });
 
-    test('questionStatus returns "answered" for answered non-current question',
-        () {
-      final state = _inProgressState(
-        answers: {'q0': 'a'},
-        currentIndex: 1,
-      );
-      expect(state.questionStatus(0), 'answered');
-    });
+    test(
+      'questionStatus returns "answered" for answered non-current question',
+      () {
+        final state = _inProgressState(answers: {'q0': 'a'}, currentIndex: 1);
+        expect(state.questionStatus(0), 'answered');
+      },
+    );
 
     test('questionStatus returns null for unanswered non-current question', () {
       final state = _inProgressState(currentIndex: 0);
@@ -175,29 +171,30 @@ void main() {
       int attemptsUsed = 0,
       bool isPublished = true,
       int questionCount = 5,
-    }) =>
-        ExamMetaLoaded(
-          bookId: 'book-1',
-          settings: FinalExamSettingsEntity(
-            bookId: 'book-1',
-            timeLimitMinutes: 30,
-            passingPercentage: 70,
-            maxAttempts: 2,
-            isPublished: isPublished,
-          ),
-          questionCount: questionCount,
-          attemptsUsed: attemptsUsed,
-          pastAttempts: [],
-        );
+    }) => ExamMetaLoaded(
+      bookId: 'book-1',
+      settings: FinalExamSettingsEntity(
+        bookId: 'book-1',
+        timeLimitMinutes: 30,
+        passingPercentage: 70,
+        maxAttempts: 2,
+        isPublished: isPublished,
+      ),
+      questionCount: questionCount,
+      attemptsUsed: attemptsUsed,
+      pastAttempts: [],
+    );
 
     test('attemptsExhausted is false when under limit', () {
       expect(_metaState(attemptsUsed: 1).attemptsExhausted, false);
     });
 
-    test('attemptsExhausted is true when attemptsUsed >= maxAttempts (CC-13)',
-        () {
-      expect(_metaState(attemptsUsed: 2).attemptsExhausted, true);
-    });
+    test(
+      'attemptsExhausted is true when attemptsUsed >= maxAttempts (CC-13)',
+      () {
+        expect(_metaState(attemptsUsed: 2).attemptsExhausted, true);
+      },
+    );
 
     test('isLocked when exam is not published (CC-15)', () {
       expect(_metaState(isPublished: false).isLocked, true);
@@ -211,10 +208,12 @@ void main() {
       expect(_metaState(attemptsUsed: 2).isLocked, true);
     });
 
-    test('isLocked is false when published, has questions, attempts remain',
-        () {
-      expect(_metaState().isLocked, false);
-    });
+    test(
+      'isLocked is false when published, has questions, attempts remain',
+      () {
+        expect(_metaState().isLocked, false);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -234,47 +233,54 @@ void main() {
       expect(after, before - 1);
     });
 
-    test('secondsRemaining reaches 0 and triggers auto-submit (CC-12)',
-        () async {
-      // Arrange: put bloc directly in an almost-expired state
-      when(() => repo.loadSession(any())).thenAnswer((_) async => null);
-      when(() => repo.getExamMeta(any())).thenAnswer(
-        (_) async => Right(ExamMeta(
-          settings: _settings,
-          questionCount: _questions.length,
-          attemptsUsed: 0,
-          pastAttempts: [],
-        )),
-      );
-      when(() => repo.getQuestions(any()))
-          .thenAnswer((_) async => Right(_questions));
-      when(() => repo.saveSession(any(), any())).thenAnswer((_) async {});
-      when(() => repo.clearSession(any())).thenAnswer((_) async {});
-      when(() => repo.submitExam(any(), any(), any())).thenAnswer(
-        (_) async => Right(ExamSubmitResult(
-          attemptId: 'att1',
-          score: 80,
-          correct: 4,
-          total: 5,
-          passed: true,
-          gradeLabel: 'جيد جداً',
-          certIssued: false,
-        )),
-      );
+    test(
+      'secondsRemaining reaches 0 and triggers auto-submit (CC-12)',
+      () async {
+        // Arrange: put bloc directly in an almost-expired state
+        when(() => repo.loadSession(any())).thenAnswer((_) async => null);
+        when(() => repo.getExamMeta(any())).thenAnswer(
+          (_) async => Right(
+            ExamMeta(
+              settings: _settings,
+              questionCount: _questions.length,
+              attemptsUsed: 0,
+              pastAttempts: [],
+            ),
+          ),
+        );
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => Right(_questions));
+        when(() => repo.saveSession(any(), any())).thenAnswer((_) async {});
+        when(() => repo.clearSession(any())).thenAnswer((_) async {});
+        when(() => repo.submitExam(any(), any(), any())).thenAnswer(
+          (_) async => Right(
+            ExamSubmitResult(
+              attemptId: 'att1',
+              score: 80,
+              correct: 4,
+              total: 5,
+              passed: true,
+              gradeLabel: 'جيد جداً',
+              certIssued: false,
+            ),
+          ),
+        );
 
-      bloc.add(const ExamLoadRequested('book-1'));
-      await bloc.stream.firstWhere((s) => s is ExamMetaLoaded);
-      bloc.add(const ExamStartRequested());
-      await bloc.stream.firstWhere((s) => s is ExamInProgress);
+        bloc.add(const ExamLoadRequested('book-1'));
+        await bloc.stream.firstWhere((s) => s is ExamMetaLoaded);
+        bloc.add(const ExamStartRequested());
+        await bloc.stream.firstWhere((s) => s is ExamInProgress);
 
-      // Manually emit ticks until 0 — use copyWith to simulate tick at 1s
-      // Instead: directly add ExamAutoSubmit to simulate timer expiry
-      bloc.add(const ExamAutoSubmit());
-      await bloc.stream.firstWhere((s) => s is ExamCompleted);
+        // Manually emit ticks until 0 — use copyWith to simulate tick at 1s
+        // Instead: directly add ExamAutoSubmit to simulate timer expiry
+        bloc.add(const ExamAutoSubmit());
+        await bloc.stream.firstWhere((s) => s is ExamCompleted);
 
-      expect(bloc.state, isA<ExamCompleted>());
-      verify(() => repo.submitExam(any(), any(), any())).called(1);
-    });
+        expect(bloc.state, isA<ExamCompleted>());
+        verify(() => repo.submitExam(any(), any(), any())).called(1);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -299,11 +305,13 @@ void main() {
 
       bloc.add(const ExamAnswerSelected('q0', 'a'));
       await bloc.stream.firstWhere(
-          (s) => s is ExamInProgress && s.answers['q0'] == 'a');
+        (s) => s is ExamInProgress && s.answers['q0'] == 'a',
+      );
 
       bloc.add(const ExamAnswerSelected('q0', 'c'));
       await bloc.stream.firstWhere(
-          (s) => s is ExamInProgress && s.answers['q0'] == 'c');
+        (s) => s is ExamInProgress && s.answers['q0'] == 'c',
+      );
 
       final state = bloc.state as ExamInProgress;
       expect(state.answers['q0'], 'c');
@@ -315,10 +323,12 @@ void main() {
 
       bloc.add(const ExamAnswerSelected('q0', 'a'));
       await bloc.stream.firstWhere(
-          (s) => s is ExamInProgress && s.answers.containsKey('q0'));
+        (s) => s is ExamInProgress && s.answers.containsKey('q0'),
+      );
       bloc.add(const ExamAnswerSelected('q1', 'b'));
       await bloc.stream.firstWhere(
-          (s) => s is ExamInProgress && s.answers.length == 2);
+        (s) => s is ExamInProgress && s.answers.length == 2,
+      );
 
       final state = bloc.state as ExamInProgress;
       expect(state.answers, {'q0': 'a', 'q1': 'b'});
@@ -334,7 +344,8 @@ void main() {
 
       bloc.add(const ExamNavigateTo(2));
       await bloc.stream.firstWhere(
-          (s) => s is ExamInProgress && s.currentIndex == 2);
+        (s) => s is ExamInProgress && s.currentIndex == 2,
+      );
 
       expect((bloc.state as ExamInProgress).currentIndex, 2);
     });
@@ -354,174 +365,198 @@ void main() {
   // CC-11: Resume from saved session
   // -------------------------------------------------------------------------
   group('resume from saved session (CC-11)', () {
-    test('emits ExamInProgress immediately when valid session exists', () async {
-      final startedAt =
-          DateTime.now().subtract(const Duration(minutes: 5)); // 5 min ago
-      final savedSession = ExamSession(
-        startedAt: startedAt,
-        answers: {'q0': 'b', 'q2': 'd'},
-        currentIndex: 1,
-      );
+    test(
+      'emits ExamInProgress immediately when valid session exists',
+      () async {
+        final startedAt = DateTime.now().subtract(
+          const Duration(minutes: 5),
+        ); // 5 min ago
+        final savedSession = ExamSession(
+          startedAt: startedAt,
+          answers: {'q0': 'b', 'q2': 'd'},
+          currentIndex: 1,
+        );
 
-      when(() => repo.loadSession(any()))
-          .thenAnswer((_) async => savedSession);
-      when(() => repo.getExamMeta(any())).thenAnswer(
-        (_) async => Right(ExamMeta(
-          settings: _settings, // 30 min limit — 5 min elapsed → 25 min left
-          questionCount: _questions.length,
-          attemptsUsed: 1,
-          pastAttempts: [],
-        )),
-      );
-      when(() => repo.getQuestions(any()))
-          .thenAnswer((_) async => Right(_questions));
-      when(() => repo.saveSession(any(), any())).thenAnswer((_) async {});
-      when(() => repo.clearSession(any())).thenAnswer((_) async {});
+        when(
+          () => repo.loadSession(any()),
+        ).thenAnswer((_) async => savedSession);
+        when(() => repo.getExamMeta(any())).thenAnswer(
+          (_) async => Right(
+            ExamMeta(
+              settings: _settings, // 30 min limit — 5 min elapsed → 25 min left
+              questionCount: _questions.length,
+              attemptsUsed: 1,
+              pastAttempts: [],
+            ),
+          ),
+        );
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => Right(_questions));
+        when(() => repo.saveSession(any(), any())).thenAnswer((_) async {});
+        when(() => repo.clearSession(any())).thenAnswer((_) async {});
 
-      bloc.add(const ExamLoadRequested('book-1'));
-      await bloc.stream.firstWhere((s) => s is ExamInProgress);
+        bloc.add(const ExamLoadRequested('book-1'));
+        await bloc.stream.firstWhere((s) => s is ExamInProgress);
 
-      final state = bloc.state as ExamInProgress;
-      expect(state.answers, {'q0': 'b', 'q2': 'd'});
-      expect(state.currentIndex, 1);
-      // 30 min limit - 5 min elapsed = ~25 min left (allow ±2s tolerance)
-      expect(state.secondsRemaining,
-          closeTo(25 * 60, 5));
-    });
+        final state = bloc.state as ExamInProgress;
+        expect(state.answers, {'q0': 'b', 'q2': 'd'});
+        expect(state.currentIndex, 1);
+        // 30 min limit - 5 min elapsed = ~25 min left (allow ±2s tolerance)
+        expect(state.secondsRemaining, closeTo(25 * 60, 5));
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
   // CC-11/CC-12: Auto-submit when saved session has expired
   // -------------------------------------------------------------------------
   group('auto-submit expired session (CC-11/CC-12)', () {
-    test('calls submitExam and emits ExamCompleted when session time expired',
-        () async {
-      // Session started 2 hours ago — limit is 30 min → expired
-      final startedAt =
-          DateTime.now().subtract(const Duration(hours: 2));
-      final expiredSession = ExamSession(
-        startedAt: startedAt,
-        answers: {'q0': 'a'},
-        currentIndex: 0,
-      );
+    test(
+      'calls submitExam and emits ExamCompleted when session time expired',
+      () async {
+        // Session started 2 hours ago — limit is 30 min → expired
+        final startedAt = DateTime.now().subtract(const Duration(hours: 2));
+        final expiredSession = ExamSession(
+          startedAt: startedAt,
+          answers: {'q0': 'a'},
+          currentIndex: 0,
+        );
 
-      when(() => repo.loadSession(any()))
-          .thenAnswer((_) async => expiredSession);
-      when(() => repo.getExamMeta(any())).thenAnswer(
-        (_) async => Right(ExamMeta(
-          settings: _settings, // 30 min limit
-          questionCount: _questions.length,
-          attemptsUsed: 0,
-          pastAttempts: [],
-        )),
-      );
-      when(() => repo.getQuestions(any()))
-          .thenAnswer((_) async => Right(_questions));
-      when(() => repo.clearSession(any())).thenAnswer((_) async {});
-      when(() => repo.submitExam(any(), any(), any())).thenAnswer(
-        (_) async => Right(ExamSubmitResult(
-          attemptId: 'att-auto',
-          score: 40,
-          correct: 1,
-          total: 3,
-          passed: false,
-          gradeLabel: 'جيد',
-          certIssued: false,
-        )),
-      );
+        when(
+          () => repo.loadSession(any()),
+        ).thenAnswer((_) async => expiredSession);
+        when(() => repo.getExamMeta(any())).thenAnswer(
+          (_) async => Right(
+            ExamMeta(
+              settings: _settings, // 30 min limit
+              questionCount: _questions.length,
+              attemptsUsed: 0,
+              pastAttempts: [],
+            ),
+          ),
+        );
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => Right(_questions));
+        when(() => repo.clearSession(any())).thenAnswer((_) async {});
+        when(() => repo.submitExam(any(), any(), any())).thenAnswer(
+          (_) async => Right(
+            ExamSubmitResult(
+              attemptId: 'att-auto',
+              score: 40,
+              correct: 1,
+              total: 3,
+              passed: false,
+              gradeLabel: 'جيد',
+              certIssued: false,
+            ),
+          ),
+        );
 
-      bloc.add(const ExamLoadRequested('book-1'));
-      await bloc.stream
-          .firstWhere((s) => s is ExamCompleted)
-          .timeout(const Duration(seconds: 5));
+        bloc.add(const ExamLoadRequested('book-1'));
+        await bloc.stream
+            .firstWhere((s) => s is ExamCompleted)
+            .timeout(const Duration(seconds: 5));
 
-      expect(bloc.state, isA<ExamCompleted>());
-      verify(() => repo.submitExam(any(), {'q0': 'a'}, any())).called(1);
-      verify(() => repo.clearSession('book-1')).called(1);
-    });
+        expect(bloc.state, isA<ExamCompleted>());
+        verify(() => repo.submitExam(any(), {'q0': 'a'}, any())).called(1);
+        verify(() => repo.clearSession('book-1')).called(1);
+      },
+    );
 
-    test('submitExam is called with the session answers (not empty map)',
-        () async {
-      final startedAt =
-          DateTime.now().subtract(const Duration(hours: 1));
-      final expiredSession = ExamSession(
-        startedAt: startedAt,
-        answers: {'q0': 'c', 'q1': 'a'},
-        currentIndex: 1,
-      );
+    test(
+      'submitExam is called with the session answers (not empty map)',
+      () async {
+        final startedAt = DateTime.now().subtract(const Duration(hours: 1));
+        final expiredSession = ExamSession(
+          startedAt: startedAt,
+          answers: {'q0': 'c', 'q1': 'a'},
+          currentIndex: 1,
+        );
 
-      when(() => repo.loadSession(any()))
-          .thenAnswer((_) async => expiredSession);
-      when(() => repo.getExamMeta(any())).thenAnswer(
-        (_) async => Right(ExamMeta(
-          settings: _settings,
-          questionCount: _questions.length,
-          attemptsUsed: 0,
-          pastAttempts: [],
-        )),
-      );
-      when(() => repo.getQuestions(any()))
-          .thenAnswer((_) async => Right(_questions));
-      when(() => repo.clearSession(any())).thenAnswer((_) async {});
-      when(() => repo.submitExam(any(), any(), any())).thenAnswer(
-        (_) async => Left(const ServerFailure('تجريبي')),
-      );
+        when(
+          () => repo.loadSession(any()),
+        ).thenAnswer((_) async => expiredSession);
+        when(() => repo.getExamMeta(any())).thenAnswer(
+          (_) async => Right(
+            ExamMeta(
+              settings: _settings,
+              questionCount: _questions.length,
+              attemptsUsed: 0,
+              pastAttempts: [],
+            ),
+          ),
+        );
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => Right(_questions));
+        when(() => repo.clearSession(any())).thenAnswer((_) async {});
+        when(
+          () => repo.submitExam(any(), any(), any()),
+        ).thenAnswer((_) async => Left(const ServerFailure('تجريبي')));
 
-      bloc.add(const ExamLoadRequested('book-1'));
-      await bloc.stream
-          .firstWhere((s) => s is ExamError)
-          .timeout(const Duration(seconds: 5));
+        bloc.add(const ExamLoadRequested('book-1'));
+        await bloc.stream
+            .firstWhere((s) => s is ExamError)
+            .timeout(const Duration(seconds: 5));
 
-      // Verify the saved answers were submitted, not an empty map
-      verify(
-        () => repo.submitExam(any(), {'q0': 'c', 'q1': 'a'}, any()),
-      ).called(1);
-    });
+        // Verify the saved answers were submitted, not an empty map
+        verify(
+          () => repo.submitExam(any(), {'q0': 'c', 'q1': 'a'}, any()),
+        ).called(1);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
   // ExamSubmitConfirmed
   // -------------------------------------------------------------------------
   group('ExamSubmitConfirmed', () {
-    test('calls submitExam with current answers and emits ExamCompleted',
-        () async {
-      when(() => repo.clearSession(any())).thenAnswer((_) async {});
-      when(() => repo.submitExam(any(), any(), any())).thenAnswer(
-        (_) async => Right(ExamSubmitResult(
-          attemptId: 'att-1',
-          score: 90,
-          correct: 9,
-          total: 10,
-          passed: true,
-          gradeLabel: 'ممتاز',
-          certIssued: true,
-        )),
-      );
+    test(
+      'calls submitExam with current answers and emits ExamCompleted',
+      () async {
+        when(() => repo.clearSession(any())).thenAnswer((_) async {});
+        when(() => repo.submitExam(any(), any(), any())).thenAnswer(
+          (_) async => Right(
+            ExamSubmitResult(
+              attemptId: 'att-1',
+              score: 90,
+              correct: 9,
+              total: 10,
+              passed: true,
+              gradeLabel: 'ممتاز',
+              certIssued: true,
+            ),
+          ),
+        );
 
-      await _driveToInProgress(bloc, repo);
+        await _driveToInProgress(bloc, repo);
 
-      // Select an answer then submit
-      bloc.add(const ExamAnswerSelected('q0', 'a'));
-      await bloc.stream.firstWhere(
-          (s) => s is ExamInProgress && s.answers.containsKey('q0'));
+        // Select an answer then submit
+        bloc.add(const ExamAnswerSelected('q0', 'a'));
+        await bloc.stream.firstWhere(
+          (s) => s is ExamInProgress && s.answers.containsKey('q0'),
+        );
 
-      bloc.add(const ExamSubmitConfirmed());
-      await bloc.stream
-          .firstWhere((s) => s is ExamCompleted)
-          .timeout(const Duration(seconds: 5));
+        bloc.add(const ExamSubmitConfirmed());
+        await bloc.stream
+            .firstWhere((s) => s is ExamCompleted)
+            .timeout(const Duration(seconds: 5));
 
-      final state = bloc.state as ExamCompleted;
-      expect(state.result.score, 90);
-      expect(state.result.passed, true);
-      expect(state.result.gradeLabel, 'ممتاز');
-      verify(() => repo.clearSession(any())).called(1);
-    });
+        final state = bloc.state as ExamCompleted;
+        expect(state.result.score, 90);
+        expect(state.result.passed, true);
+        expect(state.result.gradeLabel, 'ممتاز');
+        verify(() => repo.clearSession(any())).called(1);
+      },
+    );
 
     test('emits ExamError when RPC returns a Failure', () async {
       when(() => repo.clearSession(any())).thenAnswer((_) async {});
-      when(() => repo.submitExam(any(), any(), any())).thenAnswer(
-        (_) async => const Left(ServerFailure('خطأ في الخادم')),
-      );
+      when(
+        () => repo.submitExam(any(), any(), any()),
+      ).thenAnswer((_) async => const Left(ServerFailure('خطأ في الخادم')));
 
       await _driveToInProgress(bloc, repo);
 

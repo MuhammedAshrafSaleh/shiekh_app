@@ -19,11 +19,13 @@ class AdminSectionsPage extends StatelessWidget {
     return BlocConsumer<AdminSectionsCubit, AdminSectionsState>(
       listener: (context, state) {
         if (state is AdminSectionsError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
           // Reload after error shown to restore list
           if (state.message.contains('حذف')) {
             context.read<AdminSectionsCubit>().load();
@@ -41,8 +43,7 @@ class AdminSectionsPage extends StatelessWidget {
               ),
             ],
           ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.startFloat,
+          floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
               await context.push('/admin/sections/new');
@@ -55,34 +56,32 @@ class AdminSectionsPage extends StatelessWidget {
           ),
           body: switch (state) {
             AdminSectionsLoading() => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: CircularProgressIndicator(),
+            ),
             AdminSectionsError() => ErrorState(
-                message: state.message,
-                onRetry: () => context.read<AdminSectionsCubit>().load(),
-              ),
+              message: state.message,
+              onRetry: () => context.read<AdminSectionsCubit>().load(),
+            ),
             AdminSectionsLoaded() when state.sections.isEmpty => EmptyState(
-                icon: Icons.category_outlined,
-                message: 'لا توجد أقسام بعد',
-                actionLabel: 'إضافة قسم',
-                onAction: () async {
-                  await context.push('/admin/sections/new');
-                  if (context.mounted) {
-                    context.read<AdminSectionsCubit>().load();
-                  }
-                },
-              ),
+              icon: Icons.category_outlined,
+              message: 'لا توجد أقسام بعد',
+              actionLabel: 'إضافة قسم',
+              onAction: () async {
+                await context.push('/admin/sections/new');
+                if (context.mounted) {
+                  context.read<AdminSectionsCubit>().load();
+                }
+              },
+            ),
             AdminSectionsLoaded() => RefreshIndicator(
-                onRefresh: () =>
-                    context.read<AdminSectionsCubit>().load(),
-                child: ListView.builder(
-                  padding:
-                      const EdgeInsetsDirectional.all(AppSpacing.md),
-                  itemCount: state.sections.length,
-                  itemBuilder: (context, i) =>
-                      _SectionListItem(section: state.sections[i]),
-                ),
+              onRefresh: () => context.read<AdminSectionsCubit>().load(),
+              child: ListView.builder(
+                padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+                itemCount: state.sections.length,
+                itemBuilder: (context, i) =>
+                    _SectionListItem(section: state.sections[i]),
               ),
+            ),
             _ => const Center(child: CircularProgressIndicator()),
           },
         );
@@ -101,8 +100,7 @@ class _SectionListItem extends StatelessWidget {
       margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor:
-              Theme.of(context).colorScheme.primaryContainer,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           child: Icon(
             SectionIcons.fromKey(section.icon),
             color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -130,8 +128,7 @@ class _SectionListItem extends StatelessWidget {
               tooltip: 'تعديل',
             ),
             IconButton(
-              icon:
-                  const Icon(Icons.delete_outline, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: () => _confirmDelete(context, section),
               tooltip: 'حذف',
             ),
@@ -158,9 +155,7 @@ class _SectionListItem extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(dialogCtx).pop();
-              context
-                  .read<AdminSectionsCubit>()
-                  .deleteSection(section.id);
+              context.read<AdminSectionsCubit>().deleteSection(section.id);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('حذف'),

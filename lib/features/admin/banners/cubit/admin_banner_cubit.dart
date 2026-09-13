@@ -15,7 +15,8 @@ class AdminBannerCubit extends Cubit<AdminBannerState> {
     final bannersResult = await _repo.getBanners();
     final booksResult = await _repo.getPublishedBooks();
 
-    final failure = bannersResult.fold((f) => f, (_) => null) ??
+    final failure =
+        bannersResult.fold((f) => f, (_) => null) ??
         booksResult.fold((f) => f, (_) => null);
 
     if (failure != null) {
@@ -23,10 +24,12 @@ class AdminBannerCubit extends Cubit<AdminBannerState> {
       return;
     }
 
-    emit(AdminBannerLoaded(
-      banners: bannersResult.getOrElse(() => []),
-      books: booksResult.getOrElse(() => []),
-    ));
+    emit(
+      AdminBannerLoaded(
+        banners: bannersResult.getOrElse(() => []),
+        books: booksResult.getOrElse(() => []),
+      ),
+    );
   }
 
   Future<String?> uploadImageAndGetUrl(String localPath) async {
@@ -89,9 +92,6 @@ class AdminBannerCubit extends Cubit<AdminBannerState> {
 
   Future<void> deleteBanner(String id) async {
     final result = await _repo.deleteBanner(id);
-    result.fold(
-      (f) => emit(AdminBannerError(f.message)),
-      (_) => load(),
-    );
+    result.fold((f) => emit(AdminBannerError(f.message)), (_) => load());
   }
 }

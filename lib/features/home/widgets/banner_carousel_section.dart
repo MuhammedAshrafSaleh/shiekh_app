@@ -47,16 +47,12 @@ class _BannerCarouselSectionState extends State<BannerCarouselSection> {
             viewportFraction: 1.0,
             autoPlay: widget.banners.length > 1,
             autoPlayInterval: const Duration(seconds: 4),
-            onPageChanged: (index, _) =>
-                setState(() => _currentIndex = index),
+            onPageChanged: (index, _) => setState(() => _currentIndex = index),
           ),
         ),
         if (widget.banners.length > 1) ...[
           const SizedBox(height: AppSpacing.s3),
-          _PageDots(
-            count: widget.banners.length,
-            current: _currentIndex,
-          ),
+          _PageDots(count: widget.banners.length, current: _currentIndex),
         ],
       ],
     );
@@ -111,7 +107,8 @@ class _ImageBanner extends StatelessWidget {
           imageUrl: banner.imageUrl!,
           fit: BoxFit.cover,
           placeholder: (_, _) => const ColoredBox(color: AppColors.paperSunk),
-          errorWidget: (_, _, _) => const ColoredBox(color: AppColors.paperSunk),
+          errorWidget: (_, _, _) =>
+              const ColoredBox(color: AppColors.paperSunk),
         ),
         // gradient overlay for text legibility
         const DecoratedBox(

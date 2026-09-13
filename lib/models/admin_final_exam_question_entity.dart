@@ -43,24 +43,24 @@ class AdminFinalExamQuestionEntity extends Equatable {
   }
 
   String choiceLabel(String key) => switch (key) {
-        'a' => choiceA,
-        'b' => choiceB,
-        'c' => choiceC,
-        'd' => choiceD,
-        _ => '',
-      };
+    'a' => choiceA,
+    'b' => choiceB,
+    'c' => choiceC,
+    'd' => choiceD,
+    _ => '',
+  };
 
   @override
   List<Object?> get props => [
-        id,
-        bookId,
-        orderIndex,
-        questionText,
-        choiceA,
-        choiceB,
-        choiceC,
-        choiceD,
-        correctChoice,
-        sourceQuizQuestionId,
-      ];
+    id,
+    bookId,
+    orderIndex,
+    questionText,
+    choiceA,
+    choiceB,
+    choiceC,
+    choiceD,
+    correctChoice,
+    sourceQuizQuestionId,
+  ];
 }

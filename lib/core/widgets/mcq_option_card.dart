@@ -1,6 +1,9 @@
 // lib/core/widgets/mcq_option_card.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../audio/app_sound.dart';
+import '../audio/sound_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_decorations.dart';
 import '../theme/app_radii.dart';
@@ -48,8 +51,15 @@ class McqOptionCard extends StatelessWidget {
         textColor = AppColors.danger;
     }
 
+    final effectiveTap = onTap == null
+        ? null
+        : () {
+            context.read<SoundService>().play(AppSound.select);
+            onTap!();
+          };
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: effectiveTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.s3),
@@ -111,15 +121,27 @@ class _OptionCircle extends StatelessWidget {
       case McqOptionState.selected:
         circleBg = AppColors.surface;
         circleBorder = Colors.transparent;
-        circleChild = Icon(Icons.check_rounded, size: 18, color: AppColors.primary);
+        circleChild = Icon(
+          Icons.check_rounded,
+          size: 18,
+          color: AppColors.primary,
+        );
       case McqOptionState.correct:
         circleBg = AppColors.success.withValues(alpha: 0.15);
         circleBorder = Colors.transparent;
-        circleChild = const Icon(Icons.check_rounded, size: 18, color: AppColors.success);
+        circleChild = const Icon(
+          Icons.check_rounded,
+          size: 18,
+          color: AppColors.success,
+        );
       case McqOptionState.incorrect:
         circleBg = AppColors.danger.withValues(alpha: 0.12);
         circleBorder = Colors.transparent;
-        circleChild = const Icon(Icons.close_rounded, size: 18, color: AppColors.danger);
+        circleChild = const Icon(
+          Icons.close_rounded,
+          size: 18,
+          color: AppColors.danger,
+        );
     }
 
     return AnimatedContainer(

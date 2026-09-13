@@ -106,9 +106,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'permission denied'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'permission denied'));
 
       final result = await repo.isEnrolled('book-id');
 
@@ -145,9 +145,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'upsert error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'upsert error'));
 
       final result = await repo.enrollInBook('book-id');
 
@@ -184,9 +184,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'query error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'query error'));
 
       final result = await repo.getCompletionPercentage('book-id');
 
@@ -212,9 +212,9 @@ void main() {
 
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'server error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'server error'));
 
       final result = await repo.hasFinalExam('book-id');
 
@@ -241,9 +241,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(() => client.from(any())).thenThrow(
-        const PostgrestException(message: 'lessons query error'),
-      );
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'lessons query error'));
 
       final result = await repo.getLessonsWithProgress('book-id');
 

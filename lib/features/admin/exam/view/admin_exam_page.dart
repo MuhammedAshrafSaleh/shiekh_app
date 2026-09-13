@@ -25,18 +25,22 @@ class AdminExamPage extends StatelessWidget {
     return BlocConsumer<AdminExamCubit, AdminExamState>(
       listener: (context, state) {
         if (state is AdminExamError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
         if (state is AdminExamSaved) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('تم حفظ إعدادات الاختبار'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم حفظ إعدادات الاختبار'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -48,30 +52,29 @@ class AdminExamPage extends StatelessWidget {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
-                  onPressed: () =>
-                      context.read<AdminExamCubit>().load(bookId),
+                  onPressed: () => context.read<AdminExamCubit>().load(bookId),
                 ),
               ],
-              bottom: const TabBar(tabs: [
-                Tab(icon: Icon(Icons.settings_outlined), text: 'الإعدادات'),
-                Tab(icon: Icon(Icons.list_outlined), text: 'الأسئلة'),
-              ]),
+              bottom: const TabBar(
+                tabs: [
+                  Tab(icon: Icon(Icons.settings_outlined), text: 'الإعدادات'),
+                  Tab(icon: Icon(Icons.list_outlined), text: 'الأسئلة'),
+                ],
+              ),
             ),
             body: switch (state) {
-              AdminExamLoading() =>
-                const Center(child: CircularProgressIndicator()),
-              AdminExamLoaded() => TabBarView(children: [
-                  _SettingsTab(
-                    bookId: bookId,
-                    settings: state.settings,
-                  ),
-                  _QuestionsTab(
-                    bookId: bookId,
-                    questions: state.questions,
-                  ),
-                ]),
-              AdminExamSaving() =>
-                const Center(child: CircularProgressIndicator()),
+              AdminExamLoading() => const Center(
+                child: CircularProgressIndicator(),
+              ),
+              AdminExamLoaded() => TabBarView(
+                children: [
+                  _SettingsTab(bookId: bookId, settings: state.settings),
+                  _QuestionsTab(bookId: bookId, questions: state.questions),
+                ],
+              ),
+              AdminExamSaving() => const Center(
+                child: CircularProgressIndicator(),
+              ),
               _ => const Center(child: CircularProgressIndicator()),
             },
           ),
@@ -141,25 +144,29 @@ class _SettingsTabState extends State<_SettingsTab> {
     final pass = int.tryParse(_passCtrl.text.trim());
     final attempts = int.tryParse(_attemptsCtrl.text.trim());
     if (time == null || pass == null || attempts == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('يرجى إدخال أرقام صحيحة في جميع الحقول'),
-        backgroundColor: Colors.orange,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى إدخال أرقام صحيحة في جميع الحقول'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
     if (pass < 1 || pass > 100) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('نسبة النجاح يجب أن تكون بين 1 و 100'),
-        backgroundColor: Colors.orange,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('نسبة النجاح يجب أن تكون بين 1 و 100'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
     context.read<AdminExamCubit>().saveSettings(
-          timeLimitMinutes: time,
-          passingPercentage: pass,
-          maxAttempts: attempts,
-          isPublished: _isPublished,
-        );
+      timeLimitMinutes: time,
+      passingPercentage: pass,
+      maxAttempts: attempts,
+      isPublished: _isPublished,
+    );
   }
 
   @override
@@ -226,7 +233,8 @@ class _SettingsTabState extends State<_SettingsTab> {
           SwitchListTile.adaptive(
             title: const Text('نشر الاختبار'),
             subtitle: const Text(
-                'بعد النشر يصبح الاختبار متاحاً للطلاب الذين أكملوا جميع الدروس'),
+              'بعد النشر يصبح الاختبار متاحاً للطلاب الذين أكملوا جميع الدروس',
+            ),
             value: _isPublished,
             onChanged: (v) => setState(() => _isPublished = v),
             contentPadding: EdgeInsetsDirectional.zero,
@@ -257,7 +265,11 @@ class _QuestionsTab extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(
-              AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -301,7 +313,9 @@ class _QuestionsTab extends StatelessWidget {
                   Icon(Icons.warning_amber_outlined, color: Colors.orange),
                   SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: Text('الاختبار لا يحتوي على أسئلة — لن يكون متاحاً للطلاب'),
+                    child: Text(
+                      'الاختبار لا يحتوي على أسئلة — لن يكون متاحاً للطلاب',
+                    ),
                   ),
                 ],
               ),
@@ -334,8 +348,10 @@ class _QuestionsTab extends StatelessWidget {
     );
   }
 
-  void _showQuestionDialog(BuildContext context,
-      {AdminFinalExamQuestionEntity? existing}) {
+  void _showQuestionDialog(
+    BuildContext context, {
+    AdminFinalExamQuestionEntity? existing,
+  }) {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => BlocProvider.value(
@@ -351,10 +367,12 @@ class _QuestionsTab extends StatelessWidget {
     final bankQuestions = await cubit.getBankQuestions();
     if (!context.mounted) return;
     if (bankQuestions.isEmpty) {
-      messenger.showSnackBar(const SnackBar(
-        content: Text('لا توجد أسئلة في بنك دروس هذا الكتاب'),
-        duration: Duration(seconds: 3),
-      ));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('لا توجد أسئلة في بنك دروس هذا الكتاب'),
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
     showDialog<void>(
@@ -391,42 +409,48 @@ class _ExamQuestionTile extends StatelessWidget {
               children: [
                 ReorderableDragStartListener(
                   index: index - 1,
-                  child: Icon(Icons.drag_handle,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  child: Icon(
+                    Icons.drag_handle,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 CircleAvatar(
-                    radius: 12,
-                    child: Text('$index',
-                        style: const TextStyle(fontSize: 11))),
+                  radius: 12,
+                  child: Text('$index', style: const TextStyle(fontSize: 11)),
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     question.questionText,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 if (question.sourceQuizQuestionId != null)
                   Tooltip(
                     message: 'مستورد من بنك الأسئلة',
-                    child: Icon(Icons.link,
-                        size: 14,
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant),
+                    child: Icon(
+                      Icons.link,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 18),
                   onPressed: () => _showDialog(context, question),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: Colors.red, size: 18),
-                  onPressed: () =>
-                      context.read<AdminExamCubit>().deleteQuestion(question.id),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: 18,
+                  ),
+                  onPressed: () => context
+                      .read<AdminExamCubit>()
+                      .deleteQuestion(question.id),
                 ),
               ],
             ),
@@ -435,7 +459,8 @@ class _ExamQuestionTile extends StatelessWidget {
               final isCorrect = question.correctChoice == key;
               return Padding(
                 padding: const EdgeInsetsDirectional.only(
-                    bottom: AppSpacing.xs),
+                  bottom: AppSpacing.xs,
+                ),
                 child: Row(
                   children: [
                     Icon(
@@ -470,7 +495,9 @@ class _ExamQuestionTile extends StatelessWidget {
   }
 
   void _showDialog(
-      BuildContext context, AdminFinalExamQuestionEntity question) {
+    BuildContext context,
+    AdminFinalExamQuestionEntity question,
+  ) {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => BlocProvider.value(
@@ -529,10 +556,12 @@ class _ExamQuestionDialogState extends State<_ExamQuestionDialog> {
     final c = _cCtrl.text.trim();
     final d = _dCtrl.text.trim();
     if (q.isEmpty || a.isEmpty || b.isEmpty || c.isEmpty || d.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('يجب ملء جميع الحقول'),
-        backgroundColor: Colors.orange,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يجب ملء جميع الحقول'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
     setState(() => _saving = true);
@@ -583,22 +612,26 @@ class _ExamQuestionDialogState extends State<_ExamQuestionDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: ['a', 'b', 'c', 'd']
-                    .map((key) => Padding(
-                          padding: const EdgeInsetsDirectional.only(
-                              bottom: AppSpacing.sm),
-                          child: Row(
-                            children: [
-                              Radio<String>(value: key),
-                              Expanded(
-                                child: TextField(
-                                  controller: ctrls[key],
-                                  decoration: InputDecoration(
-                                      labelText: 'الخيار ${labels[key]} *'),
+                    .map(
+                      (key) => Padding(
+                        padding: const EdgeInsetsDirectional.only(
+                          bottom: AppSpacing.sm,
+                        ),
+                        child: Row(
+                          children: [
+                            Radio<String>(value: key),
+                            Expanded(
+                              child: TextField(
+                                controller: ctrls[key],
+                                decoration: InputDecoration(
+                                  labelText: 'الخيار ${labels[key]} *',
                                 ),
                               ),
-                            ],
-                          ),
-                        ))
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -607,8 +640,9 @@ class _ExamQuestionDialogState extends State<_ExamQuestionDialog> {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء')),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('إلغاء'),
+        ),
         FilledButton(
           onPressed: _saving ? null : _submit,
           child: _saving
@@ -616,7 +650,10 @@ class _ExamQuestionDialogState extends State<_ExamQuestionDialog> {
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('حفظ'),
         ),
       ],
@@ -656,8 +693,11 @@ class _BankImportDialogState extends State<_BankImportDialog> {
                   _selected.remove(q.id);
                 }
               }),
-              title: Text(q.questionText, maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
+              title: Text(
+                q.questionText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               dense: true,
             );
           },
@@ -665,8 +705,9 @@ class _BankImportDialogState extends State<_BankImportDialog> {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء')),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('إلغاء'),
+        ),
         FilledButton(
           onPressed: _importing || _selected.isEmpty
               ? null
@@ -684,7 +725,10 @@ class _BankImportDialogState extends State<_BankImportDialog> {
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : Text('استيراد (${_selected.length})'),
         ),
       ],

@@ -29,8 +29,11 @@ import 'package:sheikhy_app/models/section_entity.dart';
 // Mock repositories (mocked at repository boundary, not Supabase level)
 // ---------------------------------------------------------------------------
 class _MockDashboardRepo extends Mock implements AdminDashboardRepository {}
+
 class _MockSectionRepo extends Mock implements AdminSectionRepository {}
+
 class _MockBookRepo extends Mock implements AdminBookRepository {}
+
 class _MockBannerRepo extends Mock implements AdminBannerRepository {}
 
 // ---------------------------------------------------------------------------
@@ -86,10 +89,12 @@ void main() {
     // ── load ────────────────────────────────────────────────────────────────
     group('load', () {
       test('emits Loading then Loaded on success', () async {
-        when(() => repo.getStats())
-            .thenAnswer((_) async => const Right(_stats));
-        when(() => repo.getAllBooks())
-            .thenAnswer((_) async => const Right([_book]));
+        when(
+          () => repo.getStats(),
+        ).thenAnswer((_) async => const Right(_stats));
+        when(
+          () => repo.getAllBooks(),
+        ).thenAnswer((_) async => const Right([_book]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -107,10 +112,12 @@ void main() {
       });
 
       test('emits Loading then Error when getStats fails', () async {
-        when(() => repo.getStats())
-            .thenAnswer((_) async => const Left(_serverFailure));
-        when(() => repo.getAllBooks())
-            .thenAnswer((_) async => const Right([_book]));
+        when(
+          () => repo.getStats(),
+        ).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getAllBooks(),
+        ).thenAnswer((_) async => const Right([_book]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -122,14 +129,19 @@ void main() {
         await cubit.load();
         await expectation;
 
-        expect((cubit.state as AdminDashboardError).message, _serverFailure.message);
+        expect(
+          (cubit.state as AdminDashboardError).message,
+          _serverFailure.message,
+        );
       });
 
       test('emits Loading then Error when getAllBooks fails', () async {
-        when(() => repo.getStats())
-            .thenAnswer((_) async => const Right(_stats));
-        when(() => repo.getAllBooks())
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getStats(),
+        ).thenAnswer((_) async => const Right(_stats));
+        when(
+          () => repo.getAllBooks(),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -146,8 +158,9 @@ void main() {
     // ── deleteBook ──────────────────────────────────────────────────────────
     group('deleteBook', () {
       test('emits Error when delete fails', () async {
-        when(() => repo.deleteBook(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.deleteBook(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -157,24 +170,30 @@ void main() {
         await expectation;
       });
 
-      test('triggers load (emits Loading → Loaded) on delete success', () async {
-        when(() => repo.deleteBook(any()))
-            .thenAnswer((_) async => const Right(null));
-        when(() => repo.getStats())
-            .thenAnswer((_) async => const Right(_stats));
-        when(() => repo.getAllBooks())
-            .thenAnswer((_) async => const Right([]));
+      test(
+        'triggers load (emits Loading → Loaded) on delete success',
+        () async {
+          when(
+            () => repo.deleteBook(any()),
+          ).thenAnswer((_) async => const Right(null));
+          when(
+            () => repo.getStats(),
+          ).thenAnswer((_) async => const Right(_stats));
+          when(
+            () => repo.getAllBooks(),
+          ).thenAnswer((_) async => const Right([]));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminDashboardLoading>(),
-            isA<AdminDashboardLoaded>(),
-          ]),
-        );
-        await cubit.deleteBook('book-1');
-        await expectation;
-      });
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([
+              isA<AdminDashboardLoading>(),
+              isA<AdminDashboardLoaded>(),
+            ]),
+          );
+          await cubit.deleteBook('book-1');
+          await expectation;
+        },
+      );
     });
   });
 
@@ -195,8 +214,9 @@ void main() {
     // ── load ────────────────────────────────────────────────────────────────
     group('load', () {
       test('emits Loading then Loaded with sections on success', () async {
-        when(() => repo.getSections())
-            .thenAnswer((_) async => const Right([_section]));
+        when(
+          () => repo.getSections(),
+        ).thenAnswer((_) async => const Right([_section]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -212,8 +232,9 @@ void main() {
       });
 
       test('emits Loading then Error on failure', () async {
-        when(() => repo.getSections())
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getSections(),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -225,18 +246,23 @@ void main() {
         await cubit.load();
         await expectation;
 
-        expect((cubit.state as AdminSectionsError).message, _serverFailure.message);
+        expect(
+          (cubit.state as AdminSectionsError).message,
+          _serverFailure.message,
+        );
       });
     });
 
     // ── createSection ────────────────────────────────────────────────────────
     group('createSection', () {
       test('emits MutationSuccess on success', () async {
-        when(() => repo.createSection(
-              name: any(named: 'name'),
-              icon: any(named: 'icon'),
-              description: any(named: 'description'),
-            )).thenAnswer((_) async => const Right(_section));
+        when(
+          () => repo.createSection(
+            name: any(named: 'name'),
+            icon: any(named: 'icon'),
+            description: any(named: 'description'),
+          ),
+        ).thenAnswer((_) async => const Right(_section));
 
         final expectation = expectLater(
           cubit.stream,
@@ -247,11 +273,13 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.createSection(
-              name: any(named: 'name'),
-              icon: any(named: 'icon'),
-              description: any(named: 'description'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.createSection(
+            name: any(named: 'name'),
+            icon: any(named: 'icon'),
+            description: any(named: 'description'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -265,28 +293,36 @@ void main() {
     // ── updateSection ────────────────────────────────────────────────────────
     group('updateSection', () {
       test('emits MutationSuccess on success', () async {
-        when(() => repo.updateSection(
-              id: any(named: 'id'),
-              name: any(named: 'name'),
-              icon: any(named: 'icon'),
-              description: any(named: 'description'),
-            )).thenAnswer((_) async => const Right(_section));
+        when(
+          () => repo.updateSection(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            icon: any(named: 'icon'),
+            description: any(named: 'description'),
+          ),
+        ).thenAnswer((_) async => const Right(_section));
 
         final expectation = expectLater(
           cubit.stream,
           emits(isA<AdminSectionMutationSuccess>()),
         );
-        await cubit.updateSection(id: 'sec-1', name: 'العقيدة', icon: 'aqeedah');
+        await cubit.updateSection(
+          id: 'sec-1',
+          name: 'العقيدة',
+          icon: 'aqeedah',
+        );
         await expectation;
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.updateSection(
-              id: any(named: 'id'),
-              name: any(named: 'name'),
-              icon: any(named: 'icon'),
-              description: any(named: 'description'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.updateSection(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            icon: any(named: 'icon'),
+            description: any(named: 'description'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -300,8 +336,9 @@ void main() {
     // ── deleteSection — CC-3 ─────────────────────────────────────────────────
     group('deleteSection', () {
       test('emits Error on ServerFailure', () async {
-        when(() => repo.deleteSection(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.deleteSection(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -315,8 +352,9 @@ void main() {
         const fkFailure = DeleteRestrictedFailure(
           'لا يمكن حذف القسم لأنه يحتوي على كتب',
         );
-        when(() => repo.deleteSection(any()))
-            .thenAnswer((_) async => const Left(fkFailure));
+        when(
+          () => repo.deleteSection(any()),
+        ).thenAnswer((_) async => const Left(fkFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -329,10 +367,10 @@ void main() {
       });
 
       test('triggers load (emits Loading → Loaded) on success', () async {
-        when(() => repo.deleteSection(any()))
-            .thenAnswer((_) async => const Right(null));
-        when(() => repo.getSections())
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.deleteSection(any()),
+        ).thenAnswer((_) async => const Right(null));
+        when(() => repo.getSections()).thenAnswer((_) async => const Right([]));
 
         final expectation = expectLater(
           cubit.stream,
@@ -364,17 +402,16 @@ void main() {
     // ── loadForm (new book) ──────────────────────────────────────────────────
     group('loadForm (new book)', () {
       test('emits Loading then FormReady with no existing book', () async {
-        when(() => repo.getSections())
-            .thenAnswer((_) async => const Right([_section]));
-        when(() => repo.getFeaturedCount(excludeId: any(named: 'excludeId')))
-            .thenAnswer((_) async => const Right(2));
+        when(
+          () => repo.getSections(),
+        ).thenAnswer((_) async => const Right([_section]));
+        when(
+          () => repo.getFeaturedCount(excludeId: any(named: 'excludeId')),
+        ).thenAnswer((_) async => const Right(2));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBookLoading>(),
-            isA<AdminBookFormReady>(),
-          ]),
+          emitsInOrder([isA<AdminBookLoading>(), isA<AdminBookFormReady>()]),
         );
         await cubit.loadForm();
         await expectation;
@@ -386,17 +423,16 @@ void main() {
       });
 
       test('emits Loading then Error when getSections fails', () async {
-        when(() => repo.getSections())
-            .thenAnswer((_) async => const Left(_serverFailure));
-        when(() => repo.getFeaturedCount(excludeId: any(named: 'excludeId')))
-            .thenAnswer((_) async => const Right(0));
+        when(
+          () => repo.getSections(),
+        ).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getFeaturedCount(excludeId: any(named: 'excludeId')),
+        ).thenAnswer((_) async => const Right(0));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBookLoading>(),
-            isA<AdminBookError>(),
-          ]),
+          emitsInOrder([isA<AdminBookLoading>(), isA<AdminBookError>()]),
         );
         await cubit.loadForm();
         await expectation;
@@ -405,44 +441,47 @@ void main() {
 
     // ── loadForm (edit existing book) ────────────────────────────────────────
     group('loadForm (edit existing book)', () {
-      test('emits Loading then FormReady with existing book populated', () async {
-        when(() => repo.getSections())
-            .thenAnswer((_) async => const Right([_section]));
-        when(() => repo.getFeaturedCount(excludeId: any(named: 'excludeId')))
-            .thenAnswer((_) async => const Right(1));
-        when(() => repo.getBook(any()))
-            .thenAnswer((_) async => const Right(_book));
+      test(
+        'emits Loading then FormReady with existing book populated',
+        () async {
+          when(
+            () => repo.getSections(),
+          ).thenAnswer((_) async => const Right([_section]));
+          when(
+            () => repo.getFeaturedCount(excludeId: any(named: 'excludeId')),
+          ).thenAnswer((_) async => const Right(1));
+          when(
+            () => repo.getBook(any()),
+          ).thenAnswer((_) async => const Right(_book));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminBookLoading>(),
-            isA<AdminBookFormReady>(),
-          ]),
-        );
-        await cubit.loadForm(bookId: 'book-1');
-        await expectation;
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([isA<AdminBookLoading>(), isA<AdminBookFormReady>()]),
+          );
+          await cubit.loadForm(bookId: 'book-1');
+          await expectation;
 
-        final ready = cubit.state as AdminBookFormReady;
-        expect(ready.existing, _book);
-        expect(ready.sections, [_section]);
-        expect(ready.featuredCount, 1);
-      });
+          final ready = cubit.state as AdminBookFormReady;
+          expect(ready.existing, _book);
+          expect(ready.sections, [_section]);
+          expect(ready.featuredCount, 1);
+        },
+      );
 
       test('emits Error when getBook fails', () async {
-        when(() => repo.getSections())
-            .thenAnswer((_) async => const Right([_section]));
-        when(() => repo.getFeaturedCount(excludeId: any(named: 'excludeId')))
-            .thenAnswer((_) async => const Right(0));
-        when(() => repo.getBook(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getSections(),
+        ).thenAnswer((_) async => const Right([_section]));
+        when(
+          () => repo.getFeaturedCount(excludeId: any(named: 'excludeId')),
+        ).thenAnswer((_) async => const Right(0));
+        when(
+          () => repo.getBook(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBookLoading>(),
-            isA<AdminBookError>(),
-          ]),
+          emitsInOrder([isA<AdminBookLoading>(), isA<AdminBookError>()]),
         );
         await cubit.loadForm(bookId: 'book-1');
         await expectation;
@@ -452,23 +491,22 @@ void main() {
     // ── save (create new book) ───────────────────────────────────────────────
     group('save (create new book)', () {
       test('emits Saving then SaveSuccess on success', () async {
-        when(() => repo.createBook(
-              sectionId: any(named: 'sectionId'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              coverImageUrl: any(named: 'coverImageUrl'),
-              status: any(named: 'status'),
-              reviewStatus: any(named: 'reviewStatus'),
-              isFeatured: any(named: 'isFeatured'),
-              featuredOrder: any(named: 'featuredOrder'),
-            )).thenAnswer((_) async => const Right(_book));
+        when(
+          () => repo.createBook(
+            sectionId: any(named: 'sectionId'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            coverImageUrl: any(named: 'coverImageUrl'),
+            status: any(named: 'status'),
+            reviewStatus: any(named: 'reviewStatus'),
+            isFeatured: any(named: 'isFeatured'),
+            featuredOrder: any(named: 'featuredOrder'),
+          ),
+        ).thenAnswer((_) async => const Right(_book));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBookSaving>(),
-            isA<AdminBookSaveSuccess>(),
-          ]),
+          emitsInOrder([isA<AdminBookSaving>(), isA<AdminBookSaveSuccess>()]),
         );
         await cubit.save(
           sectionId: 'sec-1',
@@ -483,23 +521,22 @@ void main() {
       });
 
       test('emits Saving then Error on failure', () async {
-        when(() => repo.createBook(
-              sectionId: any(named: 'sectionId'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              coverImageUrl: any(named: 'coverImageUrl'),
-              status: any(named: 'status'),
-              reviewStatus: any(named: 'reviewStatus'),
-              isFeatured: any(named: 'isFeatured'),
-              featuredOrder: any(named: 'featuredOrder'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.createBook(
+            sectionId: any(named: 'sectionId'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            coverImageUrl: any(named: 'coverImageUrl'),
+            status: any(named: 'status'),
+            reviewStatus: any(named: 'reviewStatus'),
+            isFeatured: any(named: 'isFeatured'),
+            featuredOrder: any(named: 'featuredOrder'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBookSaving>(),
-            isA<AdminBookError>(),
-          ]),
+          emitsInOrder([isA<AdminBookSaving>(), isA<AdminBookError>()]),
         );
         await cubit.save(
           sectionId: 'sec-1',
@@ -515,24 +552,23 @@ void main() {
     // ── save (update existing book) ──────────────────────────────────────────
     group('save (update existing book)', () {
       test('emits Saving then SaveSuccess on success', () async {
-        when(() => repo.updateBook(
-              id: any(named: 'id'),
-              sectionId: any(named: 'sectionId'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              coverImageUrl: any(named: 'coverImageUrl'),
-              status: any(named: 'status'),
-              reviewStatus: any(named: 'reviewStatus'),
-              isFeatured: any(named: 'isFeatured'),
-              featuredOrder: any(named: 'featuredOrder'),
-            )).thenAnswer((_) async => const Right(_book));
+        when(
+          () => repo.updateBook(
+            id: any(named: 'id'),
+            sectionId: any(named: 'sectionId'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            coverImageUrl: any(named: 'coverImageUrl'),
+            status: any(named: 'status'),
+            reviewStatus: any(named: 'reviewStatus'),
+            isFeatured: any(named: 'isFeatured'),
+            featuredOrder: any(named: 'featuredOrder'),
+          ),
+        ).thenAnswer((_) async => const Right(_book));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBookSaving>(),
-            isA<AdminBookSaveSuccess>(),
-          ]),
+          emitsInOrder([isA<AdminBookSaving>(), isA<AdminBookSaveSuccess>()]),
         );
         await cubit.save(
           bookId: 'book-1',
@@ -546,24 +582,23 @@ void main() {
       });
 
       test('emits Saving then Error on update failure', () async {
-        when(() => repo.updateBook(
-              id: any(named: 'id'),
-              sectionId: any(named: 'sectionId'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              coverImageUrl: any(named: 'coverImageUrl'),
-              status: any(named: 'status'),
-              reviewStatus: any(named: 'reviewStatus'),
-              isFeatured: any(named: 'isFeatured'),
-              featuredOrder: any(named: 'featuredOrder'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.updateBook(
+            id: any(named: 'id'),
+            sectionId: any(named: 'sectionId'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            coverImageUrl: any(named: 'coverImageUrl'),
+            status: any(named: 'status'),
+            reviewStatus: any(named: 'reviewStatus'),
+            isFeatured: any(named: 'isFeatured'),
+            featuredOrder: any(named: 'featuredOrder'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBookSaving>(),
-            isA<AdminBookError>(),
-          ]),
+          emitsInOrder([isA<AdminBookSaving>(), isA<AdminBookError>()]),
         );
         await cubit.save(
           bookId: 'book-1',
@@ -594,56 +629,54 @@ void main() {
 
     // ── load ────────────────────────────────────────────────────────────────
     group('load', () {
-      test('emits Loading then Loaded with banners and books on success', () async {
-        when(() => repo.getBanners())
-            .thenAnswer((_) async => const Right([_banner]));
-        when(() => repo.getPublishedBooks())
-            .thenAnswer((_) async => const Right([_book]));
+      test(
+        'emits Loading then Loaded with banners and books on success',
+        () async {
+          when(
+            () => repo.getBanners(),
+          ).thenAnswer((_) async => const Right([_banner]));
+          when(
+            () => repo.getPublishedBooks(),
+          ).thenAnswer((_) async => const Right([_book]));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emitsInOrder([
-            isA<AdminBannerLoading>(),
-            isA<AdminBannerLoaded>(),
-          ]),
-        );
-        await cubit.load();
-        await expectation;
+          final expectation = expectLater(
+            cubit.stream,
+            emitsInOrder([isA<AdminBannerLoading>(), isA<AdminBannerLoaded>()]),
+          );
+          await cubit.load();
+          await expectation;
 
-        final loaded = cubit.state as AdminBannerLoaded;
-        expect(loaded.banners, [_banner]);
-        expect(loaded.books, [_book]);
-      });
+          final loaded = cubit.state as AdminBannerLoaded;
+          expect(loaded.banners, [_banner]);
+          expect(loaded.books, [_book]);
+        },
+      );
 
       test('emits Loading then Error when getBanners fails', () async {
-        when(() => repo.getBanners())
-            .thenAnswer((_) async => const Left(_serverFailure));
-        when(() => repo.getPublishedBooks())
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getBanners(),
+        ).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.getPublishedBooks(),
+        ).thenAnswer((_) async => const Right([]));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBannerLoading>(),
-            isA<AdminBannerError>(),
-          ]),
+          emitsInOrder([isA<AdminBannerLoading>(), isA<AdminBannerError>()]),
         );
         await cubit.load();
         await expectation;
       });
 
       test('emits Loading then Error when getPublishedBooks fails', () async {
-        when(() => repo.getBanners())
-            .thenAnswer((_) async => const Right([]));
-        when(() => repo.getPublishedBooks())
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(() => repo.getBanners()).thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getPublishedBooks(),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBannerLoading>(),
-            isA<AdminBannerError>(),
-          ]),
+          emitsInOrder([isA<AdminBannerLoading>(), isA<AdminBannerError>()]),
         );
         await cubit.load();
         await expectation;
@@ -653,15 +686,17 @@ void main() {
     // ── createBanner — CC-26 nullable target ─────────────────────────────────
     group('createBanner', () {
       test('emits MutationSuccess on success', () async {
-        when(() => repo.createBanner(
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              imageUrl: any(named: 'imageUrl'),
-              linkedBookId: any(named: 'linkedBookId'),
-              externalLink: any(named: 'externalLink'),
-              orderIndex: any(named: 'orderIndex'),
-              isActive: any(named: 'isActive'),
-            )).thenAnswer((_) async => const Right(_banner));
+        when(
+          () => repo.createBanner(
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            imageUrl: any(named: 'imageUrl'),
+            linkedBookId: any(named: 'linkedBookId'),
+            externalLink: any(named: 'externalLink'),
+            orderIndex: any(named: 'orderIndex'),
+            isActive: any(named: 'isActive'),
+          ),
+        ).thenAnswer((_) async => const Right(_banner));
 
         final expectation = expectLater(
           cubit.stream,
@@ -675,8 +710,11 @@ void main() {
         await expectation;
       });
 
-      test('CC-26: emits MutationSuccess with null linkedBookId and externalLink', () async {
-        when(() => repo.createBanner(
+      test(
+        'CC-26: emits MutationSuccess with null linkedBookId and externalLink',
+        () async {
+          when(
+            () => repo.createBanner(
               title: any(named: 'title'),
               description: any(named: 'description'),
               imageUrl: any(named: 'imageUrl'),
@@ -684,42 +722,42 @@ void main() {
               externalLink: any(named: 'externalLink'),
               orderIndex: any(named: 'orderIndex'),
               isActive: any(named: 'isActive'),
-            )).thenAnswer((_) async => const Right(_banner));
+            ),
+          ).thenAnswer((_) async => const Right(_banner));
 
-        final expectation = expectLater(
-          cubit.stream,
-          emits(isA<AdminBannerMutationSuccess>()),
-        );
-        await cubit.createBanner(
-          title: 'بانر بدون رابط',
-          orderIndex: 1,
-          isActive: false,
-          linkedBookId: null,
-          externalLink: null,
-        );
-        await expectation;
-      });
+          final expectation = expectLater(
+            cubit.stream,
+            emits(isA<AdminBannerMutationSuccess>()),
+          );
+          await cubit.createBanner(
+            title: 'بانر بدون رابط',
+            orderIndex: 1,
+            isActive: false,
+            linkedBookId: null,
+            externalLink: null,
+          );
+          await expectation;
+        },
+      );
 
       test('emits Error on failure', () async {
-        when(() => repo.createBanner(
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              imageUrl: any(named: 'imageUrl'),
-              linkedBookId: any(named: 'linkedBookId'),
-              externalLink: any(named: 'externalLink'),
-              orderIndex: any(named: 'orderIndex'),
-              isActive: any(named: 'isActive'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.createBanner(
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            imageUrl: any(named: 'imageUrl'),
+            linkedBookId: any(named: 'linkedBookId'),
+            externalLink: any(named: 'externalLink'),
+            orderIndex: any(named: 'orderIndex'),
+            isActive: any(named: 'isActive'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
           emits(isA<AdminBannerError>()),
         );
-        await cubit.createBanner(
-          title: 'بانر',
-          orderIndex: 0,
-          isActive: true,
-        );
+        await cubit.createBanner(title: 'بانر', orderIndex: 0, isActive: true);
         await expectation;
       });
     });
@@ -727,16 +765,18 @@ void main() {
     // ── updateBanner ─────────────────────────────────────────────────────────
     group('updateBanner', () {
       test('emits MutationSuccess on success', () async {
-        when(() => repo.updateBanner(
-              id: any(named: 'id'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              imageUrl: any(named: 'imageUrl'),
-              linkedBookId: any(named: 'linkedBookId'),
-              externalLink: any(named: 'externalLink'),
-              orderIndex: any(named: 'orderIndex'),
-              isActive: any(named: 'isActive'),
-            )).thenAnswer((_) async => const Right(_banner));
+        when(
+          () => repo.updateBanner(
+            id: any(named: 'id'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            imageUrl: any(named: 'imageUrl'),
+            linkedBookId: any(named: 'linkedBookId'),
+            externalLink: any(named: 'externalLink'),
+            orderIndex: any(named: 'orderIndex'),
+            isActive: any(named: 'isActive'),
+          ),
+        ).thenAnswer((_) async => const Right(_banner));
 
         final expectation = expectLater(
           cubit.stream,
@@ -752,16 +792,18 @@ void main() {
       });
 
       test('emits Error on failure', () async {
-        when(() => repo.updateBanner(
-              id: any(named: 'id'),
-              title: any(named: 'title'),
-              description: any(named: 'description'),
-              imageUrl: any(named: 'imageUrl'),
-              linkedBookId: any(named: 'linkedBookId'),
-              externalLink: any(named: 'externalLink'),
-              orderIndex: any(named: 'orderIndex'),
-              isActive: any(named: 'isActive'),
-            )).thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.updateBanner(
+            id: any(named: 'id'),
+            title: any(named: 'title'),
+            description: any(named: 'description'),
+            imageUrl: any(named: 'imageUrl'),
+            linkedBookId: any(named: 'linkedBookId'),
+            externalLink: any(named: 'externalLink'),
+            orderIndex: any(named: 'orderIndex'),
+            isActive: any(named: 'isActive'),
+          ),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -780,8 +822,9 @@ void main() {
     // ── deleteBanner ─────────────────────────────────────────────────────────
     group('deleteBanner', () {
       test('emits Error on failure', () async {
-        when(() => repo.deleteBanner(any()))
-            .thenAnswer((_) async => const Left(_serverFailure));
+        when(
+          () => repo.deleteBanner(any()),
+        ).thenAnswer((_) async => const Left(_serverFailure));
 
         final expectation = expectLater(
           cubit.stream,
@@ -792,19 +835,17 @@ void main() {
       });
 
       test('triggers load (emits Loading → Loaded) on success', () async {
-        when(() => repo.deleteBanner(any()))
-            .thenAnswer((_) async => const Right(null));
-        when(() => repo.getBanners())
-            .thenAnswer((_) async => const Right([]));
-        when(() => repo.getPublishedBooks())
-            .thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.deleteBanner(any()),
+        ).thenAnswer((_) async => const Right(null));
+        when(() => repo.getBanners()).thenAnswer((_) async => const Right([]));
+        when(
+          () => repo.getPublishedBooks(),
+        ).thenAnswer((_) async => const Right([]));
 
         final expectation = expectLater(
           cubit.stream,
-          emitsInOrder([
-            isA<AdminBannerLoading>(),
-            isA<AdminBannerLoaded>(),
-          ]),
+          emitsInOrder([isA<AdminBannerLoading>(), isA<AdminBannerLoaded>()]),
         );
         await cubit.deleteBanner('ban-1');
         await expectation;

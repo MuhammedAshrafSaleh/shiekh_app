@@ -26,7 +26,8 @@ class AdminExamRepository {
   // ── Settings ─────────────────────────────────────────────────────────────
 
   Future<Either<Failure, FinalExamSettingsEntity?>> getSettings(
-      String bookId) async {
+    String bookId,
+  ) async {
     final net = _checkNetwork<FinalExamSettingsEntity?>();
     if (net != null) return net;
     try {
@@ -38,7 +39,8 @@ class AdminExamRepository {
       final rows = data as List;
       if (rows.isEmpty) return const Right(null);
       return Right(
-          FinalExamSettingsEntity.fromJson(rows.first as Map<String, dynamic>));
+        FinalExamSettingsEntity.fromJson(rows.first as Map<String, dynamic>),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getSettings: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -81,7 +83,8 @@ class AdminExamRepository {
   // ── Questions ─────────────────────────────────────────────────────────────
 
   Future<Either<Failure, List<AdminFinalExamQuestionEntity>>> getQuestions(
-      String bookId) async {
+    String bookId,
+  ) async {
     final net = _checkNetwork<List<AdminFinalExamQuestionEntity>>();
     if (net != null) return net;
     try {
@@ -91,10 +94,15 @@ class AdminExamRepository {
           .eq('book_id', bookId)
           .order('order_index', ascending: true)
           .limit(200);
-      return Right((data as List)
-          .map((e) => AdminFinalExamQuestionEntity.fromJson(
-              e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map(
+              (e) => AdminFinalExamQuestionEntity.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getQuestions: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -125,8 +133,9 @@ class AdminExamRepository {
       final existingList = existing as List;
       final nextOrder = existingList.isEmpty
           ? 0
-          : ((existingList.first as Map<String, dynamic>)['order_index'] as int) +
-              1;
+          : ((existingList.first as Map<String, dynamic>)['order_index']
+                    as int) +
+                1;
 
       final data = await _client
           .from('final_exam_questions')
@@ -190,10 +199,7 @@ class AdminExamRepository {
     final net = _checkNetwork<Unit>();
     if (net != null) return net;
     try {
-      await _client
-          .from('final_exam_questions')
-          .delete()
-          .eq('id', questionId);
+      await _client.from('final_exam_questions').delete().eq('id', questionId);
       return const Right(unit);
     } on PostgrestException catch (e) {
       _log.warning('deleteQuestion: ${e.message}');
@@ -226,7 +232,8 @@ class AdminExamRepository {
 
   /// Import quiz bank questions from all lessons of a book.
   Future<Either<Failure, List<AdminQuizQuestionEntity>>> getBankQuestions(
-      String bookId) async {
+    String bookId,
+  ) async {
     final net = _checkNetwork<List<AdminQuizQuestionEntity>>();
     if (net != null) return net;
     try {
@@ -237,10 +244,14 @@ class AdminExamRepository {
           .eq('lessons.book_id', bookId)
           .order('order_index', ascending: true)
           .limit(200);
-      return Right((data as List)
-          .map((e) =>
-              AdminQuizQuestionEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map(
+              (e) =>
+                  AdminQuizQuestionEntity.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getBankQuestions: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -267,21 +278,24 @@ class AdminExamRepository {
       final existingImport = existing as List;
       int nextOrder = existingImport.isEmpty
           ? 0
-          : ((existingImport.first as Map<String, dynamic>)['order_index'] as int) +
-              1;
+          : ((existingImport.first as Map<String, dynamic>)['order_index']
+                    as int) +
+                1;
 
       final rows = questions
-          .map((q) => {
-                'book_id': bookId,
-                'order_index': nextOrder++,
-                'question_text': q.questionText,
-                'choice_a': q.choiceA,
-                'choice_b': q.choiceB,
-                'choice_c': q.choiceC,
-                'choice_d': q.choiceD,
-                'correct_choice': q.correctChoice,
-                'source_quiz_question_id': q.id,
-              })
+          .map(
+            (q) => {
+              'book_id': bookId,
+              'order_index': nextOrder++,
+              'question_text': q.questionText,
+              'choice_a': q.choiceA,
+              'choice_b': q.choiceB,
+              'choice_c': q.choiceC,
+              'choice_d': q.choiceD,
+              'correct_choice': q.correctChoice,
+              'source_quiz_question_id': q.id,
+            },
+          )
           .toList();
 
       await _client.from('final_exam_questions').insert(rows);

@@ -16,6 +16,8 @@ class NotificationsRepository {
 
   NotificationsRepository(this._client, this._connectivity);
 
+  String? get currentUserId => _client.auth.currentUser?.id;
+
   Either<Failure, T>? _checkNetwork<T>() {
     if (!_connectivity.state.isOffline) return null;
     return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
@@ -33,7 +35,8 @@ class NotificationsRepository {
       final response = await _client
           .from('notifications')
           .select(
-              'id, type, title, body, link_url, send_at, created_at, notification_reads!left(id)')
+            'id, type, title, body, link_url, send_at, created_at, notification_reads!left(id)',
+          )
           .lte('send_at', DateTime.now().toIso8601String())
           .order('send_at', ascending: false)
           .limit(100);
@@ -56,8 +59,7 @@ class NotificationsRepository {
     }
   }
 
-  Future<Either<Failure, void>> markAllRead(
-      List<String> unreadIds) async {
+  Future<Either<Failure, void>> markAllRead(List<String> unreadIds) async {
     final networkError = _checkNetwork<void>();
     if (networkError != null) return networkError;
 
@@ -92,10 +94,10 @@ class NotificationsRepository {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
 
-      await _client.from('notification_reads').upsert(
-        {'user_id': userId, 'notification_id': notificationId},
-        onConflict: 'user_id,notification_id',
-      );
+      await _client.from('notification_reads').upsert({
+        'user_id': userId,
+        'notification_id': notificationId,
+      }, onConflict: 'user_id,notification_id');
       return const Right(null);
     } on PostgrestException catch (e) {
       _log.warning('markRead: ${e.message}');
@@ -105,19 +107,45 @@ class NotificationsRepository {
     }
   }
 
-  /// Returns a Realtime stream of INSERT events on the notifications table.
-  /// The caller is responsible for cancelling the channel subscription.
-  RealtimeChannel subscribeToNewNotifications(
-      void Function(Map<String, dynamic> payload) onInsert) {
-    final channel = _client
-        .channel('public:notifications')
+  /// Opens two Realtime channels so that both broadcast (target_user_id IS NULL)
+  /// and personal (target_user_id = userId) INSERT events are delivered without
+  /// relying on the Realtime server applying RLS — each channel has a server-side
+  /// column filter that restricts which rows it receives.
+  /// The caller is responsible for unsubscribing both returned channels.
+  List<RealtimeChannel> subscribeToNewNotifications(
+    String userId,
+    void Function(Map<String, dynamic> payload) onInsert,
+  ) {
+    final broadcast = _client
+        .channel('notif-broadcast')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'target_user_id',
+            value: null,
+          ),
           callback: (payload) => onInsert(payload.newRecord),
         )
         .subscribe();
-    return channel;
+
+    final personal = _client
+        .channel('notif-personal-$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'target_user_id',
+            value: userId,
+          ),
+          callback: (payload) => onInsert(payload.newRecord),
+        )
+        .subscribe();
+
+    return [broadcast, personal];
   }
 }

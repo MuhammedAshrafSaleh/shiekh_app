@@ -42,8 +42,7 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
   }
 
   // CC-11: check for saved session first; resume or auto-submit if expired
-  Future<void> _onLoad(
-      ExamLoadRequested event, Emitter<ExamState> emit) async {
+  Future<void> _onLoad(ExamLoadRequested event, Emitter<ExamState> emit) async {
     emit(ExamLoading());
 
     final session = await _repo.loadSession(event.bookId);
@@ -60,23 +59,26 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
         final meta = metaResult.getOrElse(() => throw StateError(''));
         final questions = questionsResult.getOrElse(() => []);
 
-        final elapsed =
-            DateTime.now().difference(session.startedAt).inSeconds;
+        final elapsed = DateTime.now().difference(session.startedAt).inSeconds;
         final timeLimitSeconds = meta.settings.timeLimitMinutes * 60;
         final secondsRemaining = timeLimitSeconds - elapsed;
 
         if (secondsRemaining > 0) {
           // Resume active session (CC-11)
-          _log.info('Resuming exam for ${event.bookId}, ${secondsRemaining}s left');
-          emit(ExamInProgress(
-            bookId: event.bookId,
-            settings: meta.settings,
-            questions: questions,
-            answers: session.answers,
-            currentIndex: session.currentIndex.clamp(0, questions.length - 1),
-            secondsRemaining: secondsRemaining,
-            startedAt: session.startedAt,
-          ));
+          _log.info(
+            'Resuming exam for ${event.bookId}, ${secondsRemaining}s left',
+          );
+          emit(
+            ExamInProgress(
+              bookId: event.bookId,
+              settings: meta.settings,
+              questions: questions,
+              answers: session.answers,
+              currentIndex: session.currentIndex.clamp(0, questions.length - 1),
+              secondsRemaining: secondsRemaining,
+              startedAt: session.startedAt,
+            ),
+          );
           _startTimer();
           return;
         } else {
@@ -90,11 +92,13 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
           );
           submitResult.fold(
             (f) => emit(ExamError(f.message)),
-            (result) => emit(ExamCompleted(
-              result: result,
-              settings: meta.settings,
-              bookId: event.bookId,
-            )),
+            (result) => emit(
+              ExamCompleted(
+                result: result,
+                settings: meta.settings,
+                bookId: event.bookId,
+              ),
+            ),
           );
           return;
         }
@@ -105,18 +109,22 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     final metaResult = await _repo.getExamMeta(event.bookId);
     metaResult.fold(
       (f) => emit(ExamError(f.message)),
-      (meta) => emit(ExamMetaLoaded(
-        bookId: event.bookId,
-        settings: meta.settings,
-        questionCount: meta.questionCount,
-        attemptsUsed: meta.attemptsUsed,
-        pastAttempts: meta.pastAttempts,
-      )),
+      (meta) => emit(
+        ExamMetaLoaded(
+          bookId: event.bookId,
+          settings: meta.settings,
+          questionCount: meta.questionCount,
+          attemptsUsed: meta.attemptsUsed,
+          pastAttempts: meta.pastAttempts,
+        ),
+      ),
     );
   }
 
   Future<void> _onStart(
-      ExamStartRequested event, Emitter<ExamState> emit) async {
+    ExamStartRequested event,
+    Emitter<ExamState> emit,
+  ) async {
     final current = state;
     if (current is! ExamMetaLoaded || current.isLocked) return;
 
@@ -124,17 +132,16 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
 
     final questionsResult = await _repo.getQuestions(current.bookId);
 
-    questionsResult.fold(
-      (f) => emit(ExamError(f.message)),
-      (questions) {
-        if (questions.isEmpty) {
-          emit(ExamError('لا توجد أسئلة في هذا الاختبار'));
-          return;
-        }
-        final startedAt = DateTime.now();
-        final secondsRemaining = current.settings.timeLimitMinutes * 60;
+    questionsResult.fold((f) => emit(ExamError(f.message)), (questions) {
+      if (questions.isEmpty) {
+        emit(ExamError('لا توجد أسئلة في هذا الاختبار'));
+        return;
+      }
+      final startedAt = DateTime.now();
+      final secondsRemaining = current.settings.timeLimitMinutes * 60;
 
-        emit(ExamInProgress(
+      emit(
+        ExamInProgress(
           bookId: current.bookId,
           settings: current.settings,
           questions: questions,
@@ -142,11 +149,11 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
           currentIndex: 0,
           secondsRemaining: secondsRemaining,
           startedAt: startedAt,
-        ));
-        _startTimer();
-        _saveSession(current.bookId, {}, 0, startedAt);
-      },
-    );
+        ),
+      );
+      _startTimer();
+      _saveSession(current.bookId, {}, 0, startedAt);
+    });
   }
 
   void _onAnswer(ExamAnswerSelected event, Emitter<ExamState> emit) {
@@ -156,8 +163,12 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     final newAnswers = Map<String, String>.from(current.answers)
       ..[event.questionId] = event.choice;
     emit(current.copyWith(answers: newAnswers));
-    _saveSession(current.bookId, newAnswers, current.currentIndex,
-        current.startedAt);
+    _saveSession(
+      current.bookId,
+      newAnswers,
+      current.currentIndex,
+      current.startedAt,
+    );
   }
 
   void _onNavigate(ExamNavigateTo event, Emitter<ExamState> emit) {
@@ -166,8 +177,12 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     if (event.index < 0 || event.index >= current.questions.length) return;
 
     emit(current.copyWith(currentIndex: event.index));
-    _saveSession(current.bookId, current.answers, event.index,
-        current.startedAt);
+    _saveSession(
+      current.bookId,
+      current.answers,
+      event.index,
+      current.startedAt,
+    );
   }
 
   void _onTick(ExamTick event, Emitter<ExamState> emit) {
@@ -185,7 +200,9 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
   }
 
   Future<void> _onSubmitConfirmed(
-      ExamSubmitConfirmed event, Emitter<ExamState> emit) async {
+    ExamSubmitConfirmed event,
+    Emitter<ExamState> emit,
+  ) async {
     final current = state;
     if (current is! ExamInProgress) return;
 
@@ -195,7 +212,9 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
   }
 
   Future<void> _onAutoSubmit(
-      ExamAutoSubmit event, Emitter<ExamState> emit) async {
+    ExamAutoSubmit event,
+    Emitter<ExamState> emit,
+  ) async {
     final current = state;
     if (current is! ExamInProgress) return;
 
@@ -204,8 +223,7 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     await _submit(current, emit);
   }
 
-  Future<void> _submit(
-      ExamInProgress current, Emitter<ExamState> emit) async {
+  Future<void> _submit(ExamInProgress current, Emitter<ExamState> emit) async {
     await _repo.clearSession(current.bookId);
 
     final result = await _repo.submitExam(
@@ -216,11 +234,13 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
 
     result.fold(
       (f) => emit(ExamError(f.message)),
-      (submitResult) => emit(ExamCompleted(
-        result: submitResult,
-        settings: current.settings,
-        bookId: current.bookId,
-      )),
+      (submitResult) => emit(
+        ExamCompleted(
+          result: submitResult,
+          settings: current.settings,
+          bookId: current.bookId,
+        ),
+      ),
     );
   }
 

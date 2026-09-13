@@ -47,13 +47,13 @@ class QuizQuestionEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        lessonId,
-        orderIndex,
-        questionText,
-        choiceA,
-        choiceB,
-        choiceC,
-        choiceD,
-      ];
+    id,
+    lessonId,
+    orderIndex,
+    questionText,
+    choiceA,
+    choiceB,
+    choiceC,
+    choiceD,
+  ];
 }

@@ -31,9 +31,11 @@ class AdminBannerRepository {
           .select()
           .order('order_index', ascending: true)
           .limit(50);
-      return Right((data as List)
-          .map((e) => BannerEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map((e) => BannerEntity.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getBanners: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -48,13 +50,17 @@ class AdminBannerRepository {
     try {
       final data = await _client
           .from('books')
-          .select('id, title, section_id, status, review_status, is_featured, featured_order')
+          .select(
+            'id, title, section_id, status, review_status, is_featured, featured_order',
+          )
           .eq('status', 'published')
           .order('title', ascending: true)
           .limit(200);
-      return Right((data as List)
-          .map((e) => BookEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map((e) => BookEntity.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getPublishedBooks: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -153,15 +159,15 @@ class AdminBannerRepository {
     try {
       final file = File(localPath);
       final ext = localPath.split('.').last.toLowerCase();
-      final fileName =
-          'banners/${DateTime.now().millisecondsSinceEpoch}.$ext';
-      await _client.storage.from('media').upload(
+      final fileName = 'banners/${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await _client.storage
+          .from('media')
+          .upload(
             fileName,
             file,
             fileOptions: FileOptions(contentType: 'image/$ext'),
           );
-      final publicUrl =
-          _client.storage.from('media').getPublicUrl(fileName);
+      final publicUrl = _client.storage.from('media').getPublicUrl(fileName);
       return Right(publicUrl);
     } on StorageException catch (e) {
       _log.warning('uploadBannerImage: ${e.message}');

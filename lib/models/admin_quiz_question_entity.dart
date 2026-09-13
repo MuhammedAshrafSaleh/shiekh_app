@@ -13,6 +13,12 @@ class AdminQuizQuestionEntity extends Equatable {
   final String choiceD;
   final String correctChoice;
 
+  /// AI-generation metadata (migration 0011). Manual questions default to
+  /// source='manual', ai_review_status='approved' server-side.
+  final String source;
+  final String aiReviewStatus;
+  final String? difficulty;
+
   const AdminQuizQuestionEntity({
     required this.id,
     required this.lessonId,
@@ -23,6 +29,9 @@ class AdminQuizQuestionEntity extends Equatable {
     required this.choiceC,
     required this.choiceD,
     required this.correctChoice,
+    this.source = 'manual',
+    this.aiReviewStatus = 'approved',
+    this.difficulty,
   });
 
   factory AdminQuizQuestionEntity.fromJson(Map<String, dynamic> json) {
@@ -36,27 +45,36 @@ class AdminQuizQuestionEntity extends Equatable {
       choiceC: json['choice_c'] as String,
       choiceD: json['choice_d'] as String,
       correctChoice: json['correct_choice'] as String,
+      source: json['source'] as String? ?? 'manual',
+      aiReviewStatus: json['ai_review_status'] as String? ?? 'approved',
+      difficulty: json['difficulty'] as String?,
     );
   }
 
+  /// AI-generated question awaiting admin review — invisible to students.
+  bool get isPendingReview => aiReviewStatus == 'pending';
+
   String choiceLabel(String key) => switch (key) {
-        'a' => choiceA,
-        'b' => choiceB,
-        'c' => choiceC,
-        'd' => choiceD,
-        _ => '',
-      };
+    'a' => choiceA,
+    'b' => choiceB,
+    'c' => choiceC,
+    'd' => choiceD,
+    _ => '',
+  };
 
   @override
   List<Object?> get props => [
-        id,
-        lessonId,
-        orderIndex,
-        questionText,
-        choiceA,
-        choiceB,
-        choiceC,
-        choiceD,
-        correctChoice,
-      ];
+    id,
+    lessonId,
+    orderIndex,
+    questionText,
+    choiceA,
+    choiceB,
+    choiceC,
+    choiceD,
+    correctChoice,
+    source,
+    aiReviewStatus,
+    difficulty,
+  ];
 }
