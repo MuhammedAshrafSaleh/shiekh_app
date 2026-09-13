@@ -25,7 +25,7 @@ import '../../../features/lesson/cubit/lesson_state.dart';
 import '../../../features/lesson/data/lesson_repository.dart';
 import '../../../models/lesson_quiz_attempt_entity.dart';
 
-const int _kLessonQuizDurationSeconds = 75; // DEBUG: shortened for tick-sound testing (restore to 900)
+const int _kLessonQuizDurationSeconds = 900; // 15 minutes
 
 enum _QuizPhase { intro, loading, error, answering, submitted, review }
 
@@ -112,22 +112,10 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
         setState(() {}); // show 00:00 before submit
         _submit();
       } else {
-        if (remaining <= 60) {
-          final soundName = remaining <= 10 ? 'tickUrgent' : 'tick';
-          final sound = remaining <= 10 ? AppSound.tickUrgent : AppSound.tick;
-          // ignore: avoid_print
-          print('[QuizTimer] remaining=$remaining → playing $soundName');
-          try {
-            final svc = context.read<SoundService>();
-            // ignore: avoid_print
-            print('[QuizTimer] SoundService resolved: $svc  muted=${svc.isMuted}');
-            svc.play(sound);
-            // ignore: avoid_print
-            print('[QuizTimer] play() returned (fire-and-forget)');
-          } catch (e, st) {
-            // ignore: avoid_print
-            print('[QuizTimer] ERROR calling play(): $e\n$st');
-          }
+        if (remaining <= 10) {
+          context.read<SoundService>().play(AppSound.tickUrgent);
+        } else if (remaining <= 60) {
+          context.read<SoundService>().play(AppSound.tick);
         }
         setState(() {});
       }
