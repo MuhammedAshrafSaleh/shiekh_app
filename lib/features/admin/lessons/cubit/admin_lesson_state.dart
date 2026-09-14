@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/lesson_entity.dart';
+import '../../../../models/lesson_pdf_entity.dart';
 
 abstract class AdminLessonListState extends Equatable {
   const AdminLessonListState();
@@ -46,6 +47,10 @@ class AdminLessonFormLoaded extends AdminLessonFormState {
   final LessonEntity? lesson;
   final List<AdminQuizQuestionEntity> quizQuestions;
 
+  /// The lesson's PDFs (migration 0012), sorted by order_index. Maintained by
+  /// the PDF CRUD methods so mutations don't require refetching the whole lesson.
+  final List<LessonPdfEntity> pdfs;
+
   /// Number of quiz questions available in the other lessons of this book
   /// (source for "استيراد من البنك" on the quiz tab).
   final int bankCount;
@@ -53,10 +58,11 @@ class AdminLessonFormLoaded extends AdminLessonFormState {
   const AdminLessonFormLoaded({
     this.lesson,
     required this.quizQuestions,
+    this.pdfs = const [],
     this.bankCount = 0,
   });
   @override
-  List<Object?> get props => [lesson, quizQuestions, bankCount];
+  List<Object?> get props => [lesson, quizQuestions, pdfs, bankCount];
 }
 
 class AdminLessonFormSaving extends AdminLessonFormState {}

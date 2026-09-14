@@ -16,6 +16,7 @@ import '../../../../features/notifications/cubit/connectivity_cubit.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/generated_questions_result_entity.dart';
 import '../../../../models/lesson_entity.dart';
+import '../../../../models/lesson_pdf_entity.dart';
 
 class AdminLessonRepository {
   final SupabaseClient _client;
@@ -33,9 +34,13 @@ class AdminLessonRepository {
     final net = _checkNetwork<List<LessonEntity>>();
     if (net != null) return net;
     try {
+      // Embed only PDF ids (migration 0012): enough for the list's PDF icon,
+      // which derives lesson.hasPdf from the embedded list length — driven by the
+      // actual child rows, not the deprecated pdf_url mirror. LessonPdfEntity
+      // tolerates this partial (id-only) embed.
       final data = await _client
           .from('lessons')
-          .select()
+          .select('*, lesson_pdfs(id)')
           .eq('book_id', bookId)
           .order('order_index', ascending: true)
           .limit(200);
@@ -56,9 +61,10 @@ class AdminLessonRepository {
     final net = _checkNetwork<LessonEntity>();
     if (net != null) return net;
     try {
+      // Embed the lesson's PDFs (migration 0012) so the form loads them.
       final data = await _client
           .from('lessons')
-          .select()
+          .select('*, lesson_pdfs(*)')
           .eq('id', lessonId)
           .single();
       return Right(LessonEntity.fromJson(data));
@@ -70,13 +76,15 @@ class AdminLessonRepository {
     }
   }
 
+  // NOTE: pdf_url is NOT written here (migration 0012). It is a DEPRECATED
+  // auto-mirror of the first lesson_pdfs row, maintained solely by the DB
+  // trigger. PDFs are managed via the lesson_pdfs CRUD methods below.
   Future<Either<Failure, LessonEntity>> createLesson({
     required String bookId,
     required String title,
     String? description,
     String? videoUrl,
     String? audioUrl,
-    String? pdfUrl,
     required bool audioOnly,
     required String status,
   }) async {
@@ -106,7 +114,6 @@ class AdminLessonRepository {
             'description': description,
             'video_url': videoUrl,
             'audio_url': audioUrl,
-            'pdf_url': pdfUrl,
             'audio_only': audioOnly,
             'status': status,
           })
@@ -121,13 +128,13 @@ class AdminLessonRepository {
     }
   }
 
+  // NOTE: pdf_url is NOT written here — see createLesson (migration 0012).
   Future<Either<Failure, LessonEntity>> updateLesson({
     required String id,
     required String title,
     String? description,
     String? videoUrl,
     String? audioUrl,
-    String? pdfUrl,
     required bool audioOnly,
     required String status,
   }) async {
@@ -141,7 +148,6 @@ class AdminLessonRepository {
             'description': description,
             'video_url': videoUrl,
             'audio_url': audioUrl,
-            'pdf_url': pdfUrl,
             'audio_only': audioOnly,
             'status': status,
             'updated_at': DateTime.now().toIso8601String(),
@@ -212,6 +218,114 @@ class AdminLessonRepository {
       return const Right(unit);
     } on PostgrestException catch (e) {
       _log.warning('reorderLessons: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  // ── Lesson PDFs (migration 0012) ──────────────────────────────────────────
+  // The form loads PDFs embedded via getLesson (lesson_pdfs(*)); the cubit then
+  // maintains the list locally through these mutations, so there is no separate
+  // getLessonPdfs fetch.
+
+  Future<Either<Failure, LessonPdfEntity>> createLessonPdf({
+    required String lessonId,
+    required String title,
+    required String url,
+  }) async {
+    final net = _checkNetwork<LessonPdfEntity>();
+    if (net != null) return net;
+    try {
+      // Append after any existing PDFs.
+      final existing = await _client
+          .from('lesson_pdfs')
+          .select('order_index')
+          .eq('lesson_id', lessonId)
+          .order('order_index', ascending: false)
+          .limit(1);
+      final existingList = existing as List;
+      final nextOrder = existingList.isEmpty
+          ? 0
+          : ((existingList.first as Map<String, dynamic>)['order_index']
+                    as int) +
+                1;
+
+      final data = await _client
+          .from('lesson_pdfs')
+          .insert({
+            'lesson_id': lessonId,
+            'title': title,
+            'url': url,
+            'order_index': nextOrder,
+          })
+          .select()
+          .single();
+      return Right(LessonPdfEntity.fromJson(data));
+    } on PostgrestException catch (e) {
+      _log.warning('createLessonPdf: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, LessonPdfEntity>> updateLessonPdf({
+    required String id,
+    required String title,
+    required String url,
+  }) async {
+    final net = _checkNetwork<LessonPdfEntity>();
+    if (net != null) return net;
+    try {
+      final data = await _client
+          .from('lesson_pdfs')
+          .update({'title': title, 'url': url})
+          .eq('id', id)
+          .select()
+          .single();
+      return Right(LessonPdfEntity.fromJson(data));
+    } on PostgrestException catch (e) {
+      _log.warning('updateLessonPdf: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  Future<Either<Failure, Unit>> deleteLessonPdf(String id) async {
+    final net = _checkNetwork<Unit>();
+    if (net != null) return net;
+    try {
+      await _client.from('lesson_pdfs').delete().eq('id', id);
+      return const Right(unit);
+    } on PostgrestException catch (e) {
+      _log.warning('deleteLessonPdf: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Row-by-row order_index rewrite. Safe without a transaction/RPC: there is no
+  /// unique(lesson_id, order_index) constraint (migration 0012), so intermediate
+  /// duplicate indices during the rewrite cannot collide. Callers pass a fully
+  /// renumbered, contiguous list.
+  Future<Either<Failure, Unit>> reorderLessonPdfs(
+    List<({String id, int orderIndex})> updates,
+  ) async {
+    final net = _checkNetwork<Unit>();
+    if (net != null) return net;
+    try {
+      for (final u in updates) {
+        await _client
+            .from('lesson_pdfs')
+            .update({'order_index': u.orderIndex})
+            .eq('id', u.id);
+      }
+      return const Right(unit);
+    } on PostgrestException catch (e) {
+      _log.warning('reorderLessonPdfs: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

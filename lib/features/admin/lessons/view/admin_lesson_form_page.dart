@@ -9,6 +9,7 @@ import '../../../../core/widgets/show_confirm_dialog.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/lesson_entity.dart';
+import '../../../../models/lesson_pdf_entity.dart';
 import '../cubit/admin_lesson_cubit.dart';
 import '../cubit/admin_lesson_state.dart';
 import '../cubit/generate_questions_cubit.dart';
@@ -34,7 +35,6 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
   final _descCtrl = TextEditingController();
   final _videoCtrl = TextEditingController();
   final _audioCtrl = TextEditingController();
-  final _pdfCtrl = TextEditingController();
   bool _audioOnly = false;
   String _status = 'draft';
   bool _populated = false;
@@ -55,7 +55,6 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
     _descCtrl.dispose();
     _videoCtrl.dispose();
     _audioCtrl.dispose();
-    _pdfCtrl.dispose();
     super.dispose();
   }
 
@@ -66,7 +65,7 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
     _descCtrl.text = lesson.description ?? '';
     _videoCtrl.text = lesson.videoUrl ?? '';
     _audioCtrl.text = lesson.audioUrl ?? '';
-    _pdfCtrl.text = lesson.pdfUrl ?? '';
+    // PDFs are managed via the PDF tab (state.pdfs), not a text controller.
     _audioOnly = lesson.audioOnly;
     _status = lesson.status;
   }
@@ -90,7 +89,8 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       videoUrl: _videoCtrl.text.trim().isEmpty ? null : _videoCtrl.text.trim(),
       audioUrl: _audioCtrl.text.trim().isEmpty ? null : _audioCtrl.text.trim(),
-      pdfUrl: _pdfCtrl.text.trim().isEmpty ? null : _pdfCtrl.text.trim(),
+      // No pdfUrl (migration 0012): PDFs are managed via the PDF tab's CRUD, and
+      // lessons.pdf_url is a DB-trigger mirror the app never writes.
       audioOnly: _audioOnly,
       status: _status,
     );
@@ -99,12 +99,22 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
   void _openPreview() {
     final video = _videoCtrl.text.trim();
     final audio = _audioCtrl.text.trim();
-    final pdf = _pdfCtrl.text.trim();
+    // Pass the ordered PDF list so the preview renders exactly like the student
+    // screen (PdfListTab). state.pdfs is already sorted; filter empty urls to
+    // match the student's LessonEntity.orderedPdfs semantics exactly.
+    final state = context.read<AdminLessonFormCubit>().state;
+    final pdfs = state is AdminLessonFormLoaded
+        ? state.pdfs.where((p) => p.url.isNotEmpty).toList()
+        : const <LessonPdfEntity>[];
+    // Mirror the student's lessonHasQuiz — the preview quiz tab shows only when
+    // the lesson actually has questions.
+    final hasQuiz =
+        state is AdminLessonFormLoaded && state.quizQuestions.isNotEmpty;
     final hasVideo = !_audioOnly && video.isNotEmpty;
     final hasContent =
         hasVideo ||
         audio.isNotEmpty ||
-        pdf.isNotEmpty ||
+        pdfs.isNotEmpty ||
         _currentLessonId != null;
 
     if (!hasContent) {
@@ -124,9 +134,10 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
           title: _titleCtrl.text.trim(),
           videoUrl: video.isEmpty ? null : video,
           audioUrl: audio.isEmpty ? null : audio,
-          pdfUrl: pdf.isEmpty ? null : pdf,
+          pdfs: pdfs,
           audioOnly: _audioOnly,
           lessonId: _currentLessonId,
+          hasQuiz: hasQuiz,
         ),
       ),
     );
@@ -148,7 +159,6 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
             _descCtrl.text = state.lesson.description ?? '';
             _videoCtrl.text = state.lesson.videoUrl ?? '';
             _audioCtrl.text = state.lesson.audioUrl ?? '';
-            _pdfCtrl.text = state.lesson.pdfUrl ?? '';
             _audioOnly = state.lesson.audioOnly;
             _status = state.lesson.status;
           }
@@ -178,6 +188,9 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
         final quizQuestions = state is AdminLessonFormLoaded
             ? state.quizQuestions
             : const <AdminQuizQuestionEntity>[];
+        final pdfs = state is AdminLessonFormLoaded
+            ? state.pdfs
+            : const <LessonPdfEntity>[];
         final savedLessonId = state is AdminLessonFormLoaded
             ? state.lesson?.id
             : (state is AdminLessonFormSaved ? state.lesson.id : null);
@@ -221,7 +234,7 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
                       onStatusChanged: (v) => setState(() => _status = v!),
                     ),
                     _AudioTab(audioCtrl: _audioCtrl),
-                    _PdfTab(pdfCtrl: _pdfCtrl),
+                    _PdfTab(lessonId: currentLessonId, pdfs: pdfs),
                     _QuizTab(
                       lessonId: currentLessonId,
                       questions: quizQuestions,
@@ -377,33 +390,324 @@ class _AudioTab extends StatelessWidget {
   }
 }
 
+// ── PDF Tab (migration 0012 — multiple PDFs per lesson) ────────────────────
+// Mirrors the quiz-questions tab: requires a SAVED lesson to add children, lists
+// them with edit/delete + drag-reorder, and manages them via the cubit's CRUD.
+
 class _PdfTab extends StatelessWidget {
-  final TextEditingController pdfCtrl;
-  const _PdfTab({required this.pdfCtrl});
+  final String? lessonId;
+  final List<LessonPdfEntity> pdfs;
+
+  const _PdfTab({required this.lessonId, required this.pdfs});
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsetsDirectional.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'رابط Google Drive لملف PDF',
-            style: TextStyle(fontWeight: FontWeight.w600),
+    if (lessonId == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsetsDirectional.all(AppSpacing.lg),
+          child: Text(
+            'احفظ الدرس أولاً لإضافة الملفات',
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: pdfCtrl,
-            decoration: const InputDecoration(
-              labelText: 'رابط ملف PDF',
-              hintText: 'https://drive.google.com/file/d/...',
-              prefixIcon: Icon(Icons.picture_as_pdf_outlined),
-            ),
-            textInputAction: TextInputAction.done,
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            0,
           ),
-        ],
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'ملفات PDF (${pdfs.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              FilledButton.icon(
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('إضافة ملف PDF'),
+                onPressed: () => _showPdfDialog(context, lessonId: lessonId!),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Expanded(
+          child: pdfs.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.picture_as_pdf_outlined,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text('لا توجد ملفات PDF بعد'),
+                    ],
+                  ),
+                )
+              : ReorderableListView.builder(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
+                  itemCount: pdfs.length,
+                  // onReorderItem already adjusts newIndex for the removed item.
+                  onReorderItem: (oldIndex, newIndex) {
+                    final reordered = [...pdfs];
+                    final moved = reordered.removeAt(oldIndex);
+                    reordered.insert(newIndex, moved);
+                    context.read<AdminLessonFormCubit>().reorderLessonPdfs(
+                      reordered,
+                    );
+                  },
+                  itemBuilder: (context, i) => _PdfTile(
+                    key: ValueKey(pdfs[i].id),
+                    pdf: pdfs[i],
+                    index: i,
+                    lessonId: lessonId!,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  static void _showPdfDialog(
+    BuildContext context, {
+    required String lessonId,
+    LessonPdfEntity? existing,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => BlocProvider.value(
+        value: context.read<AdminLessonFormCubit>(),
+        child: _PdfDialog(lessonId: lessonId, existing: existing),
       ),
+    );
+  }
+}
+
+class _PdfTile extends StatelessWidget {
+  final LessonPdfEntity pdf;
+  final int index; // 0-based position, for the drag handle
+  final String lessonId;
+
+  const _PdfTile({
+    super.key,
+    required this.pdf,
+    required this.index,
+    required this.lessonId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.xs,
+          AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.picture_as_pdf_outlined),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    pdf.title,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    pdf.url,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              tooltip: 'تعديل',
+              onPressed: () => _PdfTab._showPdfDialog(
+                context,
+                lessonId: lessonId,
+                existing: pdf,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+                size: 18,
+              ),
+              tooltip: 'حذف',
+              onPressed: () async {
+                final cubit = context.read<AdminLessonFormCubit>();
+                final ok = await showConfirmDialog(
+                  context,
+                  title: 'هل تريد حذف الملف؟',
+                );
+                if (ok) cubit.deleteLessonPdf(pdf.id);
+              },
+            ),
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsetsDirectional.all(AppSpacing.xs),
+                child: Icon(Icons.drag_handle, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PdfDialog extends StatefulWidget {
+  final String lessonId;
+  final LessonPdfEntity? existing;
+
+  const _PdfDialog({required this.lessonId, this.existing});
+
+  @override
+  State<_PdfDialog> createState() => _PdfDialogState();
+}
+
+class _PdfDialogState extends State<_PdfDialog> {
+  final _titleCtrl = TextEditingController();
+  final _urlCtrl = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.existing;
+    if (p != null) {
+      _titleCtrl.text = p.title;
+      _urlCtrl.text = p.url;
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _urlCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final title = _titleCtrl.text.trim();
+    final url = _urlCtrl.text.trim();
+    // Title AND url are both required. Rejecting a blank url here is the
+    // write-side guard that prevents ever creating an empty-url row.
+    if (title.isEmpty || url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('العنوان والرابط مطلوبان'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    final cubit = context.read<AdminLessonFormCubit>();
+    if (widget.existing == null) {
+      await cubit.addLessonPdf(
+        lessonId: widget.lessonId,
+        title: title,
+        url: url,
+      );
+    } else {
+      await cubit.updateLessonPdf(
+        id: widget.existing!.id,
+        title: title,
+        url: url,
+      );
+    }
+    if (!mounted) return;
+    // Keep the dialog open on failure so the admin's typed title/url isn't lost
+    // (the parent form surfaces the error via snackbar). Close only on success.
+    if (cubit.state is AdminLessonFormError) {
+      setState(() => _saving = false);
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.existing == null ? 'إضافة ملف PDF' : 'تعديل الملف'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _titleCtrl,
+              decoration: const InputDecoration(
+                labelText: 'عنوان الملف *',
+                hintText: 'مثال: نص المحاضرة',
+              ),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _urlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'رابط Google Drive *',
+                hintText: 'https://drive.google.com/file/d/...',
+                prefixIcon: Icon(Icons.picture_as_pdf_outlined),
+              ),
+              textInputAction: TextInputAction.done,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _submit,
+          child: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('حفظ'),
+        ),
+      ],
     );
   }
 }

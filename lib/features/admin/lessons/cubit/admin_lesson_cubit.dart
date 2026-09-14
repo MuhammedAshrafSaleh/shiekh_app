@@ -2,6 +2,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../models/admin_quiz_question_entity.dart';
+import '../../../../models/lesson_pdf_entity.dart';
 import '../data/admin_lesson_repository.dart';
 import 'admin_lesson_state.dart';
 
@@ -67,12 +68,18 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
           ),
         ).wait;
         final bankCount = bankCountResult.fold((_) => 0, (c) => c);
+        // PDFs come embedded with the lesson (getLesson selects lesson_pdfs(*)).
+        // Sort a copy by order_index; show ALL rows so the admin can manage even
+        // a (hypothetical) empty-url row that orderedPdfs would hide.
+        final pdfs = [...lesson.pdfs]
+          ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
         qResult.fold(
           (f) => emit(AdminLessonFormError(f.message)),
           (qs) => emit(
             AdminLessonFormLoaded(
               lesson: lesson,
               quizQuestions: qs,
+              pdfs: pdfs,
               bankCount: bankCount,
             ),
           ),
@@ -107,6 +114,8 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     );
   }
 
+  // pdfUrl is intentionally absent — PDFs are managed via the lesson_pdfs CRUD
+  // methods below, and lessons.pdf_url is a DB-trigger mirror (migration 0012).
   Future<void> save({
     String? lessonId,
     required String bookId,
@@ -114,7 +123,6 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     String? description,
     String? videoUrl,
     String? audioUrl,
-    String? pdfUrl,
     required bool audioOnly,
     required String status,
   }) async {
@@ -126,7 +134,6 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             description: description,
             videoUrl: videoUrl,
             audioUrl: audioUrl,
-            pdfUrl: pdfUrl,
             audioOnly: audioOnly,
             status: status,
           )
@@ -136,7 +143,6 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             description: description,
             videoUrl: videoUrl,
             audioUrl: audioUrl,
-            pdfUrl: pdfUrl,
             audioOnly: audioOnly,
             status: status,
           );
@@ -171,6 +177,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
           AdminLessonFormLoaded(
             lesson: current.lesson,
             quizQuestions: [...current.quizQuestions, q],
+            pdfs: current.pdfs,
             bankCount: current.bankCount,
           ),
         );
@@ -206,6 +213,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
           AdminLessonFormLoaded(
             lesson: current.lesson,
             quizQuestions: qs,
+            pdfs: current.pdfs,
             bankCount: current.bankCount,
           ),
         );
@@ -225,10 +233,97 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
           AdminLessonFormLoaded(
             lesson: current.lesson,
             quizQuestions: qs,
+            pdfs: current.pdfs,
             bankCount: current.bankCount,
           ),
         );
       }
     });
+  }
+
+  // ── Lesson PDFs (migration 0012) ──────────────────────────────────────────
+  //
+  // Same immediate-mutation pattern as the quiz-question methods: each requires
+  // a SAVED lessonId (the UI gates add behind a saved lesson), calls the repo,
+  // and on success emits an updated AdminLessonFormLoaded with the new pdfs list
+  // — no full-lesson refetch. A helper rebuilds the loaded state preserving the
+  // other fields.
+
+  void _emitPdfs(AdminLessonFormLoaded current, List<LessonPdfEntity> pdfs) {
+    emit(
+      AdminLessonFormLoaded(
+        lesson: current.lesson,
+        quizQuestions: current.quizQuestions,
+        pdfs: pdfs,
+        bankCount: current.bankCount,
+      ),
+    );
+  }
+
+  Future<void> addLessonPdf({
+    required String lessonId,
+    required String title,
+    required String url,
+  }) async {
+    final current = state;
+    final result = await _repo.createLessonPdf(
+      lessonId: lessonId,
+      title: title,
+      url: url,
+    );
+    result.fold((f) => emit(AdminLessonFormError(f.message)), (pdf) {
+      if (current is AdminLessonFormLoaded) {
+        _emitPdfs(current, [...current.pdfs, pdf]);
+      }
+    });
+  }
+
+  Future<void> updateLessonPdf({
+    required String id,
+    required String title,
+    required String url,
+  }) async {
+    final current = state;
+    final result = await _repo.updateLessonPdf(id: id, title: title, url: url);
+    result.fold((f) => emit(AdminLessonFormError(f.message)), (updated) {
+      if (current is AdminLessonFormLoaded) {
+        final pdfs = current.pdfs
+            .map((p) => p.id == updated.id ? updated : p)
+            .toList();
+        _emitPdfs(current, pdfs);
+      }
+    });
+  }
+
+  Future<void> deleteLessonPdf(String id) async {
+    final current = state;
+    final result = await _repo.deleteLessonPdf(id);
+    result.fold((f) => emit(AdminLessonFormError(f.message)), (_) {
+      if (current is AdminLessonFormLoaded) {
+        _emitPdfs(current, current.pdfs.where((p) => p.id != id).toList());
+      }
+    });
+  }
+
+  /// Persists a new PDF order. [ordered] is the full list in its new sequence;
+  /// order_index is rewritten contiguously (0..n-1). Emits optimistically so the
+  /// drag feels instant, then persists. On failure it REVERTS to the pre-reorder
+  /// order (captured in [current] before the optimistic emit) so state stays
+  /// consistent with the server — the snap-back is the failure signal. We
+  /// deliberately don't emit AdminLessonFormError here, which would blank the
+  /// loaded lists (the builder falls back to empty when state isn't Loaded).
+  Future<void> reorderLessonPdfs(List<LessonPdfEntity> ordered) async {
+    final current = state;
+    if (current is! AdminLessonFormLoaded) return;
+    final reindexed = [
+      for (var i = 0; i < ordered.length; i++)
+        ordered[i].copyWith(orderIndex: i),
+    ];
+    _emitPdfs(current, reindexed);
+    final updates = [
+      for (final p in reindexed) (id: p.id, orderIndex: p.orderIndex),
+    ];
+    final result = await _repo.reorderLessonPdfs(updates);
+    result.fold((_) => _emitPdfs(current, current.pdfs), (_) {});
   }
 }

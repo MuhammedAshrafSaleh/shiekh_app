@@ -4,9 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../../models/lesson_pdf_entity.dart';
 import '../../../lesson/data/lesson_repository.dart';
 import '../../../lesson/widgets/audio_tab.dart';
-import '../../../lesson/widgets/pdf_tab.dart';
+import '../../../lesson/widgets/pdf_list_tab.dart';
 import '../../../lesson/widgets/quiz_tab.dart';
 import '../../../lesson/widgets/video_tab.dart';
 
@@ -17,11 +18,19 @@ class AdminLessonPreviewPage extends StatelessWidget {
   final String title;
   final String? videoUrl;
   final String? audioUrl;
-  final String? pdfUrl;
+
+  /// The lesson's PDFs, already ordered — rendered with the SAME widgets as the
+  /// student screen (PdfListTab → PdfViewerPage), not a preview-only path.
+  final List<LessonPdfEntity> pdfs;
   final bool audioOnly;
 
-  /// Non-null only for a saved lesson — enables the quiz preview tab.
+  /// Non-null only for a saved lesson.
   final String? lessonId;
+
+  /// Whether the lesson actually has quiz questions. Mirrors the student
+  /// screen's `lessonHasQuiz`: the quiz tab is only shown when true, so the
+  /// preview never surfaces a tab the student wouldn't see.
+  final bool hasQuiz;
 
   const AdminLessonPreviewPage({
     super.key,
@@ -29,14 +38,15 @@ class AdminLessonPreviewPage extends StatelessWidget {
     required this.audioOnly,
     this.videoUrl,
     this.audioUrl,
-    this.pdfUrl,
+    this.pdfs = const [],
     this.lessonId,
+    this.hasQuiz = false,
   });
 
   bool get _hasVideo =>
       !audioOnly && videoUrl != null && videoUrl!.trim().isNotEmpty;
   bool get _hasAudio => audioUrl != null && audioUrl!.trim().isNotEmpty;
-  bool get _hasPdf => pdfUrl != null && pdfUrl!.trim().isNotEmpty;
+  bool get _hasPdf => pdfs.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -65,12 +75,20 @@ class AdminLessonPreviewPage extends StatelessWidget {
         _TabDef(
           label: 'PDF',
           icon: Icons.picture_as_pdf_outlined,
-          content: PdfTab(pdfUrl: pdfUrl!.trim()),
+          // Identical to the student screen: a titled list; taps push the same
+          // full-screen PdfViewerPage.
+          content: PdfListTab(pdfs: pdfs),
         ),
-      if (lessonId != null)
+      // Mirror the student's `lessonHasQuiz`: only show the tab when the lesson
+      // actually has questions, so the preview never shows a tab the student
+      // wouldn't see.
+      if (lessonId != null && hasQuiz)
         _TabDef(
           label: 'اختبار',
           icon: Icons.quiz_outlined,
+          // Intentionally renders the REAL quiz, not the enrollment gate the
+          // student sees when unenrolled: the admin is reviewing content, not
+          // testing enrollment. Do not "fix" this into a gate.
           content: RepositoryProvider.value(
             value: context.read<LessonRepository>(),
             child: QuizTab(lessonId: lessonId!, previewMode: true),
