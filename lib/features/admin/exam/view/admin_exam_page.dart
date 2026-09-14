@@ -295,7 +295,9 @@ class _QuestionsTab extends StatelessWidget {
                   TextButton.icon(
                     icon: const Icon(Icons.download_outlined, size: 16),
                     label: Text('استيراد من البنك ($bankCount)'),
-                    onPressed: () => _showBankImport(context),
+                    onPressed: bankCount == 0
+                        ? null
+                        : () => _showBankImport(context),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   FilledButton.icon(
