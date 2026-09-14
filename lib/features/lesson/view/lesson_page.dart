@@ -23,6 +23,7 @@ import '../cubit/lesson_state.dart';
 import '../../../core/widgets/show_exam_start_dialog.dart';
 import '../widgets/audio_tab.dart';
 import '../widgets/media_tab.dart';
+import '../widgets/pdf_list_tab.dart';
 import '../widgets/pdf_tab.dart';
 import '../widgets/quiz_tab.dart';
 import '../widgets/video_tab.dart';
@@ -286,7 +287,20 @@ class _LessonViewState extends State<_LessonView> {
           label: 'PDF',
           icon: Icons.picture_as_pdf_outlined,
           completionLabel: 'أكملت القراءة',
-          content: PdfTab(pdfUrl: lesson.pdfUrl!),
+          // Multiple PDFs (migration 0012) → a titled list; tapping opens the
+          // full-screen viewer. The ONLY legacy branch: no usable rows but a
+          // mirrored pdfUrl still present (pre-migration / never-re-saved) →
+          // inline. The empty state is defensive — unreachable while the DB
+          // mirror trigger holds, but avoids a null-check crash if it doesn't.
+          content: lesson.orderedPdfs.isNotEmpty
+              ? PdfListTab(pdfs: lesson.orderedPdfs)
+              : (lesson.pdfUrl != null
+                    ? PdfTab(pdfUrl: lesson.pdfUrl!)
+                    : const SheikhyEmptyState(
+                        icon: Icons.picture_as_pdf_outlined,
+                        heading: 'لا توجد ملفات',
+                        subtitle: 'لم تُضَف ملفات PDF لهذا الدرس بعد',
+                      )),
         ),
       // Tab VISIBILITY keys off presence (lessonHasQuiz), so guests / unenrolled
       // on a lesson that genuinely has a quiz still see the tab — gated. Lessons

@@ -113,9 +113,11 @@ class LessonRepository {
     if (networkError != null) return networkError;
 
     try {
+      // Embed the lesson's PDFs in one round-trip (migration 0012). RLS on
+      // lesson_pdfs already filters the child rows to entitled/published content.
       final response = await _client
           .from('lessons')
-          .select()
+          .select('*, lesson_pdfs(*)')
           .eq('id', lessonId)
           .single();
       return Right(LessonEntity.fromJson(response));
