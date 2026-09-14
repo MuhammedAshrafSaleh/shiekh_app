@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/show_confirm_dialog.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/lesson_entity.dart';
@@ -653,9 +654,14 @@ class _QuestionTile extends StatelessWidget {
                     color: Colors.red,
                     size: 18,
                   ),
-                  onPressed: () => context
-                      .read<AdminLessonFormCubit>()
-                      .deleteQuizQuestion(question.id),
+                  onPressed: () async {
+                    final cubit = context.read<AdminLessonFormCubit>();
+                    final ok = await showConfirmDialog(
+                      context,
+                      title: 'هل تريد حذف السؤال؟',
+                    );
+                    if (ok) cubit.deleteQuizQuestion(question.id);
+                  },
                   tooltip: 'حذف',
                 ),
               ],
