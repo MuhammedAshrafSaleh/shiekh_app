@@ -1,6 +1,7 @@
 // lib/features/admin/lessons/cubit/admin_lesson_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../models/admin_quiz_question_entity.dart';
 import '../data/admin_lesson_repository.dart';
 import 'admin_lesson_state.dart';
 
@@ -58,12 +59,48 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       (f) async => emit(AdminLessonFormError(f.message)),
       (lesson) async {
         final qResult = await _repo.getQuizQuestions(lessonId);
+        final bankResult = await _repo.getQuizBankQuestions(
+          bookId: lesson.bookId,
+          excludeLessonId: lessonId,
+        );
+        final bankCount = bankResult.fold((_) => 0, (qs) => qs.length);
         qResult.fold(
           (f) => emit(AdminLessonFormError(f.message)),
-          (qs) =>
-              emit(AdminLessonFormLoaded(lesson: lesson, quizQuestions: qs)),
+          (qs) => emit(
+            AdminLessonFormLoaded(
+              lesson: lesson,
+              quizQuestions: qs,
+              bankCount: bankCount,
+            ),
+          ),
         );
       },
+    );
+  }
+
+  /// Fetches the quiz bank (other lessons of the same book) for the picker.
+  Future<List<AdminQuizQuestionEntity>> getBankQuestions() async {
+    final current = state;
+    if (current is! AdminLessonFormLoaded || current.lesson == null) return [];
+    final result = await _repo.getQuizBankQuestions(
+      bookId: current.lesson!.bookId,
+      excludeLessonId: current.lesson!.id,
+    );
+    return result.fold((_) => [], (qs) => qs);
+  }
+
+  /// Copies the selected bank questions into the current lesson, then reloads.
+  Future<void> importFromBank(List<AdminQuizQuestionEntity> selected) async {
+    final current = state;
+    if (current is! AdminLessonFormLoaded || current.lesson == null) return;
+    final lessonId = current.lesson!.id;
+    final result = await _repo.importQuizBankQuestions(
+      lessonId: lessonId,
+      questions: selected,
+    );
+    result.fold(
+      (f) => emit(AdminLessonFormError(f.message)),
+      (_) => load(lessonId: lessonId),
     );
   }
 
@@ -131,6 +168,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
           AdminLessonFormLoaded(
             lesson: current.lesson,
             quizQuestions: [...current.quizQuestions, q],
+            bankCount: current.bankCount,
           ),
         );
       }
@@ -161,7 +199,13 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
         final qs = current.quizQuestions
             .map((q) => q.id == updated.id ? updated : q)
             .toList();
-        emit(AdminLessonFormLoaded(lesson: current.lesson, quizQuestions: qs));
+        emit(
+          AdminLessonFormLoaded(
+            lesson: current.lesson,
+            quizQuestions: qs,
+            bankCount: current.bankCount,
+          ),
+        );
       }
     });
   }
@@ -174,7 +218,13 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
         final qs = current.quizQuestions
             .where((q) => q.id != questionId)
             .toList();
-        emit(AdminLessonFormLoaded(lesson: current.lesson, quizQuestions: qs));
+        emit(
+          AdminLessonFormLoaded(
+            lesson: current.lesson,
+            quizQuestions: qs,
+            bankCount: current.bankCount,
+          ),
+        );
       }
     });
   }

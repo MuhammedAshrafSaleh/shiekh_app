@@ -335,6 +335,14 @@ void main() {
     setUp(() {
       repo = _MockLessonRepo();
       cubit = AdminLessonFormCubit(repo);
+      // load() also fetches the quiz bank count; default to empty unless
+      // overridden by a specific test.
+      when(
+        () => repo.getQuizBankQuestions(
+          bookId: any(named: 'bookId'),
+          excludeLessonId: any(named: 'excludeLessonId'),
+        ),
+      ).thenAnswer((_) async => const Right(<AdminQuizQuestionEntity>[]));
     });
 
     tearDown(() => cubit.close());
@@ -664,6 +672,10 @@ void main() {
     setUp(() {
       repo = _MockExamRepo();
       cubit = AdminExamCubit(repo);
+      // load() also fetches the bank count; default to empty unless overridden.
+      when(
+        () => repo.getBankQuestions(any()),
+      ).thenAnswer((_) async => const Right(<AdminQuizQuestionEntity>[]));
     });
 
     tearDown(() => cubit.close());
@@ -688,6 +700,22 @@ void main() {
         final loaded = cubit.state as AdminExamLoaded;
         expect(loaded.settings, _settings);
         expect(loaded.questions, [_examQ]);
+      });
+
+      test('loads bankCount from the question bank', () async {
+        when(
+          () => repo.getSettings(any()),
+        ).thenAnswer((_) async => const Right(_settings));
+        when(
+          () => repo.getQuestions(any()),
+        ).thenAnswer((_) async => const Right([_examQ]));
+        when(
+          () => repo.getBankQuestions(any()),
+        ).thenAnswer((_) async => const Right([_quizQ, _quizQ, _quizQ]));
+
+        await cubit.load('book-1');
+
+        expect((cubit.state as AdminExamLoaded).bankCount, 3);
       });
 
       test('emits Loaded with null settings when no settings exist', () async {

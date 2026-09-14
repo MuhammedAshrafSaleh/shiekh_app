@@ -343,6 +343,85 @@ class AdminLessonRepository {
     }
   }
 
+  /// Quiz questions from the OTHER lessons of the same book — the bank for
+  /// "استيراد من البنك" on a lesson quiz. Excludes the current lesson.
+  Future<Either<Failure, List<AdminQuizQuestionEntity>>> getQuizBankQuestions({
+    required String bookId,
+    required String excludeLessonId,
+  }) async {
+    final net = _checkNetwork<List<AdminQuizQuestionEntity>>();
+    if (net != null) return net;
+    try {
+      final data = await _client
+          .from('lesson_quiz_questions')
+          .select('*, lessons!inner(book_id)')
+          .eq('lessons.book_id', bookId)
+          .neq('lesson_id', excludeLessonId)
+          .order('order_index', ascending: true)
+          .limit(200);
+      return Right(
+        (data as List)
+            .map(
+              (e) =>
+                  AdminQuizQuestionEntity.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      );
+    } on PostgrestException catch (e) {
+      _log.warning('getQuizBankQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Copies selected bank questions into [lessonId]'s quiz, appended after any
+  /// existing questions. Returns the number of rows inserted.
+  Future<Either<Failure, int>> importQuizBankQuestions({
+    required String lessonId,
+    required List<AdminQuizQuestionEntity> questions,
+  }) async {
+    final net = _checkNetwork<int>();
+    if (net != null) return net;
+    try {
+      final existing = await _client
+          .from('lesson_quiz_questions')
+          .select('order_index')
+          .eq('lesson_id', lessonId)
+          .order('order_index', ascending: false)
+          .limit(1);
+      final existingList = existing as List;
+      int nextOrder = existingList.isEmpty
+          ? 0
+          : ((existingList.first as Map<String, dynamic>)['order_index']
+                    as int) +
+                1;
+
+      final rows = questions
+          .map(
+            (q) => {
+              'lesson_id': lessonId,
+              'order_index': nextOrder++,
+              'question_text': q.questionText,
+              'choice_a': q.choiceA,
+              'choice_b': q.choiceB,
+              'choice_c': q.choiceC,
+              'choice_d': q.choiceD,
+              'correct_choice': q.correctChoice,
+            },
+          )
+          .toList();
+
+      await _client.from('lesson_quiz_questions').insert(rows);
+      return Right(rows.length);
+    } on PostgrestException catch (e) {
+      _log.warning('importQuizBankQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
   // ── AI question generation (generate-questions Edge Function) ──────────────
 
   /// Invokes the `generate-questions` Edge Function. The admin JWT is attached

@@ -11,6 +11,7 @@ import '../cubit/admin_lesson_cubit.dart';
 import '../cubit/admin_lesson_state.dart';
 import '../cubit/generate_questions_cubit.dart';
 import '../data/admin_lesson_repository.dart';
+import '../../exam/view/bank_import_page.dart';
 import 'admin_lesson_preview_page.dart';
 import 'generate_questions_page.dart';
 
@@ -180,6 +181,7 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
             ? state.lesson?.id
             : (state is AdminLessonFormSaved ? state.lesson.id : null);
         final currentLessonId = widget.lessonId ?? savedLessonId;
+        final bankCount = state is AdminLessonFormLoaded ? state.bankCount : 0;
 
         return Scaffold(
           appBar: AppBar(
@@ -222,6 +224,7 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
                     _QuizTab(
                       lessonId: currentLessonId,
                       questions: quizQuestions,
+                      bankCount: bankCount,
                     ),
                   ],
                 ),
@@ -409,8 +412,13 @@ class _PdfTab extends StatelessWidget {
 class _QuizTab extends StatelessWidget {
   final String? lessonId;
   final List<AdminQuizQuestionEntity> questions;
+  final int bankCount;
 
-  const _QuizTab({required this.lessonId, required this.questions});
+  const _QuizTab({
+    required this.lessonId,
+    required this.questions,
+    required this.bankCount,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -447,6 +455,13 @@ class _QuizTab extends StatelessWidget {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.download_outlined, size: 16),
+                    label: Text('استيراد من البنك ($bankCount)'),
+                    onPressed: bankCount == 0
+                        ? null
+                        : () => _showBankImport(context),
+                  ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.auto_awesome, size: 16),
                     label: const Text('توليد بالذكاء الاصطناعي'),
@@ -497,6 +512,33 @@ class _QuizTab extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  static Future<void> _showBankImport(BuildContext context) async {
+    final cubit = context.read<AdminLessonFormCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    final bank = await cubit.getBankQuestions();
+    if (!context.mounted) return;
+    if (bank.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('لا توجد أسئلة في دروس هذا الكتاب الأخرى'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    final selected = await Navigator.of(context)
+        .push<List<AdminQuizQuestionEntity>>(
+          MaterialPageRoute(
+            builder: (_) => BankImportPage(
+              bankQuestions: bank,
+              alreadyAddedSourceIds: const {},
+            ),
+          ),
+        );
+    if (selected == null || selected.isEmpty) return;
+    await cubit.importFromBank(selected);
   }
 
   static void _showQuestionDialog(

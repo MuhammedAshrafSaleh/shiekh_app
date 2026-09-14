@@ -19,10 +19,17 @@ class AdminExamCubit extends Cubit<AdminExamState> {
       settings,
     ) async {
       final qResult = await _repo.getQuestions(bookId);
+      final bankResult = await _repo.getBankQuestions(bookId);
+      final bankCount = bankResult.fold((_) => 0, (qs) => qs.length);
       qResult.fold(
         (f) => emit(AdminExamError(f.message)),
-        (questions) =>
-            emit(AdminExamLoaded(settings: settings, questions: questions)),
+        (questions) => emit(
+          AdminExamLoaded(
+            settings: settings,
+            questions: questions,
+            bankCount: bankCount,
+          ),
+        ),
       );
     });
   }
@@ -76,6 +83,7 @@ class AdminExamCubit extends Cubit<AdminExamState> {
           AdminExamLoaded(
             settings: current.settings,
             questions: [...current.questions, q],
+            bankCount: current.bankCount,
           ),
         );
       }
@@ -106,7 +114,13 @@ class AdminExamCubit extends Cubit<AdminExamState> {
         final qs = current.questions
             .map((q) => q.id == updated.id ? updated : q)
             .toList();
-        emit(AdminExamLoaded(settings: current.settings, questions: qs));
+        emit(
+          AdminExamLoaded(
+            settings: current.settings,
+            questions: qs,
+            bankCount: current.bankCount,
+          ),
+        );
       }
     });
   }
@@ -117,7 +131,13 @@ class AdminExamCubit extends Cubit<AdminExamState> {
       final current = state;
       if (current is AdminExamLoaded) {
         final qs = current.questions.where((q) => q.id != questionId).toList();
-        emit(AdminExamLoaded(settings: current.settings, questions: qs));
+        emit(
+          AdminExamLoaded(
+            settings: current.settings,
+            questions: qs,
+            bankCount: current.bankCount,
+          ),
+        );
       }
     });
   }
@@ -158,6 +178,7 @@ class AdminExamCubit extends Cubit<AdminExamState> {
         AdminExamLoaded(
           settings: current.settings,
           questions: reorderedQuestions,
+          bankCount: current.bankCount,
         ),
       );
     });

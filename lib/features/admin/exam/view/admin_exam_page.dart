@@ -9,6 +9,7 @@ import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/final_exam_settings_entity.dart';
 import '../cubit/admin_exam_cubit.dart';
 import '../cubit/admin_exam_state.dart';
+import 'bank_import_page.dart';
 
 class AdminExamPage extends StatelessWidget {
   final String bookId;
@@ -69,7 +70,11 @@ class AdminExamPage extends StatelessWidget {
               AdminExamLoaded() => TabBarView(
                 children: [
                   _SettingsTab(bookId: bookId, settings: state.settings),
-                  _QuestionsTab(bookId: bookId, questions: state.questions),
+                  _QuestionsTab(
+                    bookId: bookId,
+                    questions: state.questions,
+                    bankCount: state.bankCount,
+                  ),
                 ],
               ),
               AdminExamSaving() => const Center(
@@ -256,8 +261,13 @@ class _SettingsTabState extends State<_SettingsTab> {
 class _QuestionsTab extends StatelessWidget {
   final String bookId;
   final List<AdminFinalExamQuestionEntity> questions;
+  final int bankCount;
 
-  const _QuestionsTab({required this.bookId, required this.questions});
+  const _QuestionsTab({
+    required this.bookId,
+    required this.questions,
+    required this.bankCount,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +293,7 @@ class _QuestionsTab extends StatelessWidget {
                 children: [
                   TextButton.icon(
                     icon: const Icon(Icons.download_outlined, size: 16),
-                    label: const Text('استيراد من البنك'),
+                    label: Text('استيراد من البنك ($bankCount)'),
                     onPressed: () => _showBankImport(context),
                   ),
                   const SizedBox(width: AppSpacing.xs),
@@ -375,13 +385,21 @@ class _QuestionsTab extends StatelessWidget {
       );
       return;
     }
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => BlocProvider.value(
-        value: cubit,
-        child: _BankImportDialog(bankQuestions: bankQuestions),
-      ),
-    );
+    final alreadyAddedSourceIds = questions
+        .where((q) => q.sourceQuizQuestionId != null)
+        .map((q) => q.sourceQuizQuestionId!)
+        .toSet();
+    final selected = await Navigator.of(context)
+        .push<List<AdminQuizQuestionEntity>>(
+          MaterialPageRoute(
+            builder: (_) => BankImportPage(
+              bankQuestions: bankQuestions,
+              alreadyAddedSourceIds: alreadyAddedSourceIds,
+            ),
+          ),
+        );
+    if (selected == null || selected.isEmpty) return;
+    await cubit.importFromBank(selected);
   }
 }
 
@@ -655,81 +673,6 @@ class _ExamQuestionDialogState extends State<_ExamQuestionDialog> {
                   ),
                 )
               : const Text('حفظ'),
-        ),
-      ],
-    );
-  }
-}
-
-class _BankImportDialog extends StatefulWidget {
-  final List<AdminQuizQuestionEntity> bankQuestions;
-  const _BankImportDialog({required this.bankQuestions});
-
-  @override
-  State<_BankImportDialog> createState() => _BankImportDialogState();
-}
-
-class _BankImportDialogState extends State<_BankImportDialog> {
-  final Set<String> _selected = {};
-  bool _importing = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('استيراد من بنك الأسئلة'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: widget.bankQuestions.length,
-          itemBuilder: (context, i) {
-            final q = widget.bankQuestions[i];
-            return CheckboxListTile(
-              value: _selected.contains(q.id),
-              onChanged: (v) => setState(() {
-                if (v == true) {
-                  _selected.add(q.id);
-                } else {
-                  _selected.remove(q.id);
-                }
-              }),
-              title: Text(
-                q.questionText,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              dense: true,
-            );
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('إلغاء'),
-        ),
-        FilledButton(
-          onPressed: _importing || _selected.isEmpty
-              ? null
-              : () async {
-                  setState(() => _importing = true);
-                  final selected = widget.bankQuestions
-                      .where((q) => _selected.contains(q.id))
-                      .toList();
-                  final nav = Navigator.of(context);
-                  await context.read<AdminExamCubit>().importFromBank(selected);
-                  if (mounted) nav.pop();
-                },
-          child: _importing
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text('استيراد (${_selected.length})'),
         ),
       ],
     );

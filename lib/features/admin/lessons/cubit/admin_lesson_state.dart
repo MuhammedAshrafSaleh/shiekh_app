@@ -45,9 +45,18 @@ class AdminLessonFormLoading extends AdminLessonFormState {}
 class AdminLessonFormLoaded extends AdminLessonFormState {
   final LessonEntity? lesson;
   final List<AdminQuizQuestionEntity> quizQuestions;
-  const AdminLessonFormLoaded({this.lesson, required this.quizQuestions});
+
+  /// Number of quiz questions available in the other lessons of this book
+  /// (source for "استيراد من البنك" on the quiz tab).
+  final int bankCount;
+
+  const AdminLessonFormLoaded({
+    this.lesson,
+    required this.quizQuestions,
+    this.bankCount = 0,
+  });
   @override
-  List<Object?> get props => [lesson, quizQuestions];
+  List<Object?> get props => [lesson, quizQuestions, bankCount];
 }
 
 class AdminLessonFormSaving extends AdminLessonFormState {}

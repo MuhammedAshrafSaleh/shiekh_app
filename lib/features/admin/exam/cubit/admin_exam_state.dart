@@ -18,10 +18,18 @@ class AdminExamLoaded extends AdminExamState {
   final FinalExamSettingsEntity? settings;
   final List<AdminFinalExamQuestionEntity> questions;
 
-  const AdminExamLoaded({required this.settings, required this.questions});
+  /// Number of questions available in the lesson question bank for this book
+  /// (source for "استيراد من البنك"). Not the count attached to the exam.
+  final int bankCount;
+
+  const AdminExamLoaded({
+    required this.settings,
+    required this.questions,
+    this.bankCount = 0,
+  });
 
   @override
-  List<Object?> get props => [settings, questions];
+  List<Object?> get props => [settings, questions, bankCount];
 }
 
 class AdminExamSaving extends AdminExamState {}
