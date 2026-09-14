@@ -344,7 +344,8 @@ class AdminLessonRepository {
   }
 
   /// Quiz questions from the OTHER lessons of the same book — the bank for
-  /// "استيراد من البنك" on a lesson quiz. Excludes the current lesson.
+  /// "استيراد من البنك" on a lesson quiz. Excludes the current lesson and any
+  /// unreviewed AI-generated questions (approved only).
   Future<Either<Failure, List<AdminQuizQuestionEntity>>> getQuizBankQuestions({
     required String bookId,
     required String excludeLessonId,
@@ -356,6 +357,7 @@ class AdminLessonRepository {
           .from('lesson_quiz_questions')
           .select('*, lessons!inner(book_id)')
           .eq('lessons.book_id', bookId)
+          .eq('ai_review_status', 'approved')
           .neq('lesson_id', excludeLessonId)
           .order('order_index', ascending: true)
           .limit(200);
@@ -369,6 +371,32 @@ class AdminLessonRepository {
       );
     } on PostgrestException catch (e) {
       _log.warning('getQuizBankQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Count of approved bank questions from the book's other lessons — a
+  /// lightweight head query used only for the import button label.
+  Future<Either<Failure, int>> getQuizBankQuestionsCount({
+    required String bookId,
+    required String excludeLessonId,
+  }) async {
+    final net = _checkNetwork<int>();
+    if (net != null) return net;
+    try {
+      final res = await _client
+          .from('lesson_quiz_questions')
+          .select('id, lessons!inner(book_id)')
+          .eq('lessons.book_id', bookId)
+          .eq('ai_review_status', 'approved')
+          .neq('lesson_id', excludeLessonId)
+          .limit(1)
+          .count(CountOption.exact);
+      return Right(res.count);
+    } on PostgrestException catch (e) {
+      _log.warning('getQuizBankQuestionsCount: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

@@ -230,7 +230,8 @@ class AdminExamRepository {
     }
   }
 
-  /// Import quiz bank questions from all lessons of a book.
+  /// Quiz bank questions from all lessons of a book — approved only, so
+  /// unreviewed AI-generated questions never reach the exam.
   Future<Either<Failure, List<AdminQuizQuestionEntity>>> getBankQuestions(
     String bookId,
   ) async {
@@ -242,6 +243,7 @@ class AdminExamRepository {
           .from('lesson_quiz_questions')
           .select('*, lessons!inner(book_id)')
           .eq('lessons.book_id', bookId)
+          .eq('ai_review_status', 'approved')
           .order('order_index', ascending: true)
           .limit(200);
       return Right(
@@ -254,6 +256,28 @@ class AdminExamRepository {
       );
     } on PostgrestException catch (e) {
       _log.warning('getBankQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Count of approved bank questions for [bookId] — a lightweight head query
+  /// (exact count, no rows fetched) used only for the import button label.
+  Future<Either<Failure, int>> getBankQuestionsCount(String bookId) async {
+    final net = _checkNetwork<int>();
+    if (net != null) return net;
+    try {
+      final res = await _client
+          .from('lesson_quiz_questions')
+          .select('id, lessons!inner(book_id)')
+          .eq('lessons.book_id', bookId)
+          .eq('ai_review_status', 'approved')
+          .limit(1)
+          .count(CountOption.exact);
+      return Right(res.count);
+    } on PostgrestException catch (e) {
+      _log.warning('getBankQuestionsCount: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

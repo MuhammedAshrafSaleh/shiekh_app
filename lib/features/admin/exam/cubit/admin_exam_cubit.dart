@@ -18,9 +18,12 @@ class AdminExamCubit extends Cubit<AdminExamState> {
     await settingsResult.fold((f) async => emit(AdminExamError(f.message)), (
       settings,
     ) async {
-      final qResult = await _repo.getQuestions(bookId);
-      final bankResult = await _repo.getBankQuestions(bookId);
-      final bankCount = bankResult.fold((_) => 0, (qs) => qs.length);
+      // Questions and the bank count are independent — fetch them concurrently.
+      final (qResult, bankCountResult) = await (
+        _repo.getQuestions(bookId),
+        _repo.getBankQuestionsCount(bookId),
+      ).wait;
+      final bankCount = bankCountResult.fold((_) => 0, (c) => c);
       qResult.fold(
         (f) => emit(AdminExamError(f.message)),
         (questions) => emit(

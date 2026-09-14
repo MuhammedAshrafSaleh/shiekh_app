@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/bank_import_page.dart';
 import '../../../../core/widgets/show_confirm_dialog.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
@@ -12,7 +13,6 @@ import '../cubit/admin_lesson_cubit.dart';
 import '../cubit/admin_lesson_state.dart';
 import '../cubit/generate_questions_cubit.dart';
 import '../data/admin_lesson_repository.dart';
-import '../../exam/view/bank_import_page.dart';
 import 'admin_lesson_preview_page.dart';
 import 'generate_questions_page.dart';
 

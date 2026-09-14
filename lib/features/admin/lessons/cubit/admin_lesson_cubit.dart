@@ -58,12 +58,15 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     await lessonResult.fold(
       (f) async => emit(AdminLessonFormError(f.message)),
       (lesson) async {
-        final qResult = await _repo.getQuizQuestions(lessonId);
-        final bankResult = await _repo.getQuizBankQuestions(
-          bookId: lesson.bookId,
-          excludeLessonId: lessonId,
-        );
-        final bankCount = bankResult.fold((_) => 0, (qs) => qs.length);
+        // Quiz questions and the bank count are independent — fetch concurrently.
+        final (qResult, bankCountResult) = await (
+          _repo.getQuizQuestions(lessonId),
+          _repo.getQuizBankQuestionsCount(
+            bookId: lesson.bookId,
+            excludeLessonId: lessonId,
+          ),
+        ).wait;
+        final bankCount = bankCountResult.fold((_) => 0, (c) => c);
         qResult.fold(
           (f) => emit(AdminLessonFormError(f.message)),
           (qs) => emit(

@@ -1,4 +1,4 @@
-// lib/features/admin/exam/cubit/bank_import_cubit.dart
+// lib/core/widgets/bank_import_cubit.dart
 //
 // Lightweight selection state for the full-screen bank-import picker
 // (BankImportPage). Holds the set of currently-selected bank question ids.

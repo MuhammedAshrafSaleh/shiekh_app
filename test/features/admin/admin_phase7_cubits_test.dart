@@ -335,14 +335,14 @@ void main() {
     setUp(() {
       repo = _MockLessonRepo();
       cubit = AdminLessonFormCubit(repo);
-      // load() also fetches the quiz bank count; default to empty unless
+      // load() also fetches the quiz bank count; default to 0 unless
       // overridden by a specific test.
       when(
-        () => repo.getQuizBankQuestions(
+        () => repo.getQuizBankQuestionsCount(
           bookId: any(named: 'bookId'),
           excludeLessonId: any(named: 'excludeLessonId'),
         ),
-      ).thenAnswer((_) async => const Right(<AdminQuizQuestionEntity>[]));
+      ).thenAnswer((_) async => const Right(0));
     });
 
     tearDown(() => cubit.close());
@@ -672,10 +672,10 @@ void main() {
     setUp(() {
       repo = _MockExamRepo();
       cubit = AdminExamCubit(repo);
-      // load() also fetches the bank count; default to empty unless overridden.
+      // load() also fetches the bank count; default to 0 unless overridden.
       when(
-        () => repo.getBankQuestions(any()),
-      ).thenAnswer((_) async => const Right(<AdminQuizQuestionEntity>[]));
+        () => repo.getBankQuestionsCount(any()),
+      ).thenAnswer((_) async => const Right(0));
     });
 
     tearDown(() => cubit.close());
@@ -710,8 +710,8 @@ void main() {
           () => repo.getQuestions(any()),
         ).thenAnswer((_) async => const Right([_examQ]));
         when(
-          () => repo.getBankQuestions(any()),
-        ).thenAnswer((_) async => const Right([_quizQ, _quizQ, _quizQ]));
+          () => repo.getBankQuestionsCount(any()),
+        ).thenAnswer((_) async => const Right(3));
 
         await cubit.load('book-1');
 

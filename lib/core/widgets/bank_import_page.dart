@@ -1,21 +1,20 @@
-// lib/features/admin/exam/view/bank_import_page.dart
+// lib/core/widgets/bank_import_page.dart
 //
-// Full-screen picker for importing questions from the lesson question bank into
-// the book's final exam. Replaces the cramped _BankImportDialog: shows each
-// question's full text AND all four choices (correct answer marked), supports
-// multi-select, and disables questions already imported (shown with a
-// "تمت الإضافة" badge). Returns the selected List<AdminQuizQuestionEntity> via
-// Navigator.pop, or null if discarded.
+// Shared full-screen picker for importing questions from a question bank into
+// the final exam OR a lesson quiz. Shows each question's full text AND all four
+// choices (correct answer marked), supports multi-select, and disables
+// questions already imported (shown with a "تمت الإضافة" badge). Returns the
+// selected List<AdminQuizQuestionEntity> via Navigator.pop, or null if discarded.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/sheikhy_button.dart';
-import '../../../../core/widgets/sheikhy_checkbox.dart';
-import '../../../../models/admin_quiz_question_entity.dart';
-import '../cubit/bank_import_cubit.dart';
+import '../constants/app_spacing.dart';
+import '../theme/app_colors.dart';
+import '../../models/admin_quiz_question_entity.dart';
+import 'bank_import_cubit.dart';
+import 'empty_state.dart';
+import 'sheikhy_button.dart';
+import 'sheikhy_checkbox.dart';
 
 class BankImportPage extends StatelessWidget {
   final List<AdminQuizQuestionEntity> bankQuestions;
@@ -170,7 +169,7 @@ class _BankQuestionCard extends StatelessWidget {
                   color: isCorrect
                       ? (alreadyAdded
                             ? theme.colorScheme.outline
-                            : AppColors.success)
+                            : theme.colorScheme.primary)
                       : theme.colorScheme.outline,
                 ),
                 const SizedBox(width: AppSpacing.xs),
@@ -179,7 +178,7 @@ class _BankQuestionCard extends StatelessWidget {
                     question.choiceLabel(key),
                     style: TextStyle(
                       color: isCorrect && !alreadyAdded
-                          ? AppColors.success
+                          ? theme.colorScheme.primary
                           : baseColor,
                       fontWeight: isCorrect ? FontWeight.w600 : null,
                     ),
