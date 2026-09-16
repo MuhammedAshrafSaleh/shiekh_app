@@ -56,36 +56,35 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       return;
     }
     final lessonResult = await _repo.getLesson(lessonId);
-    await lessonResult.fold(
-      (f) async => emit(AdminLessonFormError(f.message)),
-      (lesson) async {
-        // Quiz questions and the bank count are independent — fetch concurrently.
-        final (qResult, bankCountResult) = await (
-          _repo.getQuizQuestions(lessonId),
-          _repo.getQuizBankQuestionsCount(
-            bookId: lesson.bookId,
-            excludeLessonId: lessonId,
+    await lessonResult.fold((f) async => emit(AdminLessonFormError(f.message)), (
+      lesson,
+    ) async {
+      // Quiz questions and the bank count are independent — fetch concurrently.
+      final (qResult, bankCountResult) = await (
+        _repo.getQuizQuestions(lessonId),
+        _repo.getQuizBankQuestionsCount(
+          bookId: lesson.bookId,
+          excludeLessonId: lessonId,
+        ),
+      ).wait;
+      final bankCount = bankCountResult.fold((_) => 0, (c) => c);
+      // PDFs come embedded with the lesson (getLesson selects lesson_pdfs(*)).
+      // Sort a copy by order_index; show ALL rows so the admin can manage even
+      // a (hypothetical) empty-url row that orderedPdfs would hide.
+      final pdfs = [...lesson.pdfs]
+        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      qResult.fold(
+        (f) => emit(AdminLessonFormError(f.message)),
+        (qs) => emit(
+          AdminLessonFormLoaded(
+            lesson: lesson,
+            quizQuestions: qs,
+            pdfs: pdfs,
+            bankCount: bankCount,
           ),
-        ).wait;
-        final bankCount = bankCountResult.fold((_) => 0, (c) => c);
-        // PDFs come embedded with the lesson (getLesson selects lesson_pdfs(*)).
-        // Sort a copy by order_index; show ALL rows so the admin can manage even
-        // a (hypothetical) empty-url row that orderedPdfs would hide.
-        final pdfs = [...lesson.pdfs]
-          ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
-        qResult.fold(
-          (f) => emit(AdminLessonFormError(f.message)),
-          (qs) => emit(
-            AdminLessonFormLoaded(
-              lesson: lesson,
-              quizQuestions: qs,
-              pdfs: pdfs,
-              bankCount: bankCount,
-            ),
-          ),
-        );
-      },
-    );
+        ),
+      );
+    });
   }
 
   /// Fetches the quiz bank (other lessons of the same book) for the picker.
@@ -193,6 +192,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     required String choiceC,
     required String choiceD,
     required String correctChoice,
+    bool markReviewed = false,
   }) async {
     final current = state;
     final result = await _repo.updateQuizQuestion(
@@ -203,6 +203,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       choiceC: choiceC,
       choiceD: choiceD,
       correctChoice: correctChoice,
+      markReviewed: markReviewed,
     );
     result.fold((f) => emit(AdminLessonFormError(f.message)), (updated) {
       if (current is AdminLessonFormLoaded) {
@@ -219,6 +220,39 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
         );
       }
     });
+  }
+
+  /// Approves a single pending AI question and swaps the reviewed row in place.
+  Future<void> approveQuizQuestion(String questionId) async {
+    final current = state;
+    final result = await _repo.approveQuestion(questionId);
+    result.fold((f) => emit(AdminLessonFormError(f.message)), (updated) {
+      if (current is AdminLessonFormLoaded) {
+        final qs = current.quizQuestions
+            .map((q) => q.id == updated.id ? updated : q)
+            .toList();
+        emit(
+          AdminLessonFormLoaded(
+            lesson: current.lesson,
+            quizQuestions: qs,
+            pdfs: current.pdfs,
+            bankCount: current.bankCount,
+          ),
+        );
+      }
+    });
+  }
+
+  /// Bulk-approves every pending AI question in the current lesson, then reloads.
+  Future<void> approveAllPending() async {
+    final current = state;
+    if (current is! AdminLessonFormLoaded || current.lesson == null) return;
+    final lessonId = current.lesson!.id;
+    final result = await _repo.approveAllForLesson(lessonId);
+    result.fold(
+      (f) => emit(AdminLessonFormError(f.message)),
+      (_) => load(lessonId: lessonId),
+    );
   }
 
   Future<void> deleteQuizQuestion(String questionId) async {

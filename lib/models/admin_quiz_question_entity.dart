@@ -19,6 +19,11 @@ class AdminQuizQuestionEntity extends Equatable {
   final String aiReviewStatus;
   final String? difficulty;
 
+  /// Review aids shown for pending AI questions: a verbatim quote from the
+  /// transcript and a short rationale. Null for manual questions.
+  final String? explanation;
+  final String? sourceQuote;
+
   const AdminQuizQuestionEntity({
     required this.id,
     required this.lessonId,
@@ -32,6 +37,8 @@ class AdminQuizQuestionEntity extends Equatable {
     this.source = 'manual',
     this.aiReviewStatus = 'approved',
     this.difficulty,
+    this.explanation,
+    this.sourceQuote,
   });
 
   factory AdminQuizQuestionEntity.fromJson(Map<String, dynamic> json) {
@@ -48,6 +55,8 @@ class AdminQuizQuestionEntity extends Equatable {
       source: json['source'] as String? ?? 'manual',
       aiReviewStatus: json['ai_review_status'] as String? ?? 'approved',
       difficulty: json['difficulty'] as String?,
+      explanation: json['explanation'] as String?,
+      sourceQuote: json['source_quote'] as String?,
     );
   }
 
@@ -76,5 +85,7 @@ class AdminQuizQuestionEntity extends Equatable {
     source,
     aiReviewStatus,
     difficulty,
+    explanation,
+    sourceQuote,
   ];
 }

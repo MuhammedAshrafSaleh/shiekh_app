@@ -17,6 +17,7 @@ import '../../../../models/admin_quiz_question_entity.dart';
 import '../../../../models/generated_questions_result_entity.dart';
 import '../../../../models/lesson_entity.dart';
 import '../../../../models/lesson_pdf_entity.dart';
+import '../../../../models/transcription_result_entity.dart';
 
 class AdminLessonRepository {
   final SupabaseClient _client;
@@ -409,6 +410,10 @@ class AdminLessonRepository {
     }
   }
 
+  /// Updates a question's content. When [markReviewed] is true (editing a
+  /// pending AI question), the same write also approves it and records it as
+  /// admin-edited — one round-trip. Manual edits leave [markReviewed] false so
+  /// source/review status are untouched.
   Future<Either<Failure, AdminQuizQuestionEntity>> updateQuizQuestion({
     required String id,
     required String questionText,
@@ -417,26 +422,83 @@ class AdminLessonRepository {
     required String choiceC,
     required String choiceD,
     required String correctChoice,
+    bool markReviewed = false,
   }) async {
     final net = _checkNetwork<AdminQuizQuestionEntity>();
     if (net != null) return net;
     try {
+      final payload = <String, dynamic>{
+        'question_text': questionText,
+        'choice_a': choiceA,
+        'choice_b': choiceB,
+        'choice_c': choiceC,
+        'choice_d': choiceD,
+        'correct_choice': correctChoice,
+      };
+      if (markReviewed) {
+        payload['source'] = 'edited_by_admin';
+        payload['ai_review_status'] = 'approved';
+        payload['reviewed_by'] = _client.auth.currentUser?.id;
+        payload['reviewed_at'] = DateTime.now().toIso8601String();
+      }
       final data = await _client
           .from('lesson_quiz_questions')
-          .update({
-            'question_text': questionText,
-            'choice_a': choiceA,
-            'choice_b': choiceB,
-            'choice_c': choiceC,
-            'choice_d': choiceD,
-            'correct_choice': correctChoice,
-          })
+          .update(payload)
           .eq('id', id)
           .select()
           .single();
       return Right(AdminQuizQuestionEntity.fromJson(data));
     } on PostgrestException catch (e) {
       _log.warning('updateQuizQuestion: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Approves a single pending AI question, stamping the reviewer + time.
+  Future<Either<Failure, AdminQuizQuestionEntity>> approveQuestion(
+    String id,
+  ) async {
+    final net = _checkNetwork<AdminQuizQuestionEntity>();
+    if (net != null) return net;
+    try {
+      final data = await _client
+          .from('lesson_quiz_questions')
+          .update({
+            'ai_review_status': 'approved',
+            'reviewed_by': _client.auth.currentUser?.id,
+            'reviewed_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id)
+          .select()
+          .single();
+      return Right(AdminQuizQuestionEntity.fromJson(data));
+    } on PostgrestException catch (e) {
+      _log.warning('approveQuestion: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Bulk-approves every still-pending AI question in a lesson.
+  Future<Either<Failure, Unit>> approveAllForLesson(String lessonId) async {
+    final net = _checkNetwork<Unit>();
+    if (net != null) return net;
+    try {
+      await _client
+          .from('lesson_quiz_questions')
+          .update({
+            'ai_review_status': 'approved',
+            'reviewed_by': _client.auth.currentUser?.id,
+            'reviewed_at': DateTime.now().toIso8601String(),
+          })
+          .eq('lesson_id', lessonId)
+          .eq('ai_review_status', 'pending');
+      return const Right(unit);
+    } on PostgrestException catch (e) {
+      _log.warning('approveAllForLesson: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
@@ -610,6 +672,52 @@ class AdminLessonRepository {
     } on ClientException catch (e) {
       _log.warning('generateQuestions transport: $e');
       return Left(NetworkFailure('انقطع الاتصال أثناء التوليد، حاول مرة أخرى'));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Invokes the `transcribe-lesson` Edge Function to transcribe a lesson's
+  /// video (YouTube) or audio (Drive) into [lessons.transcript]. Long-running:
+  /// the function self-caps at ~100 s, but has extra pre-Gemini overhead (Drive
+  /// download + Gemini Files API upload + polling for ACTIVE) before the model
+  /// call, so the client deadline is wider than generateQuestions'. Returns the
+  /// full transcript so the caller can chain it into generateQuestions.
+  Future<Either<Failure, TranscriptionResultEntity>> transcribeLesson({
+    required String lessonId,
+    required String sourceType, // 'youtube' | 'drive_audio'
+    required String sourceUrl,
+  }) async {
+    final net = _checkNetwork<TranscriptionResultEntity>();
+    if (net != null) return net;
+    try {
+      final res = await _client.functions
+          .invoke(
+            'transcribe-lesson',
+            body: {
+              'lesson_id': lessonId,
+              'source_type': sourceType,
+              'source_url': sourceUrl,
+            },
+          )
+          .timeout(const Duration(seconds: 170));
+      final data = res.data as Map<String, dynamic>;
+      return Right(TranscriptionResultEntity.fromJson(data));
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final msg = (details is Map && details['error'] != null)
+          ? details['error'].toString()
+          : 'تعذّر تفريغ المحاضرة، يرجى المحاولة مرة أخرى';
+      _log.warning('transcribeLesson http ${e.status}: $msg');
+      return Left(ServerFailure(msg));
+    } on TimeoutException {
+      _log.warning('transcribeLesson: client deadline exceeded');
+      return Left(
+        ServerFailure('استغرق التفريغ وقتًا أطول من المتوقع، حاول مرة أخرى'),
+      );
+    } on ClientException catch (e) {
+      _log.warning('transcribeLesson transport: $e');
+      return Left(NetworkFailure('انقطع الاتصال أثناء التفريغ، حاول مرة أخرى'));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
     }

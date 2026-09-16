@@ -9,8 +9,12 @@ abstract class GenerateQuestionsState extends Equatable {
 
 class GenerateQuestionsInitial extends GenerateQuestionsState {}
 
-/// Long-running generation in progress (30–130+ s). Drives the "may take a
-/// minute or more" loading UI.
+/// Phase one of the link-based flow: transcribing the lesson's video/audio
+/// (~65–100 s). Drives the "جاري تفريغ المحاضرة..." loading UI.
+class GenerateQuestionsTranscribing extends GenerateQuestionsState {}
+
+/// Long-running generation in progress (30–130+ s). Drives the "جاري توليد
+/// الأسئلة..." loading UI. Also phase two of the link-based flow.
 class GenerateQuestionsGenerating extends GenerateQuestionsState {}
 
 class GenerateQuestionsSuccess extends GenerateQuestionsState {
@@ -22,7 +26,13 @@ class GenerateQuestionsSuccess extends GenerateQuestionsState {
 
 class GenerateQuestionsError extends GenerateQuestionsState {
   final String message;
-  const GenerateQuestionsError(this.message);
+
+  /// Set only when transcription succeeded but question generation then failed:
+  /// the transcript is already saved server-side, so the page can offer a
+  /// one-tap "generate only" retry without re-transcribing.
+  final String? savedTranscript;
+
+  const GenerateQuestionsError(this.message, {this.savedTranscript});
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, savedTranscript];
 }

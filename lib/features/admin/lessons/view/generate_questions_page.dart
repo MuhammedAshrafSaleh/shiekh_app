@@ -4,17 +4,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../models/lesson_entity.dart';
 import '../cubit/generate_questions_cubit.dart';
 import '../cubit/generate_questions_state.dart';
 
-/// Admin screen: paste a lecture transcript and generate quiz questions with
-/// AI. Generated questions land as ai_review_status='pending' (invisible to
-/// students) and must be reviewed on a later screen. Pops with `true` on
-/// success so the caller can refresh the lesson's question list.
+/// Where the transcript comes from before questions are generated.
+enum _SourceMode { pasteText, youtube, driveAudio }
+
+/// Admin screen: produce quiz questions with AI. The transcript can be pasted
+/// directly, or auto-transcribed from the lesson's YouTube video / Drive audio
+/// link (a chained two-phase call: transcribe → generate). Generated questions
+/// land as ai_review_status='pending' (invisible to students) and must be
+/// reviewed later. Pops with `true` on success so the caller can refresh the
+/// lesson's question list.
 class GenerateQuestionsPage extends StatefulWidget {
   final String lessonId;
 
-  const GenerateQuestionsPage({super.key, required this.lessonId});
+  /// The loaded lesson — used to prefill link fields and detect an already-saved
+  /// transcript. Nullable so the page still works if it wasn't provided.
+  final LessonEntity? lesson;
+
+  const GenerateQuestionsPage({super.key, required this.lessonId, this.lesson});
 
   @override
   State<GenerateQuestionsPage> createState() => _GenerateQuestionsPageState();
@@ -23,7 +33,19 @@ class GenerateQuestionsPage extends StatefulWidget {
 class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
   static const int _maxCount = 100;
 
+  _SourceMode _mode = _SourceMode.pasteText;
+
+  // Captured so we can show/clear SnackBars safely (they outlive this page).
+  late ScaffoldMessengerState _messenger;
+  // True once we've queued the success SnackBar + popped — so dispose doesn't
+  // clear that message on the way out.
+  bool _showedSuccess = false;
+  // Tracks the transcribe→generate transition to fire the "phase 1 done" toast.
+  bool _wasTranscribing = false;
+
   final _transcriptCtrl = TextEditingController();
+  final _youtubeCtrl = TextEditingController();
+  final _driveCtrl = TextEditingController();
   final _countCtrl = TextEditingController(text: '25');
   final _easyCtrl = TextEditingController(text: '10');
   final _mediumCtrl = TextEditingController(text: '10');
@@ -32,14 +54,30 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
   @override
   void initState() {
     super.initState();
-    // Toggle the submit button's enabled state as the required inputs change.
+    // Prefill link fields from the lesson as a convenience.
+    _youtubeCtrl.text = widget.lesson?.videoUrl ?? '';
+    _driveCtrl.text = widget.lesson?.audioUrl ?? '';
+    // Toggle the submit button's enabled state as the relevant inputs change.
     _transcriptCtrl.addListener(_onInputChanged);
+    _youtubeCtrl.addListener(_onInputChanged);
+    _driveCtrl.addListener(_onInputChanged);
     _countCtrl.addListener(_onInputChanged);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.of(context);
+  }
+
+  @override
   void dispose() {
+    // Dismiss any pending (e.g. error) SnackBars whose actions would target this
+    // now-unmounted page; keep the success message so the admin still sees it.
+    if (!_showedSuccess) _messenger.clearSnackBars();
     _transcriptCtrl.dispose();
+    _youtubeCtrl.dispose();
+    _driveCtrl.dispose();
     _countCtrl.dispose();
     _easyCtrl.dispose();
     _mediumCtrl.dispose();
@@ -53,38 +91,84 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
 
   bool get _canSubmit {
     final count = _requestedCount;
-    return _transcriptCtrl.text.trim().isNotEmpty && count != null && count > 0;
+    if (count == null || count <= 0) return false;
+    switch (_mode) {
+      case _SourceMode.pasteText:
+        return _transcriptCtrl.text.trim().isNotEmpty;
+      case _SourceMode.youtube:
+        return _youtubeCtrl.text.trim().isNotEmpty;
+      case _SourceMode.driveAudio:
+        return _driveCtrl.text.trim().isNotEmpty;
+    }
   }
 
-  void _submit() {
-    final transcript = _transcriptCtrl.text.trim();
+  /// Validates the shared count/difficulty inputs. Returns the parsed values, or
+  /// null if invalid (a warning is shown).
+  ({int count, Map<String, int> mix})? _validateShared() {
     final count = _requestedCount;
-    if (transcript.isEmpty || count == null || count <= 0) return;
-
+    if (count == null || count <= 0) return null;
     if (count > _maxCount) {
       _showWarning('الحد الأقصى لعدد الأسئلة هو $_maxCount');
-      return;
+      return null;
     }
-
     final easy = int.tryParse(_easyCtrl.text.trim()) ?? 0;
     final medium = int.tryParse(_mediumCtrl.text.trim()) ?? 0;
     final hard = int.tryParse(_hardCtrl.text.trim()) ?? 0;
     if (easy < 0 || medium < 0 || hard < 0) {
       _showWarning('توزيع الصعوبة يجب أن يكون أرقامًا موجبة');
-      return;
+      return null;
     }
+    return (count: count, mix: {'easy': easy, 'medium': medium, 'hard': hard});
+  }
 
+  void _submit() {
+    final shared = _validateShared();
+    if (shared == null) return;
+    FocusScope.of(context).unfocus();
+
+    final cubit = context.read<GenerateQuestionsCubit>();
+    switch (_mode) {
+      case _SourceMode.pasteText:
+        final transcript = _transcriptCtrl.text.trim();
+        if (transcript.isEmpty) return;
+        cubit.generate(
+          lessonId: widget.lessonId,
+          transcriptText: transcript,
+          requestedCount: shared.count,
+          difficultyMix: shared.mix,
+        );
+      case _SourceMode.youtube:
+      case _SourceMode.driveAudio:
+        final isYoutube = _mode == _SourceMode.youtube;
+        final url = (isYoutube ? _youtubeCtrl : _driveCtrl).text.trim();
+        if (url.isEmpty) return;
+        cubit.transcribeAndGenerate(
+          lessonId: widget.lessonId,
+          sourceType: isYoutube ? 'youtube' : 'drive_audio',
+          sourceUrl: url,
+          requestedCount: shared.count,
+          difficultyMix: shared.mix,
+        );
+    }
+  }
+
+  /// Generate from an already-saved transcript — skips re-transcription (and the
+  /// quota slot it would cost).
+  void _useSavedTranscript(String transcript) {
+    final shared = _validateShared();
+    if (shared == null) return;
     FocusScope.of(context).unfocus();
     context.read<GenerateQuestionsCubit>().generate(
       lessonId: widget.lessonId,
       transcriptText: transcript,
-      requestedCount: count,
-      difficultyMix: {'easy': easy, 'medium': medium, 'hard': hard},
+      requestedCount: shared.count,
+      difficultyMix: shared.mix,
+      savedTranscript: transcript,
     );
   }
 
   void _showWarning(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    _messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.orange,
@@ -97,8 +181,27 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
   Widget build(BuildContext context) {
     return BlocConsumer<GenerateQuestionsCubit, GenerateQuestionsState>(
       listener: (context, state) {
-        if (state is GenerateQuestionsSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
+        if (state is GenerateQuestionsTranscribing) {
+          _wasTranscribing = true;
+        } else if (state is GenerateQuestionsGenerating) {
+          // Phase 1 → phase 2 transition: reassure the admin before the long
+          // generation spinner.
+          if (_wasTranscribing) {
+            _wasTranscribing = false;
+            _messenger.showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'تم تفريغ المحاضرة بنجاح، جاري الآن توليد الأسئلة...',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 5),
+              ),
+            );
+          }
+        } else if (state is GenerateQuestionsSuccess) {
+          _wasTranscribing = false;
+          _showedSuccess = true;
+          _messenger.showSnackBar(
             SnackBar(
               content: Text(
                 'تم توليد ${state.insertedCount} سؤال، بانتظار المراجعة',
@@ -109,8 +212,12 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
           );
           Navigator.of(context).pop(true);
         } else if (state is GenerateQuestionsError) {
-          // Non-fatal: keep the inputs so the admin can retry immediately.
-          ScaffoldMessenger.of(context).showSnackBar(
+          _wasTranscribing = false;
+          // Non-fatal: keep the inputs so the admin can retry immediately. When a
+          // transcript is already saved, the retry action reuses it (no
+          // re-transcribe); otherwise it re-runs the current source.
+          final saved = state.savedTranscript;
+          _messenger.showSnackBar(
             SnackBar(
               content: Text(state.message),
               backgroundColor: Colors.red,
@@ -118,18 +225,26 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
               action: SnackBarAction(
                 label: 'إعادة المحاولة',
                 textColor: Colors.white,
-                onPressed: _submit,
+                onPressed: () {
+                  // SnackBars outlive the page — do nothing if we're gone.
+                  if (!mounted) return;
+                  saved != null ? _useSavedTranscript(saved) : _submit();
+                },
               ),
             ),
           );
         }
       },
       builder: (context, state) {
+        final isTranscribing = state is GenerateQuestionsTranscribing;
         final isGenerating = state is GenerateQuestionsGenerating;
+        final isBusy = isTranscribing || isGenerating;
         return Scaffold(
           resizeToAvoidBottomInset: true,
           appBar: AppBar(title: const Text('توليد أسئلة بالذكاء الاصطناعي')),
-          body: isGenerating ? const _GeneratingView() : _buildForm(context),
+          body: isBusy
+              ? _BusyView(isTranscribing: isTranscribing)
+              : _buildForm(context, state),
           bottomNavigationBar: SafeArea(
             child: Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(
@@ -138,19 +253,36 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
                 AppSpacing.md,
                 AppSpacing.md,
               ),
-              child: FilledButton.icon(
-                icon: isGenerating
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.auto_awesome),
-                label: const Text('توليد الأسئلة'),
-                onPressed: (isGenerating || !_canSubmit) ? null : _submit,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Persistent inline error so it stays readable after the
+                  // SnackBar auto-dismisses.
+                  if (!isBusy && state is GenerateQuestionsError) ...[
+                    Text(
+                      state.message,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                  FilledButton.icon(
+                    icon: isBusy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.auto_awesome),
+                    label: const Text('توليد الأسئلة'),
+                    onPressed: (isBusy || !_canSubmit) ? null : _submit,
+                  ),
+                ],
               ),
             ),
           ),
@@ -159,25 +291,53 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     );
   }
 
-  Widget _buildForm(BuildContext context) {
+  Widget _buildForm(BuildContext context, GenerateQuestionsState state) {
     final theme = Theme.of(context);
+    // Resolve a saved transcript from in-memory error state first (phase-2 failed
+    // this session), then fall back to the initially-loaded lesson.
+    final inMemory = state is GenerateQuestionsError
+        ? state.savedTranscript
+        : null;
+    final savedTranscript =
+        inMemory ??
+        ((widget.lesson?.hasSavedTranscript ?? false)
+            ? widget.lesson!.transcript
+            : null);
+
     return SingleChildScrollView(
       padding: const EdgeInsetsDirectional.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _transcriptCtrl,
-            minLines: 8,
-            maxLines: null,
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            decoration: const InputDecoration(
-              labelText: 'نص المحاضرة *',
-              hintText: 'الصق نص المحاضرة هنا',
-              alignLabelWithHint: true,
-            ),
+          SegmentedButton<_SourceMode>(
+            segments: const [
+              ButtonSegment(
+                value: _SourceMode.pasteText,
+                label: Text('لصق نص'),
+                icon: Icon(Icons.notes),
+              ),
+              ButtonSegment(
+                value: _SourceMode.youtube,
+                label: Text('لينك يوتيوب'),
+                icon: Icon(Icons.smart_display_outlined),
+              ),
+              ButtonSegment(
+                value: _SourceMode.driveAudio,
+                label: Text('لينك صوت Drive'),
+                icon: Icon(Icons.audiotrack),
+              ),
+            ],
+            selected: {_mode},
+            onSelectionChanged: (s) => setState(() => _mode = s.first),
           ),
+          const SizedBox(height: AppSpacing.md),
+          if (savedTranscript != null) ...[
+            _SavedTranscriptNotice(
+              onUse: () => _useSavedTranscript(savedTranscript),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          _buildSourceInput(),
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _countCtrl,
@@ -223,6 +383,81 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
       ),
     );
   }
+
+  Widget _buildSourceInput() {
+    switch (_mode) {
+      case _SourceMode.pasteText:
+        return TextField(
+          controller: _transcriptCtrl,
+          minLines: 8,
+          maxLines: null,
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.newline,
+          decoration: const InputDecoration(
+            labelText: 'نص المحاضرة *',
+            hintText: 'الصق نص المحاضرة هنا',
+            alignLabelWithHint: true,
+          ),
+        );
+      case _SourceMode.youtube:
+        return TextField(
+          controller: _youtubeCtrl,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(
+            labelText: 'رابط فيديو يوتيوب *',
+            hintText: 'https://youtu.be/...',
+            helperText: 'سيتم تفريغ الفيديو تلقائيًا قبل توليد الأسئلة',
+          ),
+        );
+      case _SourceMode.driveAudio:
+        return TextField(
+          controller: _driveCtrl,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(
+            labelText: 'رابط ملف صوت Drive *',
+            hintText: 'https://drive.google.com/file/d/...',
+            helperText: 'سيتم تنزيل الملف وتفريغه تلقائيًا قبل توليد الأسئلة',
+          ),
+        );
+    }
+  }
+}
+
+class _SavedTranscriptNotice extends StatelessWidget {
+  final VoidCallback onUse;
+
+  const _SavedTranscriptNotice({required this.onUse});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Icon(
+              Icons.description_outlined,
+              color: theme.colorScheme.onSecondaryContainer,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                'يوجد تفريغ محفوظ لهذه المحاضرة',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton.tonal(onPressed: onUse, child: const Text('استخدامه')),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _DifficultyField extends StatelessWidget {
@@ -243,8 +478,11 @@ class _DifficultyField extends StatelessWidget {
   }
 }
 
-class _GeneratingView extends StatelessWidget {
-  const _GeneratingView();
+class _BusyView extends StatelessWidget {
+  /// True during phase one (transcription); false during question generation.
+  final bool isTranscribing;
+
+  const _BusyView({required this.isTranscribing});
 
   @override
   Widget build(BuildContext context) {
@@ -258,7 +496,9 @@ class _GeneratingView extends StatelessWidget {
             const CircularProgressIndicator(),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'جاري توليد الأسئلة...',
+              isTranscribing
+                  ? 'جاري تفريغ المحاضرة...'
+                  : 'جاري توليد الأسئلة...',
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),

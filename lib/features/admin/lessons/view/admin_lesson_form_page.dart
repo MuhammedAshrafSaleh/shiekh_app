@@ -739,6 +739,8 @@ class _QuizTab extends StatelessWidget {
       );
     }
 
+    final pendingCount = questions.where((q) => q.isPendingReview).length;
+
     return Column(
       children: [
         Padding(
@@ -755,11 +757,28 @@ class _QuizTab extends StatelessWidget {
                 'أسئلة الاختبار القصير (${questions.length})',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
+              // Review progress — shown only while AI questions await review.
+              if (pendingCount > 0) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  '${questions.length - pendingCount} من ${questions.length} سؤال تمت مراجعتها',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
+                  if (pendingCount > 0)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.done_all, size: 16),
+                      label: const Text('الموافقة على الكل'),
+                      onPressed: () => _approveAll(context),
+                    ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.download_outlined, size: 16),
                     label: Text('استيراد من البنك ($bankCount)'),
@@ -819,6 +838,15 @@ class _QuizTab extends StatelessWidget {
     );
   }
 
+  static Future<void> _approveAll(BuildContext context) async {
+    final cubit = context.read<AdminLessonFormCubit>();
+    final ok = await showConfirmDialog(
+      context,
+      title: 'الموافقة على كل الأسئلة المعلّقة؟',
+    );
+    if (ok) cubit.approveAllPending();
+  }
+
   static Future<void> _showBankImport(BuildContext context) async {
     final cubit = context.read<AdminLessonFormCubit>();
     final messenger = ScaffoldMessenger.of(context);
@@ -867,11 +895,15 @@ class _QuizTab extends StatelessWidget {
     // Capture cubit + repo before awaiting navigation.
     final formCubit = context.read<AdminLessonFormCubit>();
     final repo = context.read<AdminLessonRepository>();
+    // Pass the loaded lesson so the generate screen can prefill link fields and
+    // detect an already-saved transcript.
+    final formState = formCubit.state;
+    final lesson = formState is AdminLessonFormLoaded ? formState.lesson : null;
     final generated = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (_) => BlocProvider<GenerateQuestionsCubit>(
           create: (_) => GenerateQuestionsCubit(repo),
-          child: GenerateQuestionsPage(lessonId: lessonId),
+          child: GenerateQuestionsPage(lessonId: lessonId, lesson: lesson),
         ),
       ),
     );
@@ -881,6 +913,8 @@ class _QuizTab extends StatelessWidget {
     }
   }
 }
+
+enum _QuestionMenuAction { edit, delete }
 
 class _QuestionTile extends StatelessWidget {
   final AdminQuizQuestionEntity question;
@@ -892,6 +926,25 @@ class _QuestionTile extends StatelessWidget {
     required this.index,
     required this.lessonId,
   });
+
+  void _onMenuAction(BuildContext context, _QuestionMenuAction action) {
+    switch (action) {
+      case _QuestionMenuAction.edit:
+        _QuizTab._showQuestionDialog(
+          context,
+          lessonId: lessonId,
+          existing: question,
+        );
+      case _QuestionMenuAction.delete:
+        _confirmDelete(context);
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final cubit = context.read<AdminLessonFormCubit>();
+    final ok = await showConfirmDialog(context, title: 'هل تريد حذف السؤال؟');
+    if (ok) cubit.deleteQuizQuestion(question.id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -943,31 +996,72 @@ class _QuestionTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  onPressed: () => _QuizTab._showQuestionDialog(
-                    context,
-                    lessonId: lessonId,
-                    existing: question,
+                if (isPending) ...[
+                  // Primary, affirmative action — the normal path for a good
+                  // question. Kept visually dominant so it doesn't read as one
+                  // half of an approve/reject binary.
+                  FilledButton.icon(
+                    onPressed: () => context
+                        .read<AdminLessonFormCubit>()
+                        .approveQuizQuestion(question.id),
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text('موافقة'),
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
-                  tooltip: 'تعديل',
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.red,
-                    size: 18,
+                  // Edit / delete live behind an overflow menu so removing a
+                  // question is a deliberate, separate step — not a reject.
+                  PopupMenuButton<_QuestionMenuAction>(
+                    tooltip: 'خيارات',
+                    onSelected: (action) => _onMenuAction(context, action),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: _QuestionMenuAction.edit,
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: AppSpacing.sm),
+                            Text('تعديل'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _QuestionMenuAction.delete,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                              size: 18,
+                            ),
+                            SizedBox(width: AppSpacing.sm),
+                            Text('حذف', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: () async {
-                    final cubit = context.read<AdminLessonFormCubit>();
-                    final ok = await showConfirmDialog(
+                ] else ...[
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    onPressed: () => _QuizTab._showQuestionDialog(
                       context,
-                      title: 'هل تريد حذف السؤال؟',
-                    );
-                    if (ok) cubit.deleteQuizQuestion(question.id);
-                  },
-                  tooltip: 'حذف',
-                ),
+                      lessonId: lessonId,
+                      existing: question,
+                    ),
+                    tooltip: 'تعديل',
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                    onPressed: () => _confirmDelete(context),
+                    tooltip: 'حذف',
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -1005,8 +1099,58 @@ class _QuestionTile extends StatelessWidget {
                 ),
               );
             }),
+            // Review aids for pending AI questions: verify against the quote
+            // instead of re-watching the lecture.
+            if (isPending &&
+                ((question.sourceQuote?.isNotEmpty ?? false) ||
+                    (question.explanation?.isNotEmpty ?? false))) ...[
+              const SizedBox(height: AppSpacing.sm),
+              const Divider(height: 1),
+              const SizedBox(height: AppSpacing.sm),
+              if (question.sourceQuote?.isNotEmpty ?? false)
+                _ReviewNote(
+                  label: 'الاقتباس',
+                  text: '«${question.sourceQuote!}»',
+                ),
+              if (question.explanation?.isNotEmpty ?? false) ...[
+                const SizedBox(height: AppSpacing.xs),
+                _ReviewNote(label: 'الشرح', text: question.explanation!),
+              ],
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A labelled review note (quote / explanation) shown under a pending question.
+class _ReviewNote extends StatelessWidget {
+  final String label;
+  final String text;
+
+  const _ReviewNote({required this.label, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          TextSpan(
+            text: text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1091,6 +1235,8 @@ class _QuestionDialogState extends State<_QuestionDialog> {
         choiceC: c,
         choiceD: d,
         correctChoice: _correct,
+        // Editing a pending AI question also approves it (source=edited_by_admin).
+        markReviewed: widget.existing!.isPendingReview,
       );
     }
     if (mounted) Navigator.of(context).pop();

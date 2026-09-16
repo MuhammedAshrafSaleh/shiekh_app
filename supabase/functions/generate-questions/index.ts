@@ -4,8 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // ── Static config (NOT the caller-controlled generation params) ──────────────
 const MODEL_FALLBACK = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.8-flash"];
 const RETRY_BACKOFF_MS = [10_000, 20_000, 30_000]; // per-model, on HTTP 503 only
-const NUM_CHUNKS = 4;
-const MAX_QUESTIONS_PER_CHUNK = 7;
+const NUM_CHUNKS = 1; // single full-transcript call — coverage is handled by the prompt, not chunking
 const OVERALL_DEADLINE_MS = 100_000; // wall-clock cap for Gemini phase (~50s margin under the 150s platform limit)
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -28,6 +27,9 @@ const SYSTEM_INSTRUCTION = `أنت مساعد متخصص في إعداد أسئ�
 
 ## قاعدة العدد
 عدد الأسئلة حد أقصى وليس التزامًا. أسئلة قليلة سليمة خير من أسئلة كثيرة فيها اختلاق.
+
+## تغطية النص
+وزّع الأسئلة على كامل النص من بدايته إلى نهايته بالتساوي. لا تركّز على جزء واحد أو على بداية النص.
 
 ## مستويات الصعوبة
 * سهل: استرجاع مباشر (تعريف، عدد، اسم، حكم مذكور نصًا)
@@ -234,14 +236,26 @@ Deno.serve(async (req) => {
     if (chunks.length === 0) throw new Error("transcript produced no chunks");
 
     const targets = perChunkTargets(difficulty_mix, chunks.length);
-    const chunkCap = Math.min(MAX_QUESTIONS_PER_CHUNK, Math.ceil(requested_count / chunks.length));
-    const deadlineAt = Date.now() + OVERALL_DEADLINE_MS;
+    // Single chunk (NUM_CHUNKS=1) → requested_count is passed straight through.
+    const chunkCap = Math.ceil(requested_count / chunks.length);
+    const startedAt = Date.now();
+    const deadlineAt = startedAt + OVERALL_DEADLINE_MS;
 
     // Collect all chunks' questions (sequential — respects backoff + deadline).
+    // On a deadline hit, annotate the error with elapsed time so we can see where
+    // the wall-clock actually went next time.
     const collected: any[] = [];
     for (const chunk of chunks) {
-      const qs = await generateForChunk(GEMINI_API_KEY, chunk, targets, chunkCap, deadlineAt);
-      collected.push(...qs);
+      try {
+        const qs = await generateForChunk(GEMINI_API_KEY, chunk, targets, chunkCap, deadlineAt);
+        collected.push(...qs);
+      } catch (e) {
+        if (e instanceof Error && e.message === "deadline_exceeded") {
+          const elapsed = Math.round((Date.now() - startedAt) / 1000);
+          throw new Error(`deadline_exceeded after ${elapsed}s`);
+        }
+        throw e;
+      }
     }
 
     // Cap the total to requested_count.

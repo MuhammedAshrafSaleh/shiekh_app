@@ -24,6 +24,13 @@ class LessonEntity extends Equatable {
   /// with the embedded `lesson_pdfs(*)` select; empty for flat fetches.
   final List<LessonPdfEntity> pdfs;
 
+  /// AI transcription pipeline columns (migration 0011). Populated by the
+  /// `transcribe-lesson` Edge Function; used by the AI question-generation flow.
+  final String? transcript;
+  final String transcriptStatus; // none | queued | running | ready | failed
+  final String? transcriptError;
+  final DateTime? transcriptGeneratedAt;
+
   const LessonEntity({
     required this.id,
     required this.bookId,
@@ -36,6 +43,10 @@ class LessonEntity extends Equatable {
     required this.audioOnly,
     required this.status,
     this.pdfs = const [],
+    this.transcript,
+    this.transcriptStatus = 'none',
+    this.transcriptError,
+    this.transcriptGeneratedAt,
   });
 
   bool get hasVideo => videoUrl != null && !audioOnly;
@@ -45,6 +56,11 @@ class LessonEntity extends Equatable {
   /// value still present (pre-migration / never-re-saved data).
   bool get hasPdf => pdfs.isNotEmpty || pdfUrl != null;
   bool get hasQuiz => true; // determined by repository
+
+  /// True when a usable transcript is already saved — lets the AI generation
+  /// screen offer "generate only" (skip re-transcribing, save a quota slot).
+  bool get hasSavedTranscript =>
+      transcriptStatus == 'ready' && (transcript?.trim().isNotEmpty ?? false);
 
   /// PDFs sorted by their order_index, excluding any with an empty url (e.g.
   /// partial-embed entities from the admin list, which carry only `id`). The DB
@@ -73,6 +89,12 @@ class LessonEntity extends Equatable {
               ?.map((e) => LessonPdfEntity.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      transcript: json['transcript'] as String?,
+      transcriptStatus: json['transcript_status'] as String? ?? 'none',
+      transcriptError: json['transcript_error'] as String?,
+      transcriptGeneratedAt: json['transcript_generated_at'] == null
+          ? null
+          : DateTime.parse(json['transcript_generated_at'] as String),
     );
   }
 
@@ -89,5 +111,9 @@ class LessonEntity extends Equatable {
     audioOnly,
     status,
     pdfs,
+    transcript,
+    transcriptStatus,
+    transcriptError,
+    transcriptGeneratedAt,
   ];
 }
