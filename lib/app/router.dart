@@ -44,6 +44,9 @@ import '../features/profile/data/profile_repository.dart';
 import '../features/profile/view/change_password_page.dart';
 import '../features/profile/view/edit_profile_page.dart';
 import '../features/profile/view/profile_page.dart';
+import '../features/notes/cubit/notes_cubit.dart';
+import '../features/notes/data/notes_repository.dart';
+import '../features/notes/view/lecture_notes_page.dart';
 import '../features/qa/cubit/my_questions_cubit.dart';
 import '../features/qa/cubit/qa_cubit.dart';
 import '../features/qa/data/qa_repository.dart';
@@ -129,7 +132,9 @@ GoRouter buildRouter(AuthCubit authCubit) {
         return null;
       }
 
-      if (authState is AuthInitial || authState is AuthLoading) {
+      if (authState is AuthInitial ||
+          authState is AuthLoading ||
+          authState is AuthOffline) {
         if (isOnSplash || isOnAuth) return null;
         return '/splash';
       }
@@ -258,8 +263,17 @@ GoRouter buildRouter(AuthCubit authCubit) {
         path: '/books/:id',
         builder: (context, state) {
           final bookId = state.pathParameters['id']!;
-          return BlocProvider(
-            create: (ctx) => BookDetailsCubit(ctx.read<BookRepository>()),
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (ctx) =>
+                    BookDetailsCubit(ctx.read<BookRepository>()),
+              ),
+              BlocProvider(
+                create: (ctx) =>
+                    NotesCubit(ctx.read<NotesRepository>()),
+              ),
+            ],
             child: BookDetailsPage(bookId: bookId),
           );
         },
@@ -272,6 +286,25 @@ GoRouter buildRouter(AuthCubit authCubit) {
               return BlocProvider(
                 create: (ctx) => QaCubit(ctx.read<QaRepository>()),
                 child: BookQaPage(bookId: bookId),
+              );
+            },
+          ),
+          // Notes — Level 2: notes for a single lecture
+          GoRoute(
+            path: 'notes/:lessonId',
+            builder: (context, state) {
+              final bookId = state.pathParameters['id']!;
+              final lessonId = state.pathParameters['lessonId']!;
+              final lessonTitle =
+                  state.extra is String ? state.extra as String : '';
+              return BlocProvider(
+                create: (ctx) =>
+                    NotesCubit(ctx.read<NotesRepository>()),
+                child: LectureNotesPage(
+                  bookId: bookId,
+                  lessonId: lessonId,
+                  lessonTitle: lessonTitle,
+                ),
               );
             },
           ),
@@ -361,12 +394,19 @@ GoRouter buildRouter(AuthCubit authCubit) {
         builder: (context, state) {
           final lessonId = state.pathParameters['id']!;
           final bookId = state.uri.queryParameters['bookId'] ?? '';
+          final seekToSeconds = int.tryParse(
+            state.uri.queryParameters['t'] ?? '',
+          );
           return BlocProvider(
             create: (ctx) => LessonCubit(
               ctx.read<LessonRepository>(),
               ctx.read<VideoStreamRepository>(),
             ),
-            child: LessonPage(lessonId: lessonId, bookId: bookId),
+            child: LessonPage(
+              lessonId: lessonId,
+              bookId: bookId,
+              seekToSeconds: seekToSeconds,
+            ),
           );
         },
       ),

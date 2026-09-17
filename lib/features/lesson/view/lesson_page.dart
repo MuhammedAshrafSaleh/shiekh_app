@@ -32,7 +32,16 @@ class LessonPage extends StatefulWidget {
   final String lessonId;
   final String bookId;
 
-  const LessonPage({super.key, required this.lessonId, required this.bookId});
+  /// When non-null, the video tab seeks to this position on open (from `?t=`).
+  /// Takes precedence over the saved resume position.
+  final int? seekToSeconds;
+
+  const LessonPage({
+    super.key,
+    required this.lessonId,
+    required this.bookId,
+    this.seekToSeconds,
+  });
 
   @override
   State<LessonPage> createState() => _LessonPageState();
@@ -82,6 +91,7 @@ class _LessonPageState extends State<LessonPage> {
             state: state,
             lessonId: widget.lessonId,
             bookId: widget.bookId,
+            seekToSeconds: widget.seekToSeconds,
           ),
           _ => const SizedBox.shrink(),
         };
@@ -194,11 +204,13 @@ class _LessonView extends StatefulWidget {
   final LessonLoaded state;
   final String lessonId;
   final String bookId;
+  final int? seekToSeconds;
 
   const _LessonView({
     required this.state,
     required this.lessonId,
     required this.bookId,
+    this.seekToSeconds,
   });
 
   @override
@@ -266,7 +278,9 @@ class _LessonViewState extends State<_LessonView> {
           content: VideoTab(
             key: _videoTabKey,
             videoUrl: lesson.videoUrl!,
-            initialPositionSeconds: videoResumeSeconds,
+            initialPositionSeconds: widget.seekToSeconds ?? videoResumeSeconds,
+            lessonId: widget.lessonId,
+            bookId: widget.bookId,
           ),
         ),
       if (lesson.hasAudio)

@@ -20,3 +20,18 @@ String formatMediaDuration(Duration d) {
   final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   return '$_ltrMark$m:$s';
 }
+
+/// Formats a note timestamp as `mm:ss` (< 1 hour) or `hh:mm:ss` (≥ 1 hour).
+///
+/// Render inside a `Text` with `textDirection: TextDirection.ltr` as
+/// defense-in-depth against RTL bidi reversal.
+String formatNoteTimestamp(Duration d) {
+  final totalSeconds = d.inSeconds;
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final s = totalSeconds.remainder(60).toString().padLeft(2, '0');
+  if (h > 0) {
+    return '$_ltrMark${h.toString().padLeft(2, '0')}:$m:$s';
+  }
+  return '$_ltrMark$m:$s';
+}

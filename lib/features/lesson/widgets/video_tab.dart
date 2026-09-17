@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -14,6 +15,9 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/sheikhy_button.dart';
+import '../../auth/cubit/auth_cubit.dart';
+import '../../auth/cubit/auth_state.dart';
+import '../../notes/widgets/note_editor_sheet.dart';
 import '../cubit/lesson_cubit.dart';
 import '../data/lesson_repository.dart';
 import '../data/video_stream_repository.dart';
@@ -31,6 +35,8 @@ import 'resume_snackbar.dart';
 class VideoTab extends StatefulWidget {
   final String videoUrl;
   final int initialPositionSeconds;
+  final String? lessonId;
+  final String? bookId;
 
   /// When true, the player runs without any progress tracking (no LessonCubit
   /// calls) — used by the admin "preview as student" screen.
@@ -40,6 +46,8 @@ class VideoTab extends StatefulWidget {
     super.key,
     required this.videoUrl,
     required this.initialPositionSeconds,
+    this.lessonId,
+    this.bookId,
     this.previewMode = false,
   });
 
@@ -163,6 +171,43 @@ class _VideoTabState extends State<VideoTab>
   @override
   void pausePlayback() => _videoController?.pause();
 
+  Future<void> _openNoteEditor() async {
+    final controller = _videoController;
+    if (controller == null) return;
+
+    // Capture play state before any async gap.
+    final wasPlaying = controller.value.isPlaying;
+
+    // Guest check — show sign-up gate and abort if anonymous.
+    if (!mounted) return;
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated && authState.isGuest) {
+      final signupLoc = Uri(
+        path: '/signup',
+        queryParameters: {
+          'returnTo': '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
+          'autoEnrollBookId': widget.bookId,
+        },
+      ).toString();
+      if (mounted) context.push(signupLoc);
+      return;
+    }
+
+    final seconds = controller.value.position.inSeconds;
+    await controller.pause();
+
+    if (!mounted) return;
+    await NoteEditorSheet.show(
+      context,
+      lessonId: widget.lessonId!,
+      bookId: widget.bookId!,
+      positionSeconds: seconds,
+    );
+
+    // Resume only if it was playing before we opened the sheet.
+    if (wasPlaying && mounted) await controller.play();
+  }
+
   Future<void> _openInYoutube() async {
     final uri = Uri.parse(widget.videoUrl);
     if (await canLaunchUrl(uri)) {
@@ -196,13 +241,56 @@ class _VideoTabState extends State<VideoTab>
             : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
         onOpenYoutube: _invalidUrl ? null : _openInYoutube,
       ),
-      _Status.ready => Center(
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Chewie(controller: _chewieController!),
-        ),
+      _Status.ready => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Chewie(controller: _chewieController!),
+            ),
+          ),
+          if (!widget.previewMode && widget.lessonId != null && widget.bookId != null)
+            _AddNoteAffordance(onTap: _openNoteEditor),
+        ],
       ),
     };
+  }
+}
+
+class _AddNoteAffordance extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AddNoteAffordance({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.pageGutter,
+          AppSpacing.s3,
+          AppSpacing.pageGutter,
+          AppSpacing.s3,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.note_add_outlined,
+              size: 20,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: AppSpacing.s2),
+            Text(
+              'إضافة ملحوظة',
+              style: AppTextStyles.body.copyWith(color: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

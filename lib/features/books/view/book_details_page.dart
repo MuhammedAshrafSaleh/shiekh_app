@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -17,6 +18,8 @@ import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_progress_bar.dart';
 import '../../auth/cubit/auth_cubit.dart';
 import '../../auth/cubit/auth_state.dart';
+import '../../notes/cubit/notes_cubit.dart';
+import '../../notes/view/notes_tab.dart';
 import '../cubit/book_details_cubit.dart';
 import '../cubit/book_details_state.dart';
 import '../widgets/final_exam_card.dart';
@@ -140,15 +143,22 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
     if (!mounted) return;
     final currentPath =
         _router?.routerDelegate.currentConfiguration.uri.path ?? '';
+    final bookPath = '/books/${widget.bookId}';
     final returningFromLesson =
         _lastKnownRoute.startsWith('/lessons/') &&
-        currentPath == '/books/${widget.bookId}';
+        currentPath == bookPath;
+    final returningFromNotes =
+        _lastKnownRoute.startsWith('$bookPath/notes/') &&
+        currentPath == bookPath;
     _lastKnownRoute = currentPath;
     if (returningFromLesson) {
       final cubit = context.read<BookDetailsCubit>();
       if (cubit.state is BookDetailsLoaded) {
         cubit.refreshProgress(widget.bookId);
       }
+    }
+    if (returningFromLesson || returningFromNotes) {
+      context.read<NotesCubit>().loadBookNotes(widget.bookId);
     }
   }
 
@@ -326,19 +336,49 @@ class _BookDetailsErrorView extends StatelessWidget {
 
 // ── Full loaded view ──────────────────────────────────────────────────────────
 
-class _BookDetailsView extends StatelessWidget {
+class _BookDetailsView extends StatefulWidget {
   final BookDetailsLoaded state;
   final String bookId;
 
   const _BookDetailsView({required this.state, required this.bookId});
 
   @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        _HeritageSliverHeader(state: state, bookId: bookId),
+  State<_BookDetailsView> createState() => _BookDetailsViewState();
+}
 
-        // Progress + description
+class _BookDetailsViewState extends State<_BookDetailsView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 1) {
+      context.read<NotesCubit>().loadBookNotes(widget.bookId);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final bookId = widget.bookId;
+
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        _HeritageSliverHeader(state: state, bookId: bookId),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(
@@ -350,29 +390,30 @@ class _BookDetailsView extends StatelessWidget {
             child: _BookMeta(state: state),
           ),
         ),
-
-        // Ornament divider
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.s4),
             child: OrnamentDivider(),
           ),
         ),
-
-        // "الدروس" heading
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(
-              AppSpacing.pageGutter,
-              0,
-              AppSpacing.pageGutter,
-              AppSpacing.s3,
-            ),
-            child: Text('الدروس', style: AppTextStyles.h3),
-          ),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _BookTabBarDelegate(_tabController),
         ),
+      ],
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildDurusTab(state, bookId),
+          NotesTab(bookId: bookId, lessons: state.lessons),
+        ],
+      ),
+    );
+  }
 
-        // Lessons list or empty state
+  Widget _buildDurusTab(BookDetailsLoaded state, String bookId) {
+    return CustomScrollView(
+      slivers: [
         if (state.lessons.isEmpty)
           const SliverToBoxAdapter(
             child: Padding(
@@ -387,18 +428,15 @@ class _BookDetailsView extends StatelessWidget {
         else
           SliverList.separated(
             itemCount: state.lessons.length,
-            separatorBuilder: (context, index) => Container(
+            separatorBuilder: (_, index) => Container(
               margin: const EdgeInsetsDirectional.only(
                 start: AppSpacing.pageGutter + 32 + AppSpacing.s4,
               ),
               height: 1,
               color: AppColors.borderSubtle,
             ),
-            itemBuilder: (context, index) {
+            itemBuilder: (_, index) {
               final item = state.lessons[index];
-              // Access model: lesson 1 (first in order) is open to everyone;
-              // lesson 2+ requires enrollment. The list is ordered by
-              // order_index, so index 0 is the first lesson.
               final isFirstLesson = index == 0;
               final isSequentiallyLocked =
                   state.isEnrolled &&
@@ -410,26 +448,24 @@ class _BookDetailsView extends StatelessWidget {
                 isOpenToAll: isFirstLesson,
                 isLocked: isSequentiallyLocked,
                 onTap: () {
-                  // Lesson 1: open to guests / unenrolled / enrolled alike.
                   if (isFirstLesson) {
-                    _openLesson(context, item.lesson.id);
+                    _openLesson(item.lesson.id);
                     return;
                   }
                   if (!state.isEnrolled) {
-                    _gateUnenrolled(context, item.lesson.id);
+                    _gateUnenrolled(item.lesson.id);
                     return;
                   }
                   if (isSequentiallyLocked) {
-                    _showLockedLessonDialog(context);
+                    _showLockedLessonDialog();
                     return;
                   }
-                  _openLesson(context, item.lesson.id);
+                  _openLesson(item.lesson.id);
                 },
               );
             },
           ),
 
-        // Final exam card
         if (state.hasFinalExam)
           SliverToBoxAdapter(
             child: FinalExamCard(
@@ -437,12 +473,13 @@ class _BookDetailsView extends StatelessWidget {
               isExamPublished: state.hasFinalExam,
               completionPercentage: state.completionPercentage,
               bestAttempt: state.bestExamAttempt,
-              onTap: () =>
-                  context.push('/books/$bookId/exam', extra: state.book.title),
+              onTap: () => context.push(
+                '/books/$bookId/exam',
+                extra: state.book.title,
+              ),
             ),
           ),
 
-        // Bottom CTA
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(
@@ -458,37 +495,34 @@ class _BookDetailsView extends StatelessWidget {
     );
   }
 
-  void _openLesson(BuildContext context, String lessonId) {
-    context.push('/lessons/$lessonId?bookId=$bookId').then((_) {
-      if (context.mounted) {
-        context.read<BookDetailsCubit>().refreshProgress(bookId);
+  void _openLesson(String lessonId) {
+    context.push('/lessons/$lessonId?bookId=${widget.bookId}').then((_) {
+      if (mounted) {
+        context.read<BookDetailsCubit>().refreshProgress(widget.bookId);
       }
     });
   }
 
   // Lesson 2+ tapped without enrollment: a guest is prompted to create an
   // account (returning to this exact lesson); a registered user to enroll.
-  void _gateUnenrolled(BuildContext context, String lessonId) {
+  void _gateUnenrolled(String lessonId) {
     if (_isGuest(context)) {
       _showGuestSignupGate(
         context,
-        returnTo: '/lessons/$lessonId?bookId=$bookId',
-        bookId: bookId,
+        returnTo: '/lessons/$lessonId?bookId=${widget.bookId}',
+        bookId: widget.bookId,
       );
     } else {
-      _showEnrollDialog(context);
+      _showEnrollConfirmDialog(
+        context: context,
+        bookTitle: widget.state.book.title,
+        onConfirm: () =>
+            context.read<BookDetailsCubit>().enroll(widget.bookId),
+      );
     }
   }
 
-  void _showEnrollDialog(BuildContext context) {
-    _showEnrollConfirmDialog(
-      context: context,
-      bookTitle: state.book.title,
-      onConfirm: () => context.read<BookDetailsCubit>().enroll(bookId),
-    );
-  }
-
-  void _showLockedLessonDialog(BuildContext context) {
+  void _showLockedLessonDialog() {
     showDialog<void>(
       context: context,
       barrierColor: AppColors.ink.withValues(alpha: 0.5),
@@ -542,6 +576,65 @@ class _BookDetailsView extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Pinned tab bar for NestedScrollView ───────────────────────────────────────
+
+class _BookTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabController controller;
+
+  const _BookTabBarDelegate(this.controller);
+
+  static const double _height = 48;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: AppBorders.hairline,
+          ),
+        ),
+      ),
+      child: TabBar(
+        controller: controller,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
+          insets: EdgeInsets.zero,
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelColor: AppColors.primary,
+        unselectedLabelColor: AppColors.inkFaint,
+        labelStyle: GoogleFonts.reemKufi(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: GoogleFonts.tajawal(fontSize: 14),
+        dividerColor: Colors.transparent,
+        tabs: const [
+          Tab(text: 'الدروس'),
+          Tab(text: 'المحفوظات'),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_BookTabBarDelegate oldDelegate) =>
+      controller != oldDelegate.controller;
 }
 
 // ── Shared enrollment confirmation dialog ─────────────────────────────────────

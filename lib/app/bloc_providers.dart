@@ -29,6 +29,7 @@ import '../features/notifications/cubit_notifs/notifications_cubit.dart';
 import '../features/notifications/data/notifications_repository.dart';
 import '../features/onboarding/data/onboarding_repository.dart';
 import '../features/profile/data/profile_repository.dart';
+import '../features/notes/data/notes_repository.dart';
 import '../features/qa/data/qa_repository.dart';
 import '../features/sections/data/section_repository.dart';
 import 'app.dart';
@@ -127,6 +128,9 @@ class SheikhyProviders extends StatelessWidget {
               RepositoryProvider<AdminOnboardingRepository>(
                 create: (_) =>
                     AdminOnboardingRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<NotesRepository>(
+                create: (_) => NotesRepository(supabase, connectivity),
               ),
             ],
             child: MultiBlocProvider(
