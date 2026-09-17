@@ -16,8 +16,14 @@ import 'note_editor_sheet.dart';
 class NoteCard extends StatelessWidget {
   final LessonNoteEntity note;
   final String bookId;
+  final VoidCallback? onSeek;
 
-  const NoteCard({super.key, required this.note, required this.bookId});
+  const NoteCard({
+    super.key,
+    required this.note,
+    required this.bookId,
+    this.onSeek,
+  });
 
   void _seekToNote(BuildContext context) {
     context.push(
@@ -75,7 +81,7 @@ class NoteCard extends StatelessWidget {
     );
 
     return InkWell(
-      onTap: () => _seekToNote(context),
+      onTap: onSeek ?? () => _seekToNote(context),
       borderRadius: AppRadii.rMd,
       child: Container(
         margin: const EdgeInsetsDirectional.fromSTEB(

@@ -14,6 +14,8 @@ import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../auth/cubit/auth_cubit.dart';
 import '../../auth/cubit/auth_state.dart';
+import '../../notes/cubit/notes_cubit.dart';
+import '../../notes/data/notes_repository.dart';
 import '../../lesson/data/lesson_repository.dart';
 import '../../qa/cubit/qa_cubit.dart';
 import '../../qa/data/qa_repository.dart';
@@ -293,7 +295,11 @@ class _LessonViewState extends State<_LessonView> {
             key: _audioTabKey,
             audioUrl: lesson.audioUrl!,
             lessonTitle: lesson.title,
-            initialPositionSeconds: audioResumeSeconds,
+            initialPositionSeconds: lesson.hasVideo
+                ? audioResumeSeconds
+                : (widget.seekToSeconds ?? audioResumeSeconds),
+            lessonId: widget.lessonId,
+            bookId: widget.bookId,
           ),
         ),
       if (lesson.hasPdf)
@@ -358,41 +364,46 @@ class _LessonViewState extends State<_LessonView> {
       );
     }
 
-    return PopScope(
-      canPop: !_quizAnswering,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        final leave = await showLeaveQuizDialog(context);
-        if (leave && context.mounted) context.pop();
-      },
-      child: DefaultTabController(
-        length: tabs.length,
-        child: Scaffold(
-          backgroundColor: AppColors.paper,
-          body: Column(
-            children: [
-              _MediaTabCoordinator(
-                tabs: tabs,
-                videoTabKey: _videoTabKey,
-                audioTabKey: _audioTabKey,
-              ),
-              _LessonHeader(
-                state: widget.state,
-                onAskTap: () => _openAskSheet(context),
-                onBack: _handleBack,
-              ),
-              _LessonTabBar(tabs: tabs),
-              Expanded(
-                child: TabBarView(
-                  children: tabs.map((t) => t.content).toList(),
+    return BlocProvider<NotesCubit>(
+      create: (ctx) =>
+          NotesCubit(ctx.read<NotesRepository>())
+            ..loadLessonNotes(widget.lessonId),
+      child: PopScope(
+        canPop: !_quizAnswering,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop) return;
+          final leave = await showLeaveQuizDialog(context);
+          if (leave && context.mounted) context.pop();
+        },
+        child: DefaultTabController(
+          length: tabs.length,
+          child: Scaffold(
+            backgroundColor: AppColors.paper,
+            body: Column(
+              children: [
+                _MediaTabCoordinator(
+                  tabs: tabs,
+                  videoTabKey: _videoTabKey,
+                  audioTabKey: _audioTabKey,
                 ),
-              ),
-              _LessonActionBar(
-                tabs: tabs,
-                state: widget.state,
-                bookId: widget.bookId,
-              ),
-            ],
+                _LessonHeader(
+                  state: widget.state,
+                  onAskTap: () => _openAskSheet(context),
+                  onBack: _handleBack,
+                ),
+                _LessonTabBar(tabs: tabs),
+                Expanded(
+                  child: TabBarView(
+                    children: tabs.map((t) => t.content).toList(),
+                  ),
+                ),
+                _LessonActionBar(
+                  tabs: tabs,
+                  state: widget.state,
+                  bookId: widget.bookId,
+                ),
+              ],
+            ),
           ),
         ),
       ),

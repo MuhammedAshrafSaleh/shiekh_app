@@ -17,6 +17,9 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../auth/cubit/auth_cubit.dart';
 import '../../auth/cubit/auth_state.dart';
+import '../../notes/cubit/notes_cubit.dart';
+import '../../notes/cubit/notes_state.dart';
+import '../../notes/widgets/note_card.dart';
 import '../../notes/widgets/note_editor_sheet.dart';
 import '../cubit/lesson_cubit.dart';
 import '../data/lesson_repository.dart';
@@ -204,6 +207,7 @@ class _VideoTabState extends State<VideoTab>
       positionSeconds: seconds,
     );
 
+    if (mounted) context.read<NotesCubit>().refreshAfterEdit();
     // Resume only if it was playing before we opened the sheet.
     if (wasPlaying && mounted) await controller.play();
   }
@@ -241,17 +245,93 @@ class _VideoTabState extends State<VideoTab>
             : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
         onOpenYoutube: _invalidUrl ? null : _openInYoutube,
       ),
-      _Status.ready => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Center(
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Chewie(controller: _chewieController!),
+      _Status.ready => CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Chewie(controller: _chewieController!),
+              ),
             ),
           ),
-          if (!widget.previewMode && widget.lessonId != null && widget.bookId != null)
-            _AddNoteAffordance(onTap: _openNoteEditor),
+          if (!widget.previewMode &&
+              widget.lessonId != null &&
+              widget.bookId != null) ...[
+            SliverToBoxAdapter(
+              child: _AddNoteAffordance(onTap: _openNoteEditor),
+            ),
+            BlocBuilder<NotesCubit, NotesState>(
+              builder: (context, state) {
+                if (state is NotesInitial || state is NotesLoading) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.symmetric(
+                        vertical: AppSpacing.s4,
+                      ),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                if (state is NotesError) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        AppSpacing.pageGutter,
+                        AppSpacing.s2,
+                        AppSpacing.pageGutter,
+                        AppSpacing.s4,
+                      ),
+                      child: Text(
+                        state.message,
+                        style: AppTextStyles.small.copyWith(
+                          color: AppColors.inkMuted,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+                final notes = (state as NotesLoaded).notes;
+                if (notes.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        AppSpacing.pageGutter,
+                        AppSpacing.s2,
+                        AppSpacing.pageGutter,
+                        AppSpacing.s4,
+                      ),
+                      child: Text(
+                        'لا توجد ملحوظات لهذه المحاضرة بعد',
+                        style: AppTextStyles.small.copyWith(
+                          color: AppColors.inkFaint,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => NoteCard(
+                      note: notes[i],
+                      bookId: widget.bookId!,
+                      onSeek: () => _videoController?.seekTo(
+                        Duration(seconds: notes[i].positionSeconds),
+                      ),
+                    ),
+                    childCount: notes.length,
+                  ),
+                );
+              },
+            ),
+          ],
         ],
       ),
     };
@@ -277,11 +357,7 @@ class _AddNoteAffordance extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.note_add_outlined,
-              size: 20,
-              color: AppColors.primary,
-            ),
+            Icon(Icons.note_add_outlined, size: 20, color: AppColors.primary),
             const SizedBox(width: AppSpacing.s2),
             Text(
               'إضافة ملحوظة',

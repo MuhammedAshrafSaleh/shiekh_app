@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,6 +19,12 @@ import '../../../core/utils/drive_url.dart';
 import '../../../core/utils/media_duration.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_progress_bar.dart';
+import '../../auth/cubit/auth_cubit.dart';
+import '../../auth/cubit/auth_state.dart';
+import '../../notes/cubit/notes_cubit.dart';
+import '../../notes/cubit/notes_state.dart';
+import '../../notes/widgets/note_card.dart';
+import '../../notes/widgets/note_editor_sheet.dart';
 import '../cubit/lesson_cubit.dart';
 import '../data/lesson_repository.dart';
 import 'media_tab.dart';
@@ -30,6 +37,8 @@ class AudioTab extends StatefulWidget {
   final String audioUrl;
   final String lessonTitle;
   final int initialPositionSeconds;
+  final String? lessonId;
+  final String? bookId;
 
   /// When true, the player runs without any progress tracking (no LessonCubit
   /// calls) — used by the admin "preview as student" screen.
@@ -40,6 +49,8 @@ class AudioTab extends StatefulWidget {
     required this.audioUrl,
     required this.lessonTitle,
     this.initialPositionSeconds = 0,
+    this.lessonId,
+    this.bookId,
     this.previewMode = false,
   });
 
@@ -84,7 +95,8 @@ class _AudioTabState extends State<AudioTab>
     _player.durationStream.listen((d) {
       if (d != null && mounted) {
         Logger('AudioTab').info(
-            'raw duration=${d.inSeconds}s formatted=${formatMediaDuration(d)}');
+          'raw duration=${d.inSeconds}s formatted=${formatMediaDuration(d)}',
+        );
         setState(() => _duration = d);
       }
     });
@@ -188,8 +200,7 @@ class _AudioTabState extends State<AudioTab>
         if (mounted) {
           setState(() {
             _status = _AudioStatus.error;
-            _errorMessage =
-                'تجاوز الملف حصة Google Drive اليومية، جرّب لاحقاً';
+            _errorMessage = 'تجاوز الملف حصة Google Drive اليومية، جرّب لاحقاً';
           });
         }
         return;
@@ -236,6 +247,38 @@ class _AudioTabState extends State<AudioTab>
     setState(() => _status = _AudioStatus.error);
   }
 
+  Future<void> _openNoteEditor() async {
+    final wasPlaying = _status == _AudioStatus.playing;
+
+    if (!mounted) return;
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated && authState.isGuest) {
+      final signupLoc = Uri(
+        path: '/signup',
+        queryParameters: {
+          'returnTo': '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
+          'autoEnrollBookId': widget.bookId,
+        },
+      ).toString();
+      if (mounted) context.push(signupLoc);
+      return;
+    }
+
+    final seconds = _player.position.inSeconds;
+    await _player.pause();
+
+    if (!mounted) return;
+    await NoteEditorSheet.show(
+      context,
+      lessonId: widget.lessonId!,
+      bookId: widget.bookId!,
+      positionSeconds: seconds,
+    );
+
+    if (mounted) context.read<NotesCubit>().refreshAfterEdit();
+    if (wasPlaying && mounted) await _player.play();
+  }
+
   @override
   void dispose() {
     _positionTimer?.cancel();
@@ -251,25 +294,37 @@ class _AudioTabState extends State<AudioTab>
     return switch (_status) {
       _AudioStatus.checking => const _AudioChecking(),
       _AudioStatus.idle => _AudioIdle(
-          lessonTitle: widget.lessonTitle,
-          onDownload: _startDownload,
-        ),
+        lessonTitle: widget.lessonTitle,
+        onDownload: _startDownload,
+      ),
       _AudioStatus.downloading => _DownloadProgress(
-          progress: _downloadProgress,
-          onCancel: _cancelDownload,
-        ),
+        progress: _downloadProgress,
+        onCancel: _cancelDownload,
+      ),
       _AudioStatus.error => _AudioError(
-          message: _errorMessage ?? 'حدث خطأ أثناء التحميل',
-          onRetry: _initialize,
-        ),
+        message: _errorMessage ?? 'حدث خطأ أثناء التحميل',
+        onRetry: _initialize,
+      ),
       _ => _AudioPlayer(
-          lessonTitle: widget.lessonTitle,
-          status: _status,
-          position: _position,
-          duration: _duration,
-          onTogglePlay: _togglePlay,
-          onSeek: _seek,
-        ),
+        lessonTitle: widget.lessonTitle,
+        status: _status,
+        position: _position,
+        duration: _duration,
+        onTogglePlay: _togglePlay,
+        onSeek: _seek,
+        onAddNote:
+            (!widget.previewMode &&
+                widget.lessonId != null &&
+                widget.bookId != null)
+            ? _openNoteEditor
+            : null,
+        onSeekToNote:
+            (!widget.previewMode &&
+                widget.lessonId != null &&
+                widget.bookId != null)
+            ? (seconds) => _player.seek(Duration(seconds: seconds))
+            : null,
+      ),
     };
   }
 }
@@ -370,10 +425,7 @@ class _DownloadProgress extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s5),
-          SheikhyButton.text(
-            label: 'إلغاء',
-            onPressed: onCancel,
-          ),
+          SheikhyButton.text(label: 'إلغاء', onPressed: onCancel),
         ],
       ),
     );
@@ -401,10 +453,7 @@ class _AudioError extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.dangerBg,
               borderRadius: AppRadii.rLg,
-              border: Border.all(
-                color: AppColors.danger,
-                width: 1.5,
-              ),
+              border: Border.all(color: AppColors.danger, width: 1.5),
             ),
             child: const Icon(
               Icons.headset_off_outlined,
@@ -440,6 +489,8 @@ class _AudioPlayer extends StatelessWidget {
   final Duration duration;
   final VoidCallback onTogglePlay;
   final ValueChanged<double> onSeek;
+  final VoidCallback? onAddNote;
+  final ValueChanged<int>? onSeekToNote;
 
   const _AudioPlayer({
     required this.lessonTitle,
@@ -448,6 +499,8 @@ class _AudioPlayer extends StatelessWidget {
     required this.duration,
     required this.onTogglePlay,
     required this.onSeek,
+    this.onAddNote,
+    this.onSeekToNote,
   });
 
   @override
@@ -456,132 +509,234 @@ class _AudioPlayer extends StatelessWidget {
         ? position.inSeconds / duration.inSeconds
         : 0.0;
 
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(
               AppSpacing.pageGutter,
-              AppSpacing.s6,
-              AppSpacing.pageGutter,
               AppSpacing.s5,
+              AppSpacing.pageGutter,
+              AppSpacing.s4,
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-          // Large artwork circle
-          Container(
-            width: 180,
-            height: 180,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.paperSunk,
-            ),
-            child: Icon(
-              Icons.headphones_outlined,
-              size: 72,
-              color: AppColors.primary,
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.s5),
-
-          // Lesson title
-          Text(
-            lessonTitle,
-            style: AppTextStyles.h3,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-
-          const SizedBox(height: AppSpacing.s2),
-
-          // Sheikh name
-          Text(
-            AppConfig.sheikhName,
-            style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: AppSpacing.s5),
-
-          // Seek slider
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppColors.primary,
-              inactiveTrackColor: AppColors.paperSunk,
-              thumbColor: AppColors.primary,
-              overlayColor: AppColors.primary.withValues(alpha: 0.12),
-              trackHeight: 4,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-            ),
-            child: Slider(
-              value: progress.clamp(0.0, 1.0),
-              onChanged: onSeek,
-            ),
-          ),
-
-          // Time row
-          Padding(
-            padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: AppSpacing.s2,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  formatMediaDuration(position),
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.inkFaint,
-                    letterSpacing: 0,
+                // Shrunken artwork circle
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.paperSunk,
                   ),
-                  textDirection: TextDirection.ltr,
+                  child: Icon(
+                    Icons.headphones_outlined,
+                    size: 48,
+                    color: AppColors.primary,
+                  ),
                 ),
+
+                const SizedBox(height: AppSpacing.s4),
+
                 Text(
-                  formatMediaDuration(duration),
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.inkFaint,
-                    letterSpacing: 0,
+                  lessonTitle,
+                  style: AppTextStyles.h3,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                const SizedBox(height: AppSpacing.s2),
+
+                Text(
+                  AppConfig.sheikhName,
+                  style: AppTextStyles.small.copyWith(
+                    color: AppColors.inkMuted,
                   ),
-                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: AppSpacing.s4),
+
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: AppColors.paperSunk,
+                    thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.12),
+                    trackHeight: 4,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 8,
+                    ),
+                  ),
+                  child: Slider(
+                    value: progress.clamp(0.0, 1.0),
+                    onChanged: onSeek,
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: AppSpacing.s2,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        formatMediaDuration(position),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.inkFaint,
+                          letterSpacing: 0,
+                        ),
+                        textDirection: TextDirection.ltr,
+                      ),
+                      Text(
+                        formatMediaDuration(duration),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.inkFaint,
+                          letterSpacing: 0,
+                        ),
+                        textDirection: TextDirection.ltr,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.s4),
+
+                GestureDetector(
+                  onTap: onTogglePlay,
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      status == _AudioStatus.playing
+                          ? Icons.pause
+                          : Icons.play_arrow,
+                      color: AppColors.inkInvert,
+                      size: 32,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: AppSpacing.s5),
-
-          // Play / pause button (64×64 circle)
-          GestureDetector(
-            onTap: onTogglePlay,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+        ),
+        if (onAddNote != null) ...[
+          SliverToBoxAdapter(child: _AddNoteAffordance(onTap: onAddNote!)),
+          BlocBuilder<NotesCubit, NotesState>(
+            builder: (context, state) {
+              if (state is NotesInitial || state is NotesLoading) {
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.symmetric(
+                      vertical: AppSpacing.s4,
+                    ),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                        strokeWidth: 2,
+                      ),
+                    ),
                   ),
-                ],
-              ),
-              child: Icon(
-                status == _AudioStatus.playing
-                    ? Icons.pause
-                    : Icons.play_arrow,
-                color: AppColors.inkInvert,
-                size: 32,
-              ),
-            ),
+                );
+              }
+              if (state is NotesError) {
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      AppSpacing.pageGutter,
+                      AppSpacing.s2,
+                      AppSpacing.pageGutter,
+                      AppSpacing.s4,
+                    ),
+                    child: Text(
+                      state.message,
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.inkMuted,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+              final notes = (state as NotesLoaded).notes;
+              if (notes.isEmpty) {
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      AppSpacing.pageGutter,
+                      AppSpacing.s2,
+                      AppSpacing.pageGutter,
+                      AppSpacing.s4,
+                    ),
+                    child: Text(
+                      'لا توجد ملحوظات لهذه المحاضرة بعد',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.inkFaint,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+              return SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, i) => NoteCard(
+                    note: notes[i],
+                    bookId: notes[i].bookId,
+                    onSeek: () => onSeekToNote?.call(notes[i].positionSeconds),
+                  ),
+                  childCount: notes.length,
+                ),
+              );
+            },
           ),
         ],
+      ],
+    );
+  }
+}
+
+// ── Add-note affordance (mirrors video_tab._AddNoteAffordance) ────────────────
+
+class _AddNoteAffordance extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AddNoteAffordance({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.pageGutter,
+          AppSpacing.s3,
+          AppSpacing.pageGutter,
+          AppSpacing.s3,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.note_add_outlined, size: 20, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.s2),
+            Text(
+              'إضافة ملحوظة',
+              style: AppTextStyles.body.copyWith(color: AppColors.primary),
             ),
-          ),
+          ],
         ),
       ),
     );

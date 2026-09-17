@@ -53,6 +53,38 @@ class NotesRepository {
     }
   }
 
+  Future<Either<Failure, List<LessonNoteEntity>>> getLessonNotes(
+    String lessonId,
+  ) async {
+    final networkError = _checkNetwork<List<LessonNoteEntity>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
+
+      final response = await _client
+          .from('lesson_notes')
+          .select()
+          .eq('user_id', userId)
+          .eq('lesson_id', lessonId)
+          .order('position_seconds', ascending: true)
+          .limit(500);
+
+      final notes = (response as List)
+          .cast<Map<String, dynamic>>()
+          .map(LessonNoteEntity.fromJson)
+          .toList();
+
+      return Right(notes);
+    } on PostgrestException catch (e) {
+      _log.warning('getLessonNotes: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
   Future<Either<Failure, LessonNoteEntity>> addNote({
     required String lessonId,
     required String bookId,
