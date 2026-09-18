@@ -1,12 +1,12 @@
 -- ============================================================
--- Test harness for 0006_notification_scoping.sql
--- Run AFTER applying 0006, entirely in Supabase SQL Editor.
+-- Test harness for 0006b_notification_scoping.sql
+-- Run AFTER applying 0006b, entirely in Supabase SQL Editor.
 -- Everything is wrapped in BEGIN … ROLLBACK so the test rows
 -- are never committed.
 --
 -- Requirements:
 --   • At least 2 real (non-guest) rows in public.users.
---   • Migration 0006 already applied (target_user_id column
+--   • Migration 0006b already applied (target_user_id column
 --     and "notifications_select_scoped" policy must exist).
 -- ============================================================
 
@@ -113,5 +113,5 @@ end $$;
 
 rollback;
 -- ============================================================
--- End of 0006_test_harness.sql
+-- End of 0006b_notification_scoping_test.sql
 -- ============================================================

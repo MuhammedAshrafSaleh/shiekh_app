@@ -1,5 +1,5 @@
 -- ============================================================
--- Sheikhy — Migration 0006_notification_scoping.sql
+-- Sheikhy — Migration 0006b_notification_scoping.sql
 -- Runs on top of 0001 → 0005.
 --
 -- Problem: the notifications table has no per-user targeting column,
@@ -315,5 +315,5 @@ grant execute on function public.submit_final_exam(uuid, jsonb, timestamptz) to 
 */
 
 -- ============================================================
--- End of migration 0006_notification_scoping.sql
+-- End of migration 0006b_notification_scoping.sql
 -- ============================================================

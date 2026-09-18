@@ -183,7 +183,7 @@ create policy "notif_reads_select_own" on public.notification_reads
 
 -- ============================================================
 -- SECTION 5: Exclude guests from the student views (Audit §B)
--- Recreated verbatim from 0001 / 0002_qa_fixes with the guard appended.
+-- Recreated verbatim from 0001 / 0002b_qa_fixes with the guard appended.
 -- Guests get zero rows -> quiz tab auto-hides, exam unreachable, Q&A empty.
 -- ============================================================
 
@@ -622,7 +622,7 @@ create policy "users_update_own" on public.users
 
 -- ============================================================
 -- ROLLBACK BLOCK — original definitions, verbatim from
--- schema.sql + 0001_app_support.sql + 0002_qa_fixes.sql + 0003.
+-- schema.sql + 0001_app_support.sql + 0002b_qa_fixes.sql + 0003.
 -- Uncomment and run this whole block to restore pre-0005 behavior
 -- if a guard locks real users out. (Leaves is_guest()/conversion
 -- trigger in place — they are inert once the policies are reverted;
@@ -673,7 +673,7 @@ drop policy if exists "users_update_own" on public.users;
 create policy "users_update_own" on public.users
   for update using (auth.uid() = id);
 
--- Views (0001 + 0002_qa_fixes) — original WHERE without the guest guard
+-- Views (0001 + 0002b_qa_fixes) — original WHERE without the guest guard
 create or replace view public.lesson_quiz_questions_student
   with (security_invoker = false) as
 select q.id, q.lesson_id, q.order_index, q.question_text,
