@@ -14,6 +14,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/girih_background.dart';
+import '../cubit/auth_cubit.dart';
+import '../cubit/auth_state.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -103,6 +105,7 @@ class _SplashPageState extends State<SplashPage>
               ),
             ),
           ),
+          const _OfflineOverlay(),
         ],
       ),
     );
@@ -152,6 +155,50 @@ class _Avatar extends StatelessWidget {
         fallbackInitials,
         style: AppTextStyles.h1.copyWith(color: AppColors.goldLight),
       ),
+    );
+  }
+}
+
+class _OfflineOverlay extends StatelessWidget {
+  const _OfflineOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthCubit, AuthState>(
+      buildWhen: (prev, next) => (prev is AuthOffline) != (next is AuthOffline),
+      builder: (context, state) {
+        if (state is! AuthOffline) return const SizedBox.shrink();
+        return Positioned.fill(
+          child: Container(
+            color: AppColors.primary.withValues(alpha: 0.92),
+            child: SafeArea(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.wifi_off_rounded,
+                    color: AppColors.goldLight,
+                    size: 52,
+                  ),
+                  const SizedBox(height: AppSpacing.s4),
+                  Text(
+                    'لا يوجد اتصال بالإنترنت',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.inkInvert,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.s5),
+                  ElevatedButton(
+                    onPressed: () =>
+                        context.read<AuthCubit>().retryInitialize(),
+                    child: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

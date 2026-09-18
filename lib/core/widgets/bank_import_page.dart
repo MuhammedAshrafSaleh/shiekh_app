@@ -111,10 +111,7 @@ class _BankQuestionCard extends StatelessWidget {
   final AdminQuizQuestionEntity question;
   final bool alreadyAdded;
 
-  const _BankQuestionCard({
-    required this.question,
-    required this.alreadyAdded,
-  });
+  const _BankQuestionCard({required this.question, required this.alreadyAdded});
 
   @override
   Widget build(BuildContext context) {
@@ -162,9 +159,7 @@ class _BankQuestionCard extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  isCorrect
-                      ? Icons.check_circle
-                      : Icons.radio_button_unchecked,
+                  isCorrect ? Icons.check_circle : Icons.radio_button_unchecked,
                   size: 16,
                   color: isCorrect
                       ? (alreadyAdded

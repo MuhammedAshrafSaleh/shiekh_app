@@ -1,6 +1,8 @@
 // lib/features/auth/cubit/auth_cubit.dart
 import 'dart:async';
+import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
@@ -30,10 +32,30 @@ class AuthCubit extends Cubit<AuthState> {
     final session = _repo.currentSession;
     if (session == null) {
       emit(AuthUnauthenticated());
-    } else {
-      await _resolveRole(session.user);
+      _listenToAuthChanges();
+      return;
     }
+
+    if (!session.user.isAnonymous) {
+      final results = await Connectivity().checkConnectivity();
+      final isOffline = results.every((r) => r == ConnectivityResult.none);
+      if (isOffline) {
+        emit(AuthOffline());
+        _listenToAuthChanges();
+        return;
+      }
+    }
+
+    await _resolveRole(session.user);
     _listenToAuthChanges();
+  }
+
+  /// Re-runs [initialize] so the user can recover from [AuthOffline].
+  /// Guarded against re-entry while a check is already in flight.
+  Future<void> retryInitialize() async {
+    if (state is AuthLoading) return;
+    emit(AuthInitial());
+    await initialize();
   }
 
   void _listenToAuthChanges() {
@@ -64,7 +86,24 @@ class AuthCubit extends Cubit<AuthState> {
         emit(AuthAuthenticated(user: user, role: UserRole.student));
         return;
       }
-      final roleStr = await _repo.getUserRole();
+      String? roleStr;
+      try {
+        roleStr = await _repo.getUserRole().timeout(const Duration(seconds: 8));
+      } on TimeoutException {
+        _log.warning('getUserRole timed out — no network');
+        if (!isClosed) emit(AuthOffline());
+        return;
+      } on SocketException catch (e) {
+        _log.warning('getUserRole network error: $e');
+        if (!isClosed) emit(AuthOffline());
+        return;
+      } catch (e) {
+        // Non-network failure (malformed token, server error, etc.) →
+        // route to login, not the offline screen.
+        _log.severe('getUserRole unexpected: $e');
+        if (!isClosed) emit(AuthUnauthenticated());
+        return;
+      }
       if (isClosed) return;
       final role = roleStr == 'admin' ? UserRole.admin : UserRole.student;
       emit(AuthAuthenticated(user: user, role: role));

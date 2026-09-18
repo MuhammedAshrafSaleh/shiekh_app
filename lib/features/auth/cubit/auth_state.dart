@@ -41,6 +41,8 @@ class AuthError extends AuthState {
   List<Object?> get props => [message];
 }
 
+class AuthOffline extends AuthState {}
+
 class AuthEmailConfirmationRequired extends AuthState {}
 
 class AuthPasswordResetSent extends AuthState {

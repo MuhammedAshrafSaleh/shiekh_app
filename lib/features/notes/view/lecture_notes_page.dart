@@ -59,22 +59,21 @@ class _LectureNotesPageState extends State<LectureNotesPage> {
                   NotesError(:final message) => SheikhyErrorState(
                     heading: 'تعذّر تحميل الملحوظات',
                     message: message,
-                    onRetry: () => context
-                        .read<NotesCubit>()
-                        .loadBookNotes(widget.bookId),
+                    onRetry: () =>
+                        context.read<NotesCubit>().loadBookNotes(widget.bookId),
                   ),
                   NotesLoaded(:final notes) => _NotesList(
-                    notes: notes
-                        .where((n) => n.lessonId == widget.lessonId)
-                        .toList()
-                        ..sort(
-                          (a, b) =>
-                              a.positionSeconds.compareTo(b.positionSeconds),
-                        ),
+                    notes:
+                        notes
+                            .where((n) => n.lessonId == widget.lessonId)
+                            .toList()
+                          ..sort(
+                            (a, b) =>
+                                a.positionSeconds.compareTo(b.positionSeconds),
+                          ),
                     bookId: widget.bookId,
-                    onRetry: () => context
-                        .read<NotesCubit>()
-                        .loadBookNotes(widget.bookId),
+                    onRetry: () =>
+                        context.read<NotesCubit>().loadBookNotes(widget.bookId),
                   ),
                   _ => const SizedBox.shrink(),
                 };
@@ -111,10 +110,8 @@ class _NotesList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsetsDirectional.symmetric(vertical: AppSpacing.s3),
       itemCount: notes.length,
-      itemBuilder: (context, index) => NoteCard(
-        note: notes[index],
-        bookId: bookId,
-      ),
+      itemBuilder: (context, index) =>
+          NoteCard(note: notes[index], bookId: bookId),
     );
   }
 }

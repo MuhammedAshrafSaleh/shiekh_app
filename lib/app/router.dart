@@ -266,12 +266,10 @@ GoRouter buildRouter(AuthCubit authCubit) {
           return MultiBlocProvider(
             providers: [
               BlocProvider(
-                create: (ctx) =>
-                    BookDetailsCubit(ctx.read<BookRepository>()),
+                create: (ctx) => BookDetailsCubit(ctx.read<BookRepository>()),
               ),
               BlocProvider(
-                create: (ctx) =>
-                    NotesCubit(ctx.read<NotesRepository>()),
+                create: (ctx) => NotesCubit(ctx.read<NotesRepository>()),
               ),
             ],
             child: BookDetailsPage(bookId: bookId),
@@ -295,11 +293,11 @@ GoRouter buildRouter(AuthCubit authCubit) {
             builder: (context, state) {
               final bookId = state.pathParameters['id']!;
               final lessonId = state.pathParameters['lessonId']!;
-              final lessonTitle =
-                  state.extra is String ? state.extra as String : '';
+              final lessonTitle = state.extra is String
+                  ? state.extra as String
+                  : '';
               return BlocProvider(
-                create: (ctx) =>
-                    NotesCubit(ctx.read<NotesRepository>()),
+                create: (ctx) => NotesCubit(ctx.read<NotesRepository>()),
                 child: LectureNotesPage(
                   bookId: bookId,
                   lessonId: lessonId,

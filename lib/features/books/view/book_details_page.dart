@@ -145,8 +145,7 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
         _router?.routerDelegate.currentConfiguration.uri.path ?? '';
     final bookPath = '/books/${widget.bookId}';
     final returningFromLesson =
-        _lastKnownRoute.startsWith('/lessons/') &&
-        currentPath == bookPath;
+        _lastKnownRoute.startsWith('/lessons/') && currentPath == bookPath;
     final returningFromNotes =
         _lastKnownRoute.startsWith('$bookPath/notes/') &&
         currentPath == bookPath;
@@ -473,10 +472,8 @@ class _BookDetailsViewState extends State<_BookDetailsView>
               isExamPublished: state.hasFinalExam,
               completionPercentage: state.completionPercentage,
               bestAttempt: state.bestExamAttempt,
-              onTap: () => context.push(
-                '/books/$bookId/exam',
-                extra: state.book.title,
-              ),
+              onTap: () =>
+                  context.push('/books/$bookId/exam', extra: state.book.title),
             ),
           ),
 
@@ -516,8 +513,7 @@ class _BookDetailsViewState extends State<_BookDetailsView>
       _showEnrollConfirmDialog(
         context: context,
         bookTitle: widget.state.book.title,
-        onConfirm: () =>
-            context.read<BookDetailsCubit>().enroll(widget.bookId),
+        onConfirm: () => context.read<BookDetailsCubit>().enroll(widget.bookId),
       );
     }
   }

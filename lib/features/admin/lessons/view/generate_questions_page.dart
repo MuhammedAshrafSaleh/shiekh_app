@@ -31,7 +31,7 @@ class GenerateQuestionsPage extends StatefulWidget {
 }
 
 class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
-  static const int _maxCount = 100;
+  static const int _maxCount = 15;
 
   _SourceMode _mode = _SourceMode.pasteText;
 
@@ -46,10 +46,10 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
   final _transcriptCtrl = TextEditingController();
   final _youtubeCtrl = TextEditingController();
   final _driveCtrl = TextEditingController();
-  final _countCtrl = TextEditingController(text: '25');
-  final _easyCtrl = TextEditingController(text: '10');
-  final _mediumCtrl = TextEditingController(text: '10');
-  final _hardCtrl = TextEditingController(text: '5');
+  final _countCtrl = TextEditingController(text: '15');
+  final _easyCtrl = TextEditingController(text: '6');
+  final _mediumCtrl = TextEditingController(text: '5');
+  final _hardCtrl = TextEditingController(text: '4');
 
   @override
   void initState() {
@@ -62,6 +62,10 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     _youtubeCtrl.addListener(_onInputChanged);
     _driveCtrl.addListener(_onInputChanged);
     _countCtrl.addListener(_onInputChanged);
+    // Keep the live difficulty total in sync as the admin types.
+    _easyCtrl.addListener(_onInputChanged);
+    _mediumCtrl.addListener(_onInputChanged);
+    _hardCtrl.addListener(_onInputChanged);
   }
 
   @override
@@ -88,6 +92,12 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
   void _onInputChanged() => setState(() {});
 
   int? get _requestedCount => int.tryParse(_countCtrl.text.trim());
+
+  /// Live sum of the three difficulty fields (blank fields count as 0).
+  int get _difficultySum =>
+      (int.tryParse(_easyCtrl.text.trim()) ?? 0) +
+      (int.tryParse(_mediumCtrl.text.trim()) ?? 0) +
+      (int.tryParse(_hardCtrl.text.trim()) ?? 0);
 
   bool get _canSubmit {
     final count = _requestedCount;
@@ -116,6 +126,10 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     final hard = int.tryParse(_hardCtrl.text.trim()) ?? 0;
     if (easy < 0 || medium < 0 || hard < 0) {
       _showWarning('توزيع الصعوبة يجب أن يكون أرقامًا موجبة');
+      return null;
+    }
+    if (easy + medium + hard != count) {
+      _showWarning('مجموع الأسئلة حسب الصعوبة يجب أن يساوي العدد المطلوب');
       return null;
     }
     return (count: count, mix: {'easy': easy, 'medium': medium, 'hard': hard});
@@ -333,6 +347,7 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
           const SizedBox(height: AppSpacing.md),
           if (savedTranscript != null) ...[
             _SavedTranscriptNotice(
+              transcript: savedTranscript,
               onUse: () => _useSavedTranscript(savedTranscript),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -345,17 +360,24 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: const InputDecoration(
               labelText: 'عدد الأسئلة *',
-              hintText: 'مثال: 25',
-              helperText:
-                  'الحد الأقصى 100 — يُعامل كحدٍّ أعلى، وقد يُولَّد أقل',
+              hintText: 'مثال: 15',
+              helperText: 'الحد الأقصى 15 سؤالًا',
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           Text('توزيع الصعوبة', style: theme.textTheme.titleSmall),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            'اختياري — لا يلزم أن يساوي مجموعها عدد الأسئلة',
-            style: theme.textTheme.bodySmall,
+          Builder(
+            builder: (context) {
+              final target = _requestedCount ?? 0;
+              final matches = _difficultySum == target;
+              return Text(
+                'المجموع: $_difficultySum / $target',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: matches ? null : theme.colorScheme.error,
+                ),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -424,9 +446,52 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
 }
 
 class _SavedTranscriptNotice extends StatelessWidget {
+  final String transcript;
   final VoidCallback onUse;
 
-  const _SavedTranscriptNotice({required this.onUse});
+  const _SavedTranscriptNotice({required this.transcript, required this.onUse});
+
+  Future<void> _viewTranscript(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: const Text('نص التفريغ'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: SelectableText(
+                transcript,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.copy_outlined),
+              label: const Text('نسخ'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: transcript));
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('تم نسخ النص'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('إغلاق'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -450,6 +515,11 @@ class _SavedTranscriptNotice extends StatelessWidget {
                   color: theme.colorScheme.onSecondaryContainer,
                 ),
               ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            OutlinedButton(
+              onPressed: () => _viewTranscript(context),
+              child: const Text('رؤية'),
             ),
             const SizedBox(width: AppSpacing.sm),
             FilledButton.tonal(onPressed: onUse, child: const Text('استخدامه')),
