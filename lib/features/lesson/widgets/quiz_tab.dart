@@ -180,6 +180,13 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
       (grade) {
         if (mounted) {
           _gotoPhase(_QuizPhase.submitted, () => _result = grade);
+          // Result sound — reuse the same pass rule as _QuizResult
+          // (percentage >= 60). Fire-and-forget: not awaited, so it never
+          // delays the result UI.
+          final passed = grade.percentage >= 60;
+          context.read<SoundService>().play(
+            passed ? AppSound.success : AppSound.retry,
+          );
           if (!widget.previewMode) {
             final newAttempt = LessonQuizAttemptEntity(
               id: '',
