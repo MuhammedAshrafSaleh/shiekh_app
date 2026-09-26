@@ -51,9 +51,8 @@ class _SectionBooksPageState extends State<SectionBooksPage> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.sectionName?.isNotEmpty == true
-        ? widget.sectionName!
-        : 'كتب القسم';
+    final title =
+        widget.sectionName?.isNotEmpty == true ? widget.sectionName! : 'كتب القسم';
 
     return Scaffold(
       backgroundColor: AppColors.paper,
@@ -74,9 +73,7 @@ class _SectionBooksPageState extends State<SectionBooksPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
           ),
-          Expanded(
-            child: _Body(sectionId: widget.sectionId, filter: _filter),
-          ),
+          Expanded(child: _Body(sectionId: widget.sectionId, filter: _filter)),
         ],
       ),
     );
@@ -88,7 +85,7 @@ class _Body extends StatelessWidget {
 
   final String sectionId;
   final List<BookWithProgressEntity> Function(List<BookWithProgressEntity>)
-  filter;
+      filter;
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +157,7 @@ class _LoadedView extends StatelessWidget {
   final SectionBooksLoaded state;
   final String sectionId;
   final List<BookWithProgressEntity> Function(List<BookWithProgressEntity>)
-  filter;
+      filter;
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +174,8 @@ class _LoadedView extends StatelessWidget {
     return RefreshIndicator(
       color: AppColors.primary,
       backgroundColor: AppColors.surface,
-      onRefresh: () => context.read<SectionBooksCubit>().loadBooks(sectionId),
+      onRefresh: () =>
+          context.read<SectionBooksCubit>().loadBooks(sectionId),
       child: ListView.separated(
         padding: const EdgeInsetsDirectional.fromSTEB(
           AppSpacing.pageGutter,
@@ -187,7 +185,8 @@ class _LoadedView extends StatelessWidget {
         ),
         itemCount: filtered.length,
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s3),
-        itemBuilder: (context, index) => _BookListItem(item: filtered[index]),
+        itemBuilder: (context, index) =>
+            _BookListItem(item: filtered[index]),
       ),
     );
   }
@@ -359,11 +358,8 @@ class _Info extends StatelessWidget {
         ] else ...[
           Row(
             children: [
-              const Icon(
-                Icons.menu_book_outlined,
-                size: 14,
-                color: AppColors.inkFaint,
-              ),
+              const Icon(Icons.menu_book_outlined,
+                  size: 14, color: AppColors.inkFaint),
               const SizedBox(width: AppSpacing.s1),
               Text(
                 item.totalLessons > 0

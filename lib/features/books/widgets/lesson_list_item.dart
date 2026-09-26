@@ -88,6 +88,17 @@ class LessonListItem extends StatelessWidget {
                       ),
                     ),
                   ],
+                  // Admin-entered playtime (migration 0015). Shown only for the
+                  // media a lesson actually has a duration for; hidden entirely
+                  // when neither is set, so no empty row is left behind.
+                  if (item.lesson.videoDurationMinutes != null ||
+                      item.lesson.audioDurationMinutes != null) ...[
+                    const SizedBox(height: AppSpacing.s1),
+                    _DurationTag(
+                      videoMinutes: item.lesson.videoDurationMinutes,
+                      audioMinutes: item.lesson.audioDurationMinutes,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -198,6 +209,56 @@ class _MediaIcons extends StatelessWidget {
               color: AppColors.inkFaint,
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// Small per-medium playtime tag (e.g. video 15 د · audio 12 د). Uses the same
+/// media icons + faint caption tokens as [_MediaIcons]; [Wrap] lets the two
+/// chips flow to a second line on narrow screens instead of overflowing.
+class _DurationTag extends StatelessWidget {
+  final int? videoMinutes;
+  final int? audioMinutes;
+
+  const _DurationTag({required this.videoMinutes, required this.audioMinutes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.s3,
+      runSpacing: AppSpacing.s1,
+      children: [
+        if (videoMinutes != null)
+          _DurationChip(icon: Icons.play_circle_outline, minutes: videoMinutes!),
+        if (audioMinutes != null)
+          _DurationChip(icon: Icons.headphones_outlined, minutes: audioMinutes!),
+      ],
+    );
+  }
+}
+
+class _DurationChip extends StatelessWidget {
+  final IconData icon;
+  final int minutes;
+
+  const _DurationChip({required this.icon, required this.minutes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.inkFaint),
+        const SizedBox(width: AppSpacing.s1),
+        // Western digits to match the lesson-number convention on this card.
+        Text(
+          '$minutes د',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.inkFaint,
+            letterSpacing: 0,
+          ),
+        ),
       ],
     );
   }

@@ -14,21 +14,21 @@ class AchievementsCubit extends Cubit<AchievementsState> {
 
     final dataResult = await _repo.getAchievementsData();
     if (dataResult.isLeft()) {
-      emit(AchievementsError(dataResult.fold((f) => f.message, (_) => '')));
+      emit(AchievementsError(
+          dataResult.fold((f) => f.message, (_) => '')));
       return;
     }
 
     final certsResult = await _repo.getCertificates();
     if (certsResult.isLeft()) {
-      emit(AchievementsError(certsResult.fold((f) => f.message, (_) => '')));
+      emit(AchievementsError(
+          certsResult.fold((f) => f.message, (_) => '')));
       return;
     }
 
-    emit(
-      AchievementsLoaded(
-        data: dataResult.getOrElse(() => throw StateError('')),
-        certificates: certsResult.getOrElse(() => []),
-      ),
-    );
+    emit(AchievementsLoaded(
+      data: dataResult.getOrElse(() => throw StateError('')),
+      certificates: certsResult.getOrElse(() => []),
+    ));
   }
 }

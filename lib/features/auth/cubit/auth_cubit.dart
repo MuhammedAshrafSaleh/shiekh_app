@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
+import '../../../core/errors/failures.dart';
 import '../data/auth_repository.dart';
 import 'auth_state.dart';
 
@@ -145,11 +146,16 @@ class AuthCubit extends Cubit<AuthState> {
     );
     await result.fold(
       (failure) async {
-        // Surface the error, then re-assert the guest session. A failed
-        // conversion must NOT drop the anonymous auth.uid: the user stays a
-        // guest on the signup screen with the error visible, and a corrected
-        // retry still upgrades in place (never creates a second account).
-        emit(AuthError(failure.message));
+        // Emit a TYPED outcome that the app-level auth listener owns — it
+        // survives the signup page being disposed mid-conversion (which is why
+        // the on-page handler failed before). Then re-assert the guest session:
+        // a failed conversion must NOT drop the anonymous auth.uid, so a
+        // corrected retry still upgrades in place (never a second account).
+        if (failure is EmailAlreadyInUseFailure) {
+          emit(AuthGuestEmailTaken());
+        } else {
+          emit(AuthGuestConversionFailed(failure.message));
+        }
         final session = _repo.currentSession;
         if (session != null) {
           emit(AuthAuthenticated(user: session.user, role: UserRole.student));
@@ -170,7 +176,7 @@ class AuthCubit extends Cubit<AuthState> {
         // Supabase RLS both keep treating the user as a guest.
         final refreshed = await _repo.refreshSession();
         await refreshed.fold(
-          (failure) async => emit(AuthError(failure.message)),
+          (failure) async => emit(AuthGuestConversionFailed(failure.message)),
           (user) async {
             if (user != null) await _resolveRole(user);
           },
@@ -179,7 +185,10 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
-  Future<void> signIn({required String email, required String password}) async {
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {
     emit(AuthLoading());
     final result = await _repo.signIn(email: email, password: password);
     result.fold(
@@ -199,14 +208,15 @@ class AuthCubit extends Cubit<AuthState> {
       password: password,
       fullName: fullName,
     );
-    result.fold((failure) => emit(AuthError(failure.message)), (
-      confirmationRequired,
-    ) {
-      if (confirmationRequired) {
-        emit(AuthEmailConfirmationRequired());
-      }
-      // else: authStateChanges stream fires and emits AuthAuthenticated
-    });
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (confirmationRequired) {
+        if (confirmationRequired) {
+          emit(AuthEmailConfirmationRequired());
+        }
+        // else: authStateChanges stream fires and emits AuthAuthenticated
+      },
+    );
   }
 
   Future<void> resetPassword(String email) async {

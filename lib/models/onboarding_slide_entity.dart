@@ -32,12 +32,5 @@ class OnboardingSlideEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-    id,
-    orderIndex,
-    type,
-    mainText,
-    subText,
-    isActive,
-  ];
+  List<Object?> get props => [id, orderIndex, type, mainText, subText, isActive];
 }

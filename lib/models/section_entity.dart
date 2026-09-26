@@ -16,10 +16,7 @@ class SectionEntity extends Equatable {
     required this.bookCount,
   });
 
-  factory SectionEntity.fromJson(
-    Map<String, dynamic> json, {
-    int bookCount = 0,
-  }) {
+  factory SectionEntity.fromJson(Map<String, dynamic> json, {int bookCount = 0}) {
     return SectionEntity(
       id: json['id'] as String,
       name: json['name'] as String,

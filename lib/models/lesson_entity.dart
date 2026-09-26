@@ -20,6 +20,12 @@ class LessonEntity extends Equatable {
   final bool audioOnly;
   final String status;
 
+  /// Admin-entered playtime per medium, in minutes (migration 0015, nullable,
+  /// DB-checked 1..600). Powers the server-side study-hours total and the
+  /// student-facing duration tag. Null = admin hasn't entered it yet.
+  final int? videoDurationMinutes;
+  final int? audioDurationMinutes;
+
   /// Multiple titled PDFs (migration 0012). Populated when the row is fetched
   /// with the embedded `lesson_pdfs(*)` select; empty for flat fetches.
   final List<LessonPdfEntity> pdfs;
@@ -42,6 +48,8 @@ class LessonEntity extends Equatable {
     this.pdfUrl,
     required this.audioOnly,
     required this.status,
+    this.videoDurationMinutes,
+    this.audioDurationMinutes,
     this.pdfs = const [],
     this.transcript,
     this.transcriptStatus = 'none',
@@ -84,6 +92,8 @@ class LessonEntity extends Equatable {
       pdfUrl: json['pdf_url'] as String?,
       audioOnly: json['audio_only'] as bool,
       status: json['status'] as String,
+      videoDurationMinutes: json['video_duration_minutes'] as int?,
+      audioDurationMinutes: json['audio_duration_minutes'] as int?,
       pdfs:
           rawPdfs
               ?.map((e) => LessonPdfEntity.fromJson(e as Map<String, dynamic>))
@@ -110,6 +120,8 @@ class LessonEntity extends Equatable {
     pdfUrl,
     audioOnly,
     status,
+    videoDurationMinutes,
+    audioDurationMinutes,
     pdfs,
     transcript,
     transcriptStatus,

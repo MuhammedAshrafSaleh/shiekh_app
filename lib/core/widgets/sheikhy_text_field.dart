@@ -68,10 +68,7 @@ class _SheikhyTextFieldState extends State<SheikhyTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.label,
-          style: AppTextStyles.fieldLabel.copyWith(color: labelColor),
-        ),
+        Text(widget.label, style: AppTextStyles.fieldLabel.copyWith(color: labelColor)),
         const SizedBox(height: AppSpacing.s2),
         AnimatedBuilder(
           animation: _focusNode,
@@ -126,12 +123,6 @@ class _SheikhyTextFieldState extends State<SheikhyTextField> {
               textInputAction: widget.textInputAction,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
-              // True vertical centering inside the fixed 48px field, independent
-              // of the font's line metrics. Requires a non-collapsed decoration
-              // with zero content padding so textAlignVertical has room to work.
-              textAlignVertical: TextAlignVertical.center,
-              expands: false,
-              maxLines: 1,
               style: AppTextStyles.body.copyWith(
                 color: widget.enabled ? AppColors.ink : AppColors.inkFaint,
               ),
@@ -140,18 +131,10 @@ class _SheikhyTextFieldState extends State<SheikhyTextField> {
                 // Theme-independent: the heritage container owns the fill, so
                 // never inherit a fill/border from an ambient inputDecorationTheme.
                 filled: false,
-                isDense: true,
-                // Horizontal padding is owned by the outer Container (14); keep
-                // it 0 here to avoid doubling. Vertical 0 lets the field center.
-                contentPadding: const EdgeInsetsDirectional.symmetric(
-                  horizontal: 0,
-                  vertical: 0,
-                ),
+                isCollapsed: true,
                 border: InputBorder.none,
                 hintText: widget.hintText,
-                hintStyle: AppTextStyles.body.copyWith(
-                  color: AppColors.inkFaint,
-                ),
+                hintStyle: AppTextStyles.body.copyWith(color: AppColors.inkFaint),
               ),
             ),
           ),

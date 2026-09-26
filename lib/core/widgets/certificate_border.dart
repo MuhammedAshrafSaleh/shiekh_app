@@ -37,7 +37,10 @@ class CertificateBorder extends StatelessWidget {
 }
 
 class _CertificateBorderPainter extends CustomPainter {
-  const _CertificateBorderPainter({required this.primary, required this.gold});
+  const _CertificateBorderPainter({
+    required this.primary,
+    required this.gold,
+  });
 
   final Color primary;
   final Color gold;
@@ -139,3 +142,5 @@ class _CertificateBorderPainter extends CustomPainter {
   bool shouldRepaint(_CertificateBorderPainter old) =>
       old.primary != primary || old.gold != gold;
 }
+
+

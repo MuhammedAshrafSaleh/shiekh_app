@@ -44,11 +44,7 @@ class SheikhyCheckbox extends StatelessWidget {
                 ),
               ),
               child: value
-                  ? const Icon(
-                      Icons.check,
-                      size: 15,
-                      color: AppColors.goldLight,
-                    )
+                  ? const Icon(Icons.check, size: 15, color: AppColors.goldLight)
                   : null,
             ),
             const SizedBox(width: AppSpacing.s3),

@@ -45,7 +45,8 @@ class BookDetailsLoaded extends BookDetailsState {
       book: book,
       lessons: lessons ?? this.lessons,
       isEnrolled: isEnrolled ?? this.isEnrolled,
-      completionPercentage: completionPercentage ?? this.completionPercentage,
+      completionPercentage:
+          completionPercentage ?? this.completionPercentage,
       hasFinalExam: hasFinalExam,
       isEnrolling: isEnrolling ?? this.isEnrolling,
       bestExamAttempt: bestExamAttempt ?? this.bestExamAttempt,
@@ -54,14 +55,14 @@ class BookDetailsLoaded extends BookDetailsState {
 
   @override
   List<Object?> get props => [
-    book,
-    lessons,
-    isEnrolled,
-    completionPercentage,
-    hasFinalExam,
-    isEnrolling,
-    bestExamAttempt,
-  ];
+        book,
+        lessons,
+        isEnrolled,
+        completionPercentage,
+        hasFinalExam,
+        isEnrolling,
+        bestExamAttempt,
+      ];
 }
 
 class BookDetailsError extends BookDetailsState {

@@ -74,9 +74,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'certs table error'));
+      when(() => client.from(any())).thenThrow(
+        const PostgrestException(message: 'certs table error'),
+      );
 
       final result = await repo.getCertificates();
 
@@ -113,9 +113,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'query error'));
+      when(() => client.from(any())).thenThrow(
+        const PostgrestException(message: 'query error'),
+      );
 
       final result = await repo.getCertificateForBook('book-id');
 

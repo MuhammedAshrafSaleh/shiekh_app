@@ -1,87 +1,4 @@
-// lib/features/books/data/book_repository.dart
-import 'dart:io';
-
-import 'package:dartz/dartz.dart';
-import 'package:logging/logging.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../../../core/errors/failures.dart';
-import '../../../features/notifications/cubit/connectivity_cubit.dart';
-import '../../../models/book_entity.dart';
-import '../../../models/final_exam_attempt_entity.dart';
-import '../../../models/lesson_entity.dart';
-import '../../../models/lesson_progress_entity.dart';
-import '../../../models/lesson_with_progress_entity.dart';
-
-class BookRepository {
-  final SupabaseClient _client;
-  final ConnectivityCubit _connectivity;
-  final _log = Logger('BookRepository');
-
-  BookRepository(this._client, this._connectivity);
-
-  Either<Failure, T>? _checkNetwork<T>() {
-    if (!_connectivity.state.isOffline) return null;
-    return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
-  }
-
-  Future<Either<Failure, BookEntity>> getBookDetails(String bookId) async {
-    final networkError = _checkNetwork<BookEntity>();
-    if (networkError != null) return networkError;
-
-    try {
-      final response = await _client
-          .from('books')
-          .select()
-          .eq('id', bookId)
-          .single();
-      return Right(BookEntity.fromJson(response));
-    } on PostgrestException catch (e) {
-      _log.warning('getBookDetails: ${e.message}');
-      return Left(ServerFailure(e.message));
-    } on SocketException {
-      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
-    }
-  }
-
-  Future<Either<Failure, List<LessonWithProgressEntity>>>
-  getLessonsWithProgress(String bookId) async {
-    final networkError = _checkNetwork<List<LessonWithProgressEntity>>();
-    if (networkError != null) return networkError;
-
-    try {
-      final userId = _client.auth.currentUser?.id;
-
-      // Use the URL-free metadata view so the full list renders for everyone.
-      // The base `lessons` table is entitlement-gated (0006): guests / unenrolled
-      // users only get media URLs for lesson 1 or enrolled books, via the player.
-      final lessonsRaw = await _client
-          .from('lessons_public')
-          .select()
-          .eq('book_id', bookId)
-          .eq('status', 'published')
-          .order('order_index', ascending: true)
-          .limit(100);
-
-      final lessonRows = (lessonsRaw as List).cast<Map<String, dynamic>>();
-      final lessons = lessonRows.map((e) => LessonEntity.fromJson(e)).toList();
-
-      if (lessons.isEmpty) return const Right([]);
-
-      // Media + quiz presence flags come from the view (no URLs / no quiz
-      // content exposed — booleans only, so they're accurate for guests too).
-      final flagsById =
-          <String, ({bool video, bool audio, bool pdf, bool quiz})>{};
-      for (final row in lessonRows) {
-        flagsById[row['id'] as String] = (
-          video: (row['has_video'] as bool?) ?? false,
-          audio: (row['has_audio'] as bool?) ?? false,
-          pdf: (row['has_pdf'] as bool?) ?? false,
-          quiz: (row['has_quiz'] as bool?) ?? false,
-        );
       }
-
-      final lessonIds = lessons.map((l) => l.id).toList();
 
       Map<String, LessonProgressEntity> progressMap = {};
       if (userId != null) {
@@ -152,13 +69,11 @@ class BookRepository {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
 
-      await _client
-          .from('enrollments')
-          .upsert(
-            {'user_id': userId, 'book_id': bookId},
-            onConflict: 'user_id,book_id',
-            ignoreDuplicates: true,
-          );
+      await _client.from('enrollments').upsert(
+        {'user_id': userId, 'book_id': bookId},
+        onConflict: 'user_id,book_id',
+        ignoreDuplicates: true,
+      );
 
       return const Right(unit);
     } on PostgrestException catch (e) {
@@ -170,7 +85,8 @@ class BookRepository {
   }
 
   /// Computes completion % using published lessons only (CC-1/CC-21)
-  Future<Either<Failure, double>> getCompletionPercentage(String bookId) async {
+  Future<Either<Failure, double>> getCompletionPercentage(
+      String bookId) async {
     final networkError = _checkNetwork<double>();
     if (networkError != null) return networkError;
 
@@ -190,7 +106,8 @@ class BookRepository {
       final total = (lessonsRaw as List).length;
       if (total == 0) return const Right(0.0);
 
-      final lessonIds = lessonsRaw.map((r) => r['id'] as String).toList();
+      final lessonIds =
+          lessonsRaw.map((r) => r['id'] as String).toList();
 
       final progressRaw = await _client
           .from('lesson_progress')
@@ -211,8 +128,7 @@ class BookRepository {
   }
 
   Future<Either<Failure, FinalExamAttemptEntity?>> getBestExamAttempt(
-    String bookId,
-  ) async {
+      String bookId) async {
     final networkError = _checkNetwork<FinalExamAttemptEntity?>();
     if (networkError != null) return networkError;
 
@@ -231,8 +147,7 @@ class BookRepository {
       final rows = response as List;
       if (rows.isEmpty) return const Right(null);
       return Right(
-        FinalExamAttemptEntity.fromJson(rows.first as Map<String, dynamic>),
-      );
+          FinalExamAttemptEntity.fromJson(rows.first as Map<String, dynamic>));
     } on PostgrestException catch (e) {
       _log.warning('getBestExamAttempt: ${e.message}');
       return Left(ServerFailure(e.message));

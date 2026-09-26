@@ -17,25 +17,32 @@ class NotesTab extends StatelessWidget {
   final String bookId;
   final List<LessonWithProgressEntity> lessons;
 
-  const NotesTab({super.key, required this.bookId, required this.lessons});
+  const NotesTab({
+    super.key,
+    required this.bookId,
+    required this.lessons,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<NotesCubit, NotesState>(
       builder: (context, state) {
         return switch (state) {
-          NotesInitial() ||
-          NotesLoading() => const Center(child: CircularProgressIndicator()),
+          NotesInitial() || NotesLoading() => const Center(
+            child: CircularProgressIndicator(),
+          ),
           NotesError(:final message) => SheikhyErrorState(
             heading: 'تعذّر تحميل الملحوظات',
             message: message,
-            onRetry: () => context.read<NotesCubit>().loadBookNotes(bookId),
+            onRetry: () =>
+                context.read<NotesCubit>().loadBookNotes(bookId),
           ),
           NotesLoaded(:final notes) => _LevelOneList(
             bookId: bookId,
             lessons: lessons,
             notes: notes,
-            onRetry: () => context.read<NotesCubit>().loadBookNotes(bookId),
+            onRetry: () =>
+                context.read<NotesCubit>().loadBookNotes(bookId),
           ),
           _ => const SizedBox.shrink(),
         };

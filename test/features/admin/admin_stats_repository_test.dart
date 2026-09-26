@@ -41,24 +41,20 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'db error'));
+      when(() => client.from(any()))
+          .thenThrow(const PostgrestException(message: 'db error'));
 
       final result = await repo.getBookQuestions('book-1');
 
       expect(result.isLeft(), true);
-      result.fold(
-        (f) => expect(f, isA<ServerFailure>()),
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) => expect(f, isA<ServerFailure>()),
+          (_) => fail('expected Left'));
     });
 
     test('queries the student_questions table', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'ok'));
+      when(() => client.from(any()))
+          .thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.getBookQuestions('book-1');
 
@@ -71,9 +67,7 @@ void main() {
       when(() => connectivity.state).thenReturn(_offline);
 
       final result = await repo.answerQuestion(
-        questionId: 'q-1',
-        answerText: 'answer',
-      );
+          questionId: 'q-1', answerText: 'answer');
 
       expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
       verifyNever(() => client.from(any()));
@@ -81,20 +75,15 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'db error'));
+      when(() => client.from(any()))
+          .thenThrow(const PostgrestException(message: 'db error'));
 
       final result = await repo.answerQuestion(
-        questionId: 'q-1',
-        answerText: 'answer',
-      );
+          questionId: 'q-1', answerText: 'answer');
 
       expect(result.isLeft(), true);
-      result.fold(
-        (f) => expect(f, isA<ServerFailure>()),
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) => expect(f, isA<ServerFailure>()),
+          (_) => fail('expected Left'));
     });
   });
 
@@ -102,10 +91,8 @@ void main() {
     test('returns NetworkFailure when offline', () async {
       when(() => connectivity.state).thenReturn(_offline);
 
-      final result = await repo.editAnswer(
-        questionId: 'q-1',
-        answerText: 'edited',
-      );
+      final result =
+          await repo.editAnswer(questionId: 'q-1', answerText: 'edited');
 
       expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
       verifyNever(() => client.from(any()));
@@ -113,20 +100,15 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'db error'));
+      when(() => client.from(any()))
+          .thenThrow(const PostgrestException(message: 'db error'));
 
-      final result = await repo.editAnswer(
-        questionId: 'q-1',
-        answerText: 'edited',
-      );
+      final result =
+          await repo.editAnswer(questionId: 'q-1', answerText: 'edited');
 
       expect(result.isLeft(), true);
-      result.fold(
-        (f) => expect(f, isA<ServerFailure>()),
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) => expect(f, isA<ServerFailure>()),
+          (_) => fail('expected Left'));
     });
   });
 
@@ -142,17 +124,14 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'db error'));
+      when(() => client.from(any()))
+          .thenThrow(const PostgrestException(message: 'db error'));
 
       final result = await repo.deleteQuestion('q-1');
 
       expect(result.isLeft(), true);
-      result.fold(
-        (f) => expect(f, isA<ServerFailure>()),
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) => expect(f, isA<ServerFailure>()),
+          (_) => fail('expected Left'));
     });
   });
 
@@ -168,24 +147,20 @@ void main() {
 
     test('returns ServerFailure on PostgrestException', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'db error'));
+      when(() => client.from(any()))
+          .thenThrow(const PostgrestException(message: 'db error'));
 
       final result = await repo.clearBookQuestions('book-1');
 
       expect(result.isLeft(), true);
-      result.fold(
-        (f) => expect(f, isA<ServerFailure>()),
-        (_) => fail('expected Left'),
-      );
+      result.fold((f) => expect(f, isA<ServerFailure>()),
+          (_) => fail('expected Left'));
     });
 
     test('queries the student_questions table', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'ok'));
+      when(() => client.from(any()))
+          .thenThrow(const PostgrestException(message: 'ok'));
 
       await repo.clearBookQuestions('book-1');
 

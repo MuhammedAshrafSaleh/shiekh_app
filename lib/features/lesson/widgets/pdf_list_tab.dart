@@ -37,7 +37,10 @@ class PdfListTab extends StatelessWidget {
           onTap: () => _open(context, pdf),
           child: Row(
             children: [
-              Icon(Icons.picture_as_pdf_outlined, color: AppColors.primary),
+              Icon(
+                Icons.picture_as_pdf_outlined,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: AppSpacing.s3),
               Expanded(
                 child: Text(

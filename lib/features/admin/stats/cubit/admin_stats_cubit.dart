@@ -16,41 +16,45 @@ class AdminStatsCubit extends Cubit<AdminStatsState> {
     _bookId = bookId;
     emit(AdminStatsLoading());
     final lessonsResult = await _repo.getLessons(bookId);
-    await lessonsResult.fold((f) async => emit(AdminStatsError(f.message)), (
-      lessons,
-    ) async {
-      final statsResult = await _repo.getBookStats(bookId);
-      await statsResult.fold((f) async => emit(AdminStatsError(f.message)), (
-        stats,
-      ) async {
-        final qResult = await _repo.getBookQuestions(bookId);
-        qResult.fold(
-          (f) => emit(AdminStatsError(f.message)),
-          (questions) => emit(
-            AdminStatsLoaded(
-              lessons: lessons,
-              stats: stats,
-              questions: questions,
-            ),
-          ),
+    await lessonsResult.fold(
+      (f) async => emit(AdminStatsError(f.message)),
+      (lessons) async {
+        final statsResult = await _repo.getBookStats(bookId);
+        await statsResult.fold(
+          (f) async => emit(AdminStatsError(f.message)),
+          (stats) async {
+            final qResult = await _repo.getBookQuestions(bookId);
+            qResult.fold(
+              (f) => emit(AdminStatsError(f.message)),
+              (questions) => emit(AdminStatsLoaded(
+                lessons: lessons,
+                stats: stats,
+                questions: questions,
+              )),
+            );
+          },
         );
-      });
-    });
+      },
+    );
   }
 
   Future<bool> answerQuestion({
     required String questionId,
     required String answerText,
-  }) => _mutate(
-    () => _repo.answerQuestion(questionId: questionId, answerText: answerText),
-  );
+  }) =>
+      _mutate(() => _repo.answerQuestion(
+            questionId: questionId,
+            answerText: answerText,
+          ));
 
   Future<bool> editAnswer({
     required String questionId,
     required String answerText,
-  }) => _mutate(
-    () => _repo.editAnswer(questionId: questionId, answerText: answerText),
-  );
+  }) =>
+      _mutate(() => _repo.editAnswer(
+            questionId: questionId,
+            answerText: answerText,
+          ));
 
   Future<bool> deleteQuestion(String questionId) =>
       _mutate(() => _repo.deleteQuestion(questionId));
@@ -63,8 +67,7 @@ class AdminStatsCubit extends Cubit<AdminStatsState> {
 
   /// Runs a repository mutation, reloads on success, emits error on failure.
   Future<bool> _mutate(
-    Future<Either<Failure, Object?>> Function() action,
-  ) async {
+      Future<Either<Failure, Object?>> Function() action) async {
     final result = await action();
     return result.fold(
       (f) {

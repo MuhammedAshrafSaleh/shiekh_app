@@ -17,10 +17,13 @@ class AdminOnboardingCubit extends Cubit<AdminOnboardingState> {
   Future<void> load() async {
     emit(AdminOnboardingLoading());
     final result = await _repo.getAllSlides();
-    result.fold((f) => emit(AdminOnboardingError(f.message)), (slides) {
-      _slides = slides;
-      emit(AdminOnboardingLoaded(List.of(_slides)));
-    });
+    result.fold(
+      (f) => emit(AdminOnboardingError(f.message)),
+      (slides) {
+        _slides = slides;
+        emit(AdminOnboardingLoaded(List.of(_slides)));
+      },
+    );
   }
 
   void _succeed(String message) {
@@ -30,8 +33,7 @@ class AdminOnboardingCubit extends Cubit<AdminOnboardingState> {
 
   void _replace(OnboardingSlideEntity updated) {
     _slides = [
-      for (final s in _slides)
-        if (s.id == updated.id) updated else s,
+      for (final s in _slides) if (s.id == updated.id) updated else s,
     ];
   }
 
@@ -45,10 +47,13 @@ class AdminOnboardingCubit extends Cubit<AdminOnboardingState> {
       mainText: mainText,
       subText: subText,
     );
-    result.fold((f) => emit(AdminOnboardingError(f.message)), (updated) {
-      _replace(updated);
-      _succeed('تم حفظ التعديلات');
-    });
+    result.fold(
+      (f) => emit(AdminOnboardingError(f.message)),
+      (updated) {
+        _replace(updated);
+        _succeed('تم حفظ التعديلات');
+      },
+    );
   }
 
   Future<void> toggleActive({
@@ -56,10 +61,13 @@ class AdminOnboardingCubit extends Cubit<AdminOnboardingState> {
     required bool isActive,
   }) async {
     final result = await _repo.setActive(id: id, isActive: isActive);
-    result.fold((f) => emit(AdminOnboardingError(f.message)), (updated) {
-      _replace(updated);
-      _succeed(updated.isActive ? 'تم تفعيل الشاشة' : 'تم إخفاء الشاشة');
-    });
+    result.fold(
+      (f) => emit(AdminOnboardingError(f.message)),
+      (updated) {
+        _replace(updated);
+        _succeed(updated.isActive ? 'تم تفعيل الشاشة' : 'تم إخفاء الشاشة');
+      },
+    );
   }
 
   /// Reorders the cached list, reassigns 1-based order_index, and persists every
@@ -96,10 +104,8 @@ class AdminOnboardingCubit extends Cubit<AdminOnboardingState> {
     emit(AdminOnboardingLoaded(List.of(_slides)));
 
     for (final s in changed) {
-      final result = await _repo.updateOrder(
-        id: s.id,
-        orderIndex: s.orderIndex,
-      );
+      final result =
+          await _repo.updateOrder(id: s.id, orderIndex: s.orderIndex);
       final failed = result.isLeft();
       if (failed) {
         result.fold((f) => emit(AdminOnboardingError(f.message)), (_) {});

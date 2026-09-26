@@ -1,44 +1,47 @@
 // lib/features/auth/post_auth_flow.dart
 //
-// Shared "finish the guest journey" step, reused by the two paths that turn a
-// guest into a signed-in registered user with a pending destination:
-//   1. in-place conversion  (signup_page, convertGuest succeeds), and
-//   2. email-collision sign-in (login_page, the email already existed).
-//
-// Both, on reaching a registered session, must: auto-enroll in the book the
-// guest was blocked on, then return to the exact lesson they were opening.
+// Finishes a guest→registered journey (enroll in the gated book, then return to
+// where the guest was blocked). This is driven from a DURABLE owner — the
+// app-level auth listener (app.dart) — not the signup/login page, so it can't be
+// lost if that page is disposed mid-conversion by a router rebuild.
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/errors/failures.dart';
 import '../../core/theme/app_colors.dart';
 import '../books/data/book_repository.dart';
+import 'pending_conversion.dart';
 
-/// Enrolls the now-registered user in [enrollBookId] (if given), then navigates
-/// to [returnTo] (falling back to /home). Enrollment failure is surfaced as a
-/// SnackBar but does not block navigation — the user still lands where intended.
-Future<void> completeGuestReturn(
-  BuildContext context, {
+/// Enrolls the now-registered user in [enrollBookId] (**awaited** — a user must
+/// never land on gated content still unenrolled), then navigates to [returnTo]
+/// (falling back to /home). On enroll failure the user is sent to the book page
+/// (where, as a registered user, they can retry) rather than into the gated
+/// content. The pending intent is cleared once handled either way.
+Future<void> completeGuestReturn({
+  required GoRouter router,
+  required BookRepository bookRepo,
+  required GlobalKey<ScaffoldMessengerState> messengerKey,
   String? returnTo,
   String? enrollBookId,
 }) async {
-  final messenger = ScaffoldMessenger.of(context);
-  final router = GoRouter.of(context);
-  final bookRepo = context.read<BookRepository>();
-
   if (enrollBookId != null && enrollBookId.isNotEmpty) {
     final result = await bookRepo.enrollInBook(enrollBookId);
-    result.fold(
-      (failure) => messenger.showSnackBar(
+    final Failure? failure = result.fold((f) => f, (_) => null);
+    if (failure != null) {
+      messengerKey.currentState?.showSnackBar(
         SnackBar(
-          content: Text(failure.message),
+          content: Text('تعذّر إكمال التسجيل في الكتاب: ${failure.message}'),
           backgroundColor: AppColors.danger,
           duration: const Duration(seconds: 4),
         ),
-      ),
-      (_) {},
-    );
+      );
+      await PendingConversion.clear();
+      // Don't drop them into gated content unenrolled — land on the book page.
+      router.go('/books/$enrollBookId');
+      return;
+    }
   }
 
+  await PendingConversion.clear();
   router.go((returnTo != null && returnTo.isNotEmpty) ? returnTo : '/home');
 }

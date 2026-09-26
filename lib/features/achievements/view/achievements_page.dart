@@ -11,6 +11,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_page_header.dart';
@@ -57,16 +58,29 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Achievements (and the شهاداتي certificates section within) are account-
+    // only — a guest has none. Gate before the content so a guest on this
+    // bottom-nav tab sees the prompt rather than empty stats.
+    final authState = context.read<AuthCubit>().state;
+    final isGuest = authState is AuthAuthenticated && authState.isGuest;
+    if (isGuest) {
+      return const AccountGate(
+        reason: GateReason.account,
+        returnTo: '/achievements',
+        guestMessage: 'أنشئ حساباً لعرض إنجازاتك وشهاداتك',
+      );
+    }
+
     return BlocBuilder<AchievementsCubit, AchievementsState>(
       builder: (context, state) {
         return switch (state) {
-          AchievementsInitial() ||
-          AchievementsLoading() => const _LoadingView(),
+          AchievementsInitial() || AchievementsLoading() => const _LoadingView(),
           AchievementsError(:final message) => SheikhyErrorState(
-            heading: 'تعذّر تحميل الإنجازات',
-            message: message,
-            onRetry: () => context.read<AchievementsCubit>().loadAchievements(),
-          ),
+              heading: 'تعذّر تحميل الإنجازات',
+              message: message,
+              onRetry: () =>
+                  context.read<AchievementsCubit>().loadAchievements(),
+            ),
           AchievementsLoaded() => _LoadedView(state: state),
           _ => const SizedBox.shrink(),
         };
@@ -140,7 +154,8 @@ class _LoadedView extends StatelessWidget {
     String studentName = '';
     if (authState is AuthAuthenticated) {
       final meta = authState.user.userMetadata;
-      studentName = (meta != null ? meta['full_name'] as String? : null) ?? '';
+      studentName =
+          (meta != null ? meta['full_name'] as String? : null) ?? '';
     }
     final bookTitle = cert.bookTitle?.trim() ?? '';
     try {
@@ -176,14 +191,20 @@ class _StatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // < 1h → whole minutes ("دقيقة دراسة"); ≥ 1h → whole hours ("ساعة دراسة").
+    final studySeconds = data.totalStudySeconds as int;
+    final showHours = studySeconds >= 3600;
+    final studyValue = showHours ? studySeconds ~/ 3600 : studySeconds ~/ 60;
+    final studyLabel = showHours ? 'ساعة دراسة' : 'دقيقة دراسة';
+
     return Row(
       children: [
-        // RTL order (right → left): hours | certificates | completed
+        // RTL order (right → left): study time | certificates | completed
         Expanded(
           child: StatCard(
             icon: Icons.schedule_outlined,
-            value: data.estimatedStudyHours as int,
-            label: 'ساعة دراسة',
+            value: studyValue,
+            label: studyLabel,
             color: AppColors.primary,
           ),
         ),

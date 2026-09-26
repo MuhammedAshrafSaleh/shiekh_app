@@ -55,9 +55,7 @@ abstract final class SheikhyTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(borderRadius: AppRadii.rMd),
-        contentTextStyle: AppTextStyles.body.copyWith(
-          color: AppColors.inkInvert,
-        ),
+        contentTextStyle: AppTextStyles.body.copyWith(color: AppColors.inkInvert),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.primary,

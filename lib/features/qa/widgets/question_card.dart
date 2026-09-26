@@ -16,9 +16,9 @@ class QuestionCard extends StatelessWidget {
     const w = '0123456789';
     const a = '٠١٢٣٤٥٦٧٨٩';
     String ar(int n) => n.toString().split('').map((c) {
-      final i = w.indexOf(c);
-      return i >= 0 ? a[i] : c;
-    }).join();
+          final i = w.indexOf(c);
+          return i >= 0 ? a[i] : c;
+        }).join();
     return '${ar(date.day)}/${ar(date.month)}/${ar(date.year)}';
   }
 

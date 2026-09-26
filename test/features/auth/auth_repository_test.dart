@@ -104,26 +104,23 @@ void main() {
   });
 
   group('signUp', () {
-    test(
-      'returns Right(true) when confirmation required (no session)',
-      () async {
-        when(
-          () => auth.signUp(
-            email: any(named: 'email'),
-            password: any(named: 'password'),
-            data: any(named: 'data'),
-          ),
-        ).thenAnswer((_) async => AuthResponse());
+    test('returns Right(true) when confirmation required (no session)', () async {
+      when(
+        () => auth.signUp(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+          data: any(named: 'data'),
+        ),
+      ).thenAnswer((_) async => AuthResponse());
 
-        final result = await repo.signUp(
-          email: 'a@b.com',
-          password: 'secret1',
-          fullName: 'اسم',
-        );
+      final result = await repo.signUp(
+        email: 'a@b.com',
+        password: 'secret1',
+        fullName: 'اسم',
+      );
 
-        expect(result, const Right<Failure, bool>(true));
-      },
-    );
+      expect(result, const Right<Failure, bool>(true));
+    });
 
     test('maps duplicate email to Arabic AuthFailure (CC-27)', () async {
       when(
@@ -155,9 +152,7 @@ void main() {
           password: any(named: 'password'),
           data: any(named: 'data'),
         ),
-      ).thenThrow(
-        const AuthException('Password should be at least 6 characters'),
-      );
+      ).thenThrow(const AuthException('Password should be at least 6 characters'));
 
       final result = await repo.signUp(
         email: 'a@b.com',
@@ -188,26 +183,23 @@ void main() {
       expect(result, const Right<Failure, void>(null));
     });
 
-    test(
-      'maps rate limit to Arabic AuthFailure (CC-30 neutral flow)',
-      () async {
-        when(
-          () => auth.resetPasswordForEmail(
-            any(),
-            redirectTo: any(named: 'redirectTo'),
-          ),
-        ).thenThrow(const AuthException('email rate limit exceeded'));
+    test('maps rate limit to Arabic AuthFailure (CC-30 neutral flow)', () async {
+      when(
+        () => auth.resetPasswordForEmail(
+          any(),
+          redirectTo: any(named: 'redirectTo'),
+        ),
+      ).thenThrow(const AuthException('email rate limit exceeded'));
 
-        final result = await repo.resetPassword('a@b.com');
+      final result = await repo.resetPassword('a@b.com');
 
-        expect(
-          result,
-          const Left<Failure, void>(
-            AuthFailure('محاولات كثيرة، يرجى الانتظار قليلاً'),
-          ),
-        );
-      },
-    );
+      expect(
+        result,
+        const Left<Failure, void>(
+          AuthFailure('محاولات كثيرة، يرجى الانتظار قليلاً'),
+        ),
+      );
+    });
   });
 
   group('signOut', () {
@@ -243,9 +235,8 @@ void main() {
 
   group('signInAnonymously', () {
     test('returns Right(null) on success', () async {
-      when(
-        () => auth.signInAnonymously(),
-      ).thenAnswer((_) async => AuthResponse());
+      when(() => auth.signInAnonymously())
+          .thenAnswer((_) async => AuthResponse());
 
       final result = await repo.signInAnonymously();
 
@@ -253,9 +244,8 @@ void main() {
     });
 
     test('maps disabled anonymous provider to Arabic AuthFailure', () async {
-      when(
-        () => auth.signInAnonymously(),
-      ).thenThrow(const AuthException('Anonymous sign-ins are disabled'));
+      when(() => auth.signInAnonymously())
+          .thenThrow(const AuthException('Anonymous sign-ins are disabled'));
 
       final result = await repo.signInAnonymously();
 
@@ -281,9 +271,8 @@ void main() {
 
   group('convertGuest', () {
     test('returns Right(null) on success', () async {
-      when(
-        () => auth.updateUser(any()),
-      ).thenAnswer((_) async => _MockUserResponse());
+      when(() => auth.updateUser(any()))
+          .thenAnswer((_) async => _MockUserResponse());
 
       final result = await repo.convertGuest(
         email: 'a@b.com',
@@ -313,27 +302,24 @@ void main() {
       );
     });
 
-    test(
-      'maps EMAIL_TAKEN trigger error to the same collision message',
-      () async {
-        when(
-          () => auth.updateUser(any()),
-        ).thenThrow(const AuthException('EMAIL_TAKEN'));
+    test('maps EMAIL_TAKEN trigger error to the same collision message',
+        () async {
+      when(() => auth.updateUser(any()))
+          .thenThrow(const AuthException('EMAIL_TAKEN'));
 
-        final result = await repo.convertGuest(
-          email: 'taken@b.com',
-          password: 'secret1',
-          fullName: 'اسم',
-        );
+      final result = await repo.convertGuest(
+        email: 'taken@b.com',
+        password: 'secret1',
+        fullName: 'اسم',
+      );
 
-        expect(
-          result,
-          const Left<Failure, void>(
-            AuthFailure('هذا البريد الإلكتروني مسجّل مسبقاً'),
-          ),
-        );
-      },
-    );
+      expect(
+        result,
+        const Left<Failure, void>(
+          AuthFailure('هذا البريد الإلكتروني مسجّل مسبقاً'),
+        ),
+      );
+    });
 
     test('maps an unexpected (non-Auth) error to ServerFailure', () async {
       when(() => auth.updateUser(any())).thenThrow(Exception('boom'));

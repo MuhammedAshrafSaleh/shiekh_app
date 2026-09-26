@@ -269,7 +269,10 @@ class _InfoTile extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: iconBg,
+              shape: BoxShape.circle,
+            ),
             alignment: Alignment.center,
             child: Icon(icon, size: 18, color: iconColor),
           ),

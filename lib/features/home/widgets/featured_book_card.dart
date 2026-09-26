@@ -7,7 +7,11 @@ import '../../../core/widgets/sheikhy_horizontal_book_card.dart';
 import '../../../models/book_with_progress_entity.dart';
 
 class FeaturedBookCard extends StatelessWidget {
-  const FeaturedBookCard({super.key, required this.item, required this.onTap});
+  const FeaturedBookCard({
+    super.key,
+    required this.item,
+    required this.onTap,
+  });
 
   final BookWithProgressEntity item;
   final VoidCallback onTap;

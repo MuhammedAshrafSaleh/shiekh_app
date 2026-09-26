@@ -41,7 +41,11 @@ class AdminDashboardRepository {
     try {
       final results = await Future.wait([
         _client.from('books').select('id').limit(1000),
-        _client.from('users').select('id').eq('role', 'student').limit(10000),
+        _client
+            .from('users')
+            .select('id')
+            .eq('role', 'student')
+            .limit(10000),
         _client.from('lessons').select('id').limit(10000),
         _client
             .from('student_questions')
@@ -50,14 +54,12 @@ class AdminDashboardRepository {
             .limit(1000),
       ]);
 
-      return Right(
-        AdminStats(
-          totalBooks: (results[0] as List).length,
-          totalStudents: (results[1] as List).length,
-          totalLessons: (results[2] as List).length,
-          pendingQa: (results[3] as List).length,
-        ),
-      );
+      return Right(AdminStats(
+        totalBooks: (results[0] as List).length,
+        totalStudents: (results[1] as List).length,
+        totalLessons: (results[2] as List).length,
+        pendingQa: (results[3] as List).length,
+      ));
     } on PostgrestException catch (e) {
       _log.warning('getStats: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -94,8 +96,7 @@ class AdminDashboardRepository {
       // Unlink banners that reference this book (nullable FK, no CASCADE).
       await _client
           .from('home_banners')
-          .update({'linked_book_id': null})
-          .eq('linked_book_id', bookId);
+          .update({'linked_book_id': null}).eq('linked_book_id', bookId);
       // Delete lessons explicitly; quiz questions and lesson progress
       // cascade automatically via DB FK constraints.
       await _client.from('lessons').delete().eq('book_id', bookId);

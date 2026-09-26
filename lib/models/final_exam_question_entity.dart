@@ -47,13 +47,13 @@ class FinalExamQuestionEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    bookId,
-    orderIndex,
-    questionText,
-    choiceA,
-    choiceB,
-    choiceC,
-    choiceD,
-  ];
+        id,
+        bookId,
+        orderIndex,
+        questionText,
+        choiceA,
+        choiceB,
+        choiceC,
+        choiceD,
+      ];
 }

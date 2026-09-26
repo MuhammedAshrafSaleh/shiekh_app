@@ -62,9 +62,7 @@ abstract final class AppColors {
   /// hue + saturation. factor < 1 darkens, > 1 lightens.
   static Color _withLightnessFactor(Color c, double factor) {
     final hsl = HSLColor.fromColor(c);
-    return hsl
-        .withLightness((hsl.lightness * factor).clamp(0.0, 1.0))
-        .toColor();
+    return hsl.withLightness((hsl.lightness * factor).clamp(0.0, 1.0)).toColor();
   }
 
   /// Very light, low-saturation tint of [c] for faint backgrounds.

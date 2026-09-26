@@ -163,7 +163,10 @@ class SheikhyButton extends StatelessWidget {
       color: bg,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.rMd, side: side),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(onTap: _effectiveTap(context), child: content),
+      child: InkWell(
+        onTap: _disabled ? null : onPressed,
+        child: content,
+      ),
     );
 
     return fullWidth
@@ -218,10 +221,7 @@ class SheikhyButton extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconTheme(
-          data: IconThemeData(color: fg, size: 18),
-          child: icon!,
-        ),
+        IconTheme(data: IconThemeData(color: fg, size: 18), child: icon!),
         const SizedBox(width: AppSpacing.s2),
         text,
       ],
@@ -229,10 +229,10 @@ class SheikhyButton extends StatelessWidget {
   }
 
   Widget _spinner(Color color) => SizedBox(
-    height: 20,
-    width: 20,
-    child: CircularProgressIndicator(strokeWidth: 2, color: color),
-  );
+        height: 20,
+        width: 20,
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      );
 }
 
 /// 48×48 square icon button. [filled] uses primary bg + gold icon; otherwise a

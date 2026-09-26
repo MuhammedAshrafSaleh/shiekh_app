@@ -134,94 +134,94 @@ class _CertificateContent extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Bismillah
-          Text(
-            'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
-            style: GoogleFonts.tajawal(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.gold,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          // Small gold diamond separator
-          SizedBox(
-            width: 60,
-            child: OrnamentDivider(color: AppColors.gold, motifWidth: 40),
-          ),
-          const SizedBox(height: 8),
-
-          // Title
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              'شهادة إتمام',
-              style: AppTextStyles.displaySm.copyWith(
-                color: AppColors.primary,
-                height: 1.2,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Bismillah
+            Text(
+              'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
+              style: GoogleFonts.tajawal(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.gold,
+                height: 1.4,
               ),
               textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 6),
-          OrnamentDivider(color: AppColors.gold),
-          const SizedBox(height: 10),
+            const SizedBox(height: 4),
+            // Small gold diamond separator
+            SizedBox(
+              width: 60,
+              child: OrnamentDivider(color: AppColors.gold, motifWidth: 40),
+            ),
+            const SizedBox(height: 8),
 
-          // Attestation line
-          Text(
-            'تشهد إدارة الأكاديمية بأنَّ الطالب/ة',
-            style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
+            // Title
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'شهادة إتمام',
+                style: AppTextStyles.displaySm.copyWith(
+                  color: AppColors.primary,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 6),
+            OrnamentDivider(color: AppColors.gold),
+            const SizedBox(height: 10),
 
-          // Student name + underline
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              studentName,
-              style: AppTextStyles.h2.copyWith(color: AppColors.primary),
+            // Attestation line
+            Text(
+              'تشهد إدارة الأكاديمية بأنَّ الطالب/ة',
+              style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
               textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              child: Container(height: 1, color: AppColors.gold),
+            const SizedBox(height: 4),
+
+            // Student name + underline
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                studentName,
+                style: AppTextStyles.h2.copyWith(color: AppColors.primary),
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 2),
+            Center(
+              child: FractionallySizedBox(
+                widthFactor: 0.5,
+                child: Container(height: 1, color: AppColors.gold),
+              ),
+            ),
+            const SizedBox(height: 10),
 
-          // Body
-          Text(
-            'قد أتمّ/ت بعون الله وتوفيقه دراسة $bookTitle',
-            style: AppTextStyles.small.copyWith(color: AppColors.ink),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'بإشراف فضيلة الشيخ $sheikhName',
-            style: AppTextStyles.small.copyWith(color: AppColors.ink),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 14),
+            // Body
+            Text(
+              'قد أتمّ/ت بعون الله وتوفيقه دراسة $bookTitle',
+              style: AppTextStyles.small.copyWith(color: AppColors.ink),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'بإشراف فضيلة الشيخ $sheikhName',
+              style: AppTextStyles.small.copyWith(color: AppColors.ink),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
 
-          // Footer: التقدير / التاريخ centered together under the last line
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _FooterColumn(label: 'التقدير', value: grade),
-              const SizedBox(width: AppSpacing.s6),
-              _FooterColumn(label: 'التاريخ', value: issuedDate),
-            ],
-          ),
-        ],
+            // Footer: التقدير / التاريخ centered together under the last line
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _FooterColumn(label: 'التقدير', value: grade),
+                const SizedBox(width: AppSpacing.s6),
+                _FooterColumn(label: 'التاريخ', value: issuedDate),
+              ],
+            ),
+          ],
       ),
     );
   }

@@ -14,15 +14,19 @@ class AdminQaCubit extends Cubit<AdminQaState> {
   Future<void> load() async {
     emit(AdminQaLoading());
     final pendingResult = await _repo.getQuestions(status: 'pending');
-    await pendingResult.fold((f) async => emit(AdminQaError(f.message)), (
-      pending,
-    ) async {
-      final answeredResult = await _repo.getQuestions(status: 'answered');
-      answeredResult.fold((f) => emit(AdminQaError(f.message)), (answered) {
-        emit(AdminQaLoaded(pending: pending, answered: answered));
-        _subscribeRealtime();
-      });
-    });
+    await pendingResult.fold(
+      (f) async => emit(AdminQaError(f.message)),
+      (pending) async {
+        final answeredResult = await _repo.getQuestions(status: 'answered');
+        answeredResult.fold(
+          (f) => emit(AdminQaError(f.message)),
+          (answered) {
+            emit(AdminQaLoaded(pending: pending, answered: answered));
+            _subscribeRealtime();
+          },
+        );
+      },
+    );
   }
 
   void _subscribeRealtime() {

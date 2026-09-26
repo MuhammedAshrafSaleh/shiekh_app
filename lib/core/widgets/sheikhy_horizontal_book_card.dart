@@ -140,27 +140,15 @@ class _InfoColumn extends StatelessWidget {
 
   SheikhyBadge get _statusBadge {
     if (totalLessons > 0 && completedLessons >= totalLessons) {
-      return const SheikhyBadge(
-        variant: SheikhyBadgeVariant.passed,
-        label: 'مكتمل',
-      );
+      return const SheikhyBadge(variant: SheikhyBadgeVariant.passed, label: 'مكتمل');
     }
     if (completedLessons > 0) {
-      return const SheikhyBadge(
-        variant: SheikhyBadgeVariant.isNew,
-        label: 'جارٍ',
-      );
+      return const SheikhyBadge(variant: SheikhyBadgeVariant.isNew, label: 'جارٍ');
     }
     if (isEnrolled) {
-      return const SheikhyBadge(
-        variant: SheikhyBadgeVariant.isNew,
-        label: 'مسجّل',
-      );
+      return const SheikhyBadge(variant: SheikhyBadgeVariant.isNew, label: 'مسجّل');
     }
-    return const SheikhyBadge(
-      variant: SheikhyBadgeVariant.draft,
-      label: 'لم يبدأ',
-    );
+    return const SheikhyBadge(variant: SheikhyBadgeVariant.draft, label: 'لم يبدأ');
   }
 
   String get _progressLabel {
@@ -189,11 +177,8 @@ class _InfoColumn extends StatelessWidget {
         const SizedBox(height: AppSpacing.s2),
         Row(
           children: [
-            const Icon(
-              Icons.menu_book_outlined,
-              size: 13,
-              color: AppColors.inkFaint,
-            ),
+            const Icon(Icons.menu_book_outlined,
+                size: 13, color: AppColors.inkFaint),
             const SizedBox(width: AppSpacing.s1),
             Text(
               '$totalLessons درساً',

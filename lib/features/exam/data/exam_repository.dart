@@ -98,10 +98,10 @@ class ExamSession {
   });
 
   Map<String, dynamic> toJson() => {
-    'startedAt': startedAt.toIso8601String(),
-    'answers': answers,
-    'currentIndex': currentIndex,
-  };
+        'startedAt': startedAt.toIso8601String(),
+        'answers': answers,
+        'currentIndex': currentIndex,
+      };
 
   factory ExamSession.fromJson(Map<String, dynamic> json) {
     return ExamSession(
@@ -143,8 +143,7 @@ class ExamRepository {
         return Left(ServerFailure('الاختبار غير متاح لهذا الكتاب'));
       }
       final settings = FinalExamSettingsEntity.fromJson(
-        settingsList.first as Map<String, dynamic>,
-      );
+          settingsList.first as Map<String, dynamic>);
 
       final countResp = await _client
           .from('final_exam_questions_student')
@@ -162,19 +161,16 @@ class ExamRepository {
           .limit(10);
 
       final attempts = (attemptsResp as List)
-          .map(
-            (e) => FinalExamAttemptEntity.fromJson(e as Map<String, dynamic>),
-          )
+          .map((e) =>
+              FinalExamAttemptEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
-      return Right(
-        ExamMeta(
-          settings: settings,
-          questionCount: questionCount,
-          attemptsUsed: attempts.length,
-          pastAttempts: attempts,
-        ),
-      );
+      return Right(ExamMeta(
+        settings: settings,
+        questionCount: questionCount,
+        attemptsUsed: attempts.length,
+        pastAttempts: attempts,
+      ));
     } on PostgrestException catch (e) {
       _log.warning('getExamMeta: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -183,10 +179,36 @@ class ExamRepository {
     }
   }
 
+  /// True when the current user has an enrollment row for [bookId]. A guest is
+  /// never enrolled, so this single check covers both the guest and the
+  /// registered-not-enrolled cases behind the exam-page enrollment gate.
+  Future<Either<Failure, bool>> isEnrolled(String bookId) async {
+    final networkError = _checkNetwork<bool>();
+    if (networkError != null) return networkError;
+
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
+
+      final resp = await _client
+          .from('enrollments')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('book_id', bookId)
+          .limit(1);
+
+      return Right((resp as List).isNotEmpty);
+    } on PostgrestException catch (e) {
+      _log.warning('isEnrolled: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
   // CC-18: uses final_exam_questions_student view (no correct_choice)
   Future<Either<Failure, List<FinalExamQuestionEntity>>> getQuestions(
-    String bookId,
-  ) async {
+      String bookId) async {
     final networkError = _checkNetwork<List<FinalExamQuestionEntity>>();
     if (networkError != null) return networkError;
 
@@ -199,9 +221,8 @@ class ExamRepository {
           .limit(200);
 
       final questions = (response as List)
-          .map(
-            (e) => FinalExamQuestionEntity.fromJson(e as Map<String, dynamic>),
-          )
+          .map((e) =>
+              FinalExamQuestionEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(questions);
@@ -223,27 +244,22 @@ class ExamRepository {
     if (networkError != null) return networkError;
 
     try {
-      final response = await _client.rpc(
-        'submit_final_exam',
-        params: {
-          'p_book_id': bookId,
-          'p_answers': answers,
-          'p_started_at': startedAt.toIso8601String(),
-        },
-      );
+      final response = await _client.rpc('submit_final_exam', params: {
+        'p_book_id': bookId,
+        'p_answers': answers,
+        'p_started_at': startedAt.toIso8601String(),
+      });
 
       final data = response as Map<String, dynamic>;
-      return Right(
-        ExamSubmitResult(
-          attemptId: data['attempt_id'] as String,
-          score: data['score'] as int,
-          correct: data['correct'] as int,
-          total: data['total'] as int,
-          passed: data['passed'] as bool,
-          gradeLabel: data['grade_label'] as String? ?? '',
-          certIssued: data['cert_issued'] as bool? ?? false,
-        ),
-      );
+      return Right(ExamSubmitResult(
+        attemptId: data['attempt_id'] as String,
+        score: data['score'] as int,
+        correct: data['correct'] as int,
+        total: data['total'] as int,
+        passed: data['passed'] as bool,
+        gradeLabel: data['grade_label'] as String? ?? '',
+        certIssued: data['cert_issued'] as bool? ?? false,
+      ));
     } on PostgrestException catch (e) {
       _log.warning('submitExam: ${e.message}');
       final msg = switch (e.code) {
@@ -267,14 +283,15 @@ class ExamRepository {
     if (networkError != null) return networkError;
 
     try {
-      final response = await _client.rpc(
-        'get_final_exam_review',
-        params: {'p_book_id': bookId, 'p_attempt_id': attemptId},
-      );
+      final response = await _client.rpc('get_final_exam_review', params: {
+        'p_book_id': bookId,
+        'p_attempt_id': attemptId,
+      });
 
       final list = response as List? ?? [];
       final questions = list
-          .map((e) => ExamReviewQuestion.fromJson(e as Map<String, dynamic>))
+          .map((e) =>
+              ExamReviewQuestion.fromJson(e as Map<String, dynamic>))
           .toList();
       return Right(questions);
     } on PostgrestException catch (e) {
@@ -301,7 +318,8 @@ class ExamRepository {
           .limit(50);
 
       final certs = (response as List)
-          .map((e) => CertificateEntity.fromJson(e as Map<String, dynamic>))
+          .map((e) =>
+              CertificateEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(certs);
@@ -328,9 +346,7 @@ class ExamRepository {
   Future<void> saveSession(String bookId, ExamSession session) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'exam_${bookId}_session',
-      jsonEncode(session.toJson()),
-    );
+        'exam_${bookId}_session', jsonEncode(session.toJson()));
   }
 
   Future<void> clearSession(String bookId) async {

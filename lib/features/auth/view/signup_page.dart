@@ -24,11 +24,7 @@ import '../../../core/widgets/sheikhy_password_strength.dart';
 import '../../../core/widgets/sheikhy_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
-import '../post_auth_flow.dart';
-
-// The mapped collision message from AuthRepository._mapAuthError — used to
-// detect "this email already belongs to another account" and offer sign-in.
-const String _kEmailTakenMsg = 'هذا البريد الإلكتروني مسجّل مسبقاً';
+import '../pending_conversion.dart';
 
 // Pragmatic email-shape check (local@domain.tld). Applied identically to a
 // normal signup and an in-place guest conversion so a malformed address is
@@ -55,11 +51,6 @@ class _SignupPageState extends State<SignupPage> {
 
   String _password = '';
   bool _termsAccepted = false;
-
-  // Guest-conversion bookkeeping: set true when this submit upgrades an
-  // anonymous session in place; guards the one-shot post-auth navigation.
-  bool _isConversion = false;
-  bool _postAuthHandled = false;
 
   String? _formError;
   String? _nameError;
@@ -95,7 +86,7 @@ class _SignupPageState extends State<SignupPage> {
     return s.clamp(0, 4);
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -155,67 +146,20 @@ class _SignupPageState extends State<SignupPage> {
     // instead of creating a second account.
     final authState = context.read<AuthCubit>().state;
     final isGuest = authState is AuthAuthenticated && authState.isGuest;
-    _isConversion = isGuest;
 
     if (isGuest) {
       context.read<AuthCubit>().convertGuest(
-        email: email,
-        password: password,
-        fullName: name,
-      );
+            email: email,
+            password: password,
+            fullName: name,
+          );
     } else {
       context.read<AuthCubit>().signUp(
-        email: email,
-        password: password,
-        fullName: name,
-      );
+            email: email,
+            password: password,
+            fullName: name,
+          );
     }
-  }
-
-  /// Collision: the email already belongs to a different account. We cannot
-  /// merge, so offer to sign into that account — preserving returnTo/autoEnroll
-  /// so the journey still ends on the intended lesson.
-  void _promptSignInInstead() {
-    final loginLoc = Uri(
-      path: '/login',
-      queryParameters: {
-        if (widget.returnTo != null) 'returnTo': widget.returnTo,
-        if (widget.autoEnrollBookId != null)
-          'autoEnrollBookId': widget.autoEnrollBookId,
-      },
-    ).toString();
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.rLg),
-        title: Text(
-          'البريد مسجّل مسبقاً',
-          style: AppTextStyles.h3,
-          textAlign: TextAlign.center,
-        ),
-        content: Text(
-          'هذا البريد لديه حساب بالفعل. سجّل الدخول للمتابعة إلى الدرس.',
-          style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
-          textAlign: TextAlign.center,
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          SheikhyButton.secondary(
-            label: 'إلغاء',
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-          ),
-          SheikhyButton.primary(
-            label: 'تسجيل الدخول',
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              context.go(loginLoc);
-            },
-          ),
-        ],
-      ),
-    );
   }
 
   void _showConfirmationDialog(String email) {
@@ -257,26 +201,15 @@ class _SignupPageState extends State<SignupPage> {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthError) {
+          // Brand-new (non-guest) signup errors show inline here. Guest
+          // conversion outcomes (email-taken collision, generic failure,
+          // success) are typed states owned by the durable app-level auth
+          // listener (app.dart) so they survive this page being disposed
+          // mid-conversion.
           setState(() => _formError = state.message);
-          // Guest conversion hit an already-registered email → offer sign-in.
-          if (_isConversion && state.message == _kEmailTakenMsg) {
-            _promptSignInInstead();
-          }
         } else if (state is AuthEmailConfirmationRequired) {
           if (!mounted) return;
           _showConfirmationDialog(_emailController.text.trim());
-        } else if (state is AuthAuthenticated &&
-            !state.isGuest &&
-            _isConversion &&
-            !_postAuthHandled) {
-          // Conversion succeeded: enroll in the gated book and return to the
-          // exact lesson the guest was blocked on.
-          _postAuthHandled = true;
-          completeGuestReturn(
-            context,
-            returnTo: widget.returnTo,
-            enrollBookId: widget.autoEnrollBookId,
-          );
         }
       },
       child: Scaffold(
@@ -396,7 +329,9 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                     const SizedBox(height: AppSpacing.s6),
                     _LoginFooter(onTap: () => context.pop()),
-                    SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
+                    SizedBox(
+                      height: MediaQuery.viewInsetsOf(context).bottom,
+                    ),
                   ],
                 ),
               ),

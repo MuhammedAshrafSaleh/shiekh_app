@@ -10,6 +10,8 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 // import '../../../core/theme/theme_cubit.dart'; // re-enable with _ThemeModeRow
+import '../../../core/widgets/account_gate.dart';
+import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_page_header.dart';
 import '../../auth/cubit/auth_cubit.dart';
@@ -107,6 +109,9 @@ class _LoadedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthCubit>().state;
+    final isGuest = authState is AuthAuthenticated && authState.isGuest;
+
     return SingleChildScrollView(
       padding: const EdgeInsetsDirectional.fromSTEB(
         AppSpacing.pageGutter,
@@ -119,11 +124,50 @@ class _LoadedView extends StatelessWidget {
         children: [
           _AvatarSection(stats: stats),
           const SizedBox(height: AppSpacing.s5),
-          _StatsRow(stats: stats),
-          const SizedBox(height: AppSpacing.s5),
-          _ActionsList(stats: stats),
+          // A guest has no meaningful stats (all zeros) — replace the row with a
+          // prominent convert CTA, which is the whole point of this screen.
+          if (isGuest) ...[
+            const _GuestConvertCta(),
+            const SizedBox(height: AppSpacing.s5),
+          ] else ...[
+            _StatsRow(stats: stats),
+            const SizedBox(height: AppSpacing.s5),
+          ],
+          _ActionsList(stats: stats, isGuest: isGuest),
         ],
       ),
+    );
+  }
+}
+
+// ── Guest convert CTA ─────────────────────────────────────────────────────────
+
+class _GuestConvertCta extends StatelessWidget {
+  const _GuestConvertCta();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SheikhyButton.primary(
+          fullWidth: true,
+          label: 'أنشئ حساباً',
+          icon: const Icon(Icons.person_add_alt_1_outlined),
+          onPressed: () => context.push(
+            Uri(
+              path: '/signup',
+              queryParameters: const {'returnTo': '/profile'},
+            ).toString(),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        Text(
+          'أنشئ حساباً لحفظ تقدّمك والحصول على الشهادات',
+          style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
@@ -317,16 +361,20 @@ class _VerticalDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(width: AppBorders.hairline, color: AppColors.border);
+    return Container(
+      width: AppBorders.hairline,
+      color: AppColors.border,
+    );
   }
 }
 
 // ── Actions list ──────────────────────────────────────────────────────────────
 
 class _ActionsList extends StatelessWidget {
-  const _ActionsList({required this.stats});
+  const _ActionsList({required this.stats, required this.isGuest});
 
   final ProfileStats stats;
+  final bool isGuest;
 
   @override
   Widget build(BuildContext context) {
@@ -335,24 +383,38 @@ class _ActionsList extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
+          // Aspirational tiles: shown to guests but gated. guard() navigates a
+          // registered user and shows the account sheet for a guest (returning
+          // to the tile's own destination after they convert).
           _ActionRow(
             icon: Icons.workspace_premium_outlined,
             label: 'شهاداتي',
-            onTap: () => context.go('/achievements'),
+            onTap: () => AccountGate.guard(
+              context,
+              returnTo: '/achievements',
+              onAllowed: () => context.go('/achievements'),
+            ),
           ),
           const _RowDivider(),
           _ActionRow(
             icon: Icons.chat_bubble_outline,
             label: 'أسئلتي',
-            onTap: () => context.push('/my-questions'),
+            onTap: () => AccountGate.guard(
+              context,
+              returnTo: '/my-questions',
+              onAllowed: () => context.push('/my-questions'),
+            ),
           ),
           const _RowDivider(),
-          _ActionRow(
-            icon: Icons.lock_outline,
-            label: 'تغيير كلمة المرور',
-            onTap: () => context.push('/profile/edit-password'),
-          ),
-          const _RowDivider(),
+          // A guest has no password to change — hide it entirely.
+          if (!isGuest) ...[
+            _ActionRow(
+              icon: Icons.lock_outline,
+              label: 'تغيير كلمة المرور',
+              onTap: () => context.push('/profile/edit-password'),
+            ),
+            const _RowDivider(),
+          ],
           // _ThemeModeRow(), // hidden — dark mode toggle not active in v1
           const _RowDivider(),
           _ActionRow(

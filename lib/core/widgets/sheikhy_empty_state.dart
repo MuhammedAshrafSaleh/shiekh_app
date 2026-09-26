@@ -41,7 +41,11 @@ class SheikhyEmptyState extends StatelessWidget {
               child: Icon(icon, size: 40, color: AppColors.inkMuted),
             ),
             const SizedBox(height: AppSpacing.s5),
-            Text(heading, style: AppTextStyles.h3, textAlign: TextAlign.center),
+            Text(
+              heading,
+              style: AppTextStyles.h3,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: AppSpacing.s3),
             Text(
               subtitle,

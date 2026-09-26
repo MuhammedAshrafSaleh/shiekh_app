@@ -56,35 +56,36 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       return;
     }
     final lessonResult = await _repo.getLesson(lessonId);
-    await lessonResult.fold((f) async => emit(AdminLessonFormError(f.message)), (
-      lesson,
-    ) async {
-      // Quiz questions and the bank count are independent — fetch concurrently.
-      final (qResult, bankCountResult) = await (
-        _repo.getQuizQuestions(lessonId),
-        _repo.getQuizBankQuestionsCount(
-          bookId: lesson.bookId,
-          excludeLessonId: lessonId,
-        ),
-      ).wait;
-      final bankCount = bankCountResult.fold((_) => 0, (c) => c);
-      // PDFs come embedded with the lesson (getLesson selects lesson_pdfs(*)).
-      // Sort a copy by order_index; show ALL rows so the admin can manage even
-      // a (hypothetical) empty-url row that orderedPdfs would hide.
-      final pdfs = [...lesson.pdfs]
-        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
-      qResult.fold(
-        (f) => emit(AdminLessonFormError(f.message)),
-        (qs) => emit(
-          AdminLessonFormLoaded(
-            lesson: lesson,
-            quizQuestions: qs,
-            pdfs: pdfs,
-            bankCount: bankCount,
+    await lessonResult.fold(
+      (f) async => emit(AdminLessonFormError(f.message)),
+      (lesson) async {
+        // Quiz questions and the bank count are independent — fetch concurrently.
+        final (qResult, bankCountResult) = await (
+          _repo.getQuizQuestions(lessonId),
+          _repo.getQuizBankQuestionsCount(
+            bookId: lesson.bookId,
+            excludeLessonId: lessonId,
           ),
-        ),
-      );
-    });
+        ).wait;
+        final bankCount = bankCountResult.fold((_) => 0, (c) => c);
+        // PDFs come embedded with the lesson (getLesson selects lesson_pdfs(*)).
+        // Sort a copy by order_index; show ALL rows so the admin can manage even
+        // a (hypothetical) empty-url row that orderedPdfs would hide.
+        final pdfs = [...lesson.pdfs]
+          ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+        qResult.fold(
+          (f) => emit(AdminLessonFormError(f.message)),
+          (qs) => emit(
+            AdminLessonFormLoaded(
+              lesson: lesson,
+              quizQuestions: qs,
+              pdfs: pdfs,
+              bankCount: bankCount,
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// Fetches the quiz bank (other lessons of the same book) for the picker.
@@ -124,6 +125,8 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     String? audioUrl,
     required bool audioOnly,
     required String status,
+    int? videoDurationMinutes,
+    int? audioDurationMinutes,
   }) async {
     emit(AdminLessonFormSaving());
     final result = lessonId == null
@@ -135,6 +138,8 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             audioUrl: audioUrl,
             audioOnly: audioOnly,
             status: status,
+            videoDurationMinutes: videoDurationMinutes,
+            audioDurationMinutes: audioDurationMinutes,
           )
         : await _repo.updateLesson(
             id: lessonId,
@@ -144,6 +149,8 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             audioUrl: audioUrl,
             audioOnly: audioOnly,
             status: status,
+            videoDurationMinutes: videoDurationMinutes,
+            audioDurationMinutes: audioDurationMinutes,
           );
     result.fold(
       (f) => emit(AdminLessonFormError(f.message)),

@@ -25,7 +25,7 @@ import '../../../core/widgets/sheikhy_password_field.dart';
 import '../../../core/widgets/sheikhy_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
-import '../post_auth_flow.dart';
+import '../pending_conversion.dart';
 
 class LoginPage extends StatefulWidget {
   /// Set when arriving from the guest email-collision path: after signing into
@@ -34,7 +34,16 @@ class LoginPage extends StatefulWidget {
   final String? returnTo;
   final String? autoEnrollBookId;
 
-  const LoginPage({super.key, this.returnTo, this.autoEnrollBookId});
+  /// Reason banner to show, set by a redirect (e.g. 'email_exists' when a guest
+  /// tried to convert to an already-registered email).
+  final String? notice;
+
+  const LoginPage({
+    super.key,
+    this.returnTo,
+    this.autoEnrollBookId,
+    this.notice,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -48,11 +57,11 @@ class _LoginPageState extends State<LoginPage> {
   String? _formError;
   String? _emailError;
   String? _passwordError;
-  bool _postAuthHandled = false;
 
   bool get _hasPendingReturn =>
       (widget.returnTo != null && widget.returnTo!.isNotEmpty) ||
-      (widget.autoEnrollBookId != null && widget.autoEnrollBookId!.isNotEmpty);
+      (widget.autoEnrollBookId != null &&
+          widget.autoEnrollBookId!.isNotEmpty);
 
   @override
   void dispose() {
@@ -61,7 +70,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -83,6 +92,16 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     if (emailError != null || passwordError != null) return;
+
+    // Collision sign-in from a gate: persist the return intent so the durable
+    // app-level auth listener finishes (enroll + return) after sign-in.
+    if (_hasPendingReturn) {
+      await PendingConversion.save(
+        returnTo: widget.returnTo,
+        autoEnrollBookId: widget.autoEnrollBookId,
+      );
+      if (!mounted) return;
+    }
     context.read<AuthCubit>().signIn(email: email, password: password);
   }
 
@@ -95,18 +114,6 @@ class _LoginPageState extends State<LoginPage> {
         if (state is AuthError) {
           setState(() => _formError = state.message);
         } else if (state is AuthAuthenticated &&
-            !state.isGuest &&
-            _hasPendingReturn &&
-            !_postAuthHandled) {
-          // Collision path: signed into the pre-existing account — finish the
-          // guest journey (enroll + return to the intended lesson).
-          _postAuthHandled = true;
-          completeGuestReturn(
-            context,
-            returnTo: widget.returnTo,
-            enrollBookId: widget.autoEnrollBookId,
-          );
-        } else if (state is AuthAuthenticated &&
             state.isGuest &&
             !_hasPendingReturn) {
           // "تصفح كزائر" from the login screen. The router keeps authenticated
@@ -115,11 +122,31 @@ class _LoginPageState extends State<LoginPage> {
           // to /home explicitly.
           context.go('/home');
         }
+        // Collision sign-in success (AuthAuthenticated, non-guest) is finished by
+        // the durable app-level auth listener (app.dart) via the persisted
+        // PendingConversion intent.
       },
       child: Scaffold(
         backgroundColor: AppColors.paper,
         resizeToAvoidBottomInset: true,
-        body: Column(
+        // The heritage fields draw their own cream container; neutralize the
+        // still-legacy global inputDecorationTheme (filled: true, white fill)
+        // so it doesn't bleed a white block inside them. Interim fix until the
+        // heritage theme is wired globally (see review note / MIGRATION_NOTES).
+        body: Theme(
+          data: Theme.of(context).copyWith(
+            inputDecorationTheme: const InputDecorationTheme(
+              filled: false,
+              isCollapsed: true,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          child: Column(
           children: [
             const SheikhyAuthHeader(
               title: 'أهلاً بعودتك',
@@ -136,6 +163,14 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (widget.notice == 'email_exists') ...[
+                      SheikhyNotice(
+                        variant: SheikhyNoticeVariant.info,
+                        message:
+                            'هذا البريد الإلكتروني مسجّل مسبقاً. سجّل الدخول للمتابعة إلى حيث توقفت.',
+                      ),
+                      const SizedBox(height: AppSpacing.s5),
+                    ],
                     if (_formError != null) ...[
                       SheikhyNotice(message: _formError!),
                       const SizedBox(height: AppSpacing.s5),
@@ -180,7 +215,8 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: AppSpacing.s5),
                     BlocBuilder<AuthCubit, AuthState>(
                       buildWhen: (prev, curr) =>
-                          curr is AuthLoading || prev is AuthLoading,
+                          curr is AuthLoading ||
+                          prev is AuthLoading,
                       builder: (context, state) {
                         return SheikhyButton.primary(
                           label: 'دخول',
@@ -212,6 +248,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ],
         ),
+          ),
       ),
     );
   }

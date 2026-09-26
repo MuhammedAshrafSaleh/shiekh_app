@@ -55,3 +55,8 @@ class ExamSubmitConfirmed extends ExamEvent {
 class ExamAutoSubmit extends ExamEvent {
   const ExamAutoSubmit();
 }
+
+// App was backgrounded and returned while the exam was in progress
+class ExamBackgroundLeave extends ExamEvent {
+  const ExamBackgroundLeave();
+}

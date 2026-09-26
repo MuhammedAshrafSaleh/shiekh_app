@@ -19,7 +19,10 @@ class AchievementsLoaded extends AchievementsState {
   final AchievementsData data;
   final List<CertificateEntity> certificates;
 
-  const AchievementsLoaded({required this.data, required this.certificates});
+  const AchievementsLoaded({
+    required this.data,
+    required this.certificates,
+  });
 
   @override
   List<Object?> get props => [data, certificates];

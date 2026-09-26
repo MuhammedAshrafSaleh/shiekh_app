@@ -67,7 +67,9 @@ void main() {
 
     test('returns the parsed result on success', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => functions.invoke(any(), body: any(named: 'body'))).thenAnswer(
+      when(
+        () => functions.invoke(any(), body: any(named: 'body')),
+      ).thenAnswer(
         (_) async => const FunctionResponse(
           data: {'job_id': 'job-1', 'inserted_count': 12},
           status: 200,
@@ -77,10 +79,13 @@ void main() {
       final result = await callGenerate();
 
       expect(result.isRight(), true);
-      result.fold((_) => fail('expected Right'), (r) {
-        expect(r.jobId, 'job-1');
-        expect(r.insertedCount, 12);
-      });
+      result.fold(
+        (_) => fail('expected Right'),
+        (r) {
+          expect(r.jobId, 'job-1');
+          expect(r.insertedCount, 12);
+        },
+      );
       verify(
         () => functions.invoke('generate-questions', body: any(named: 'body')),
       ).called(1);
@@ -88,7 +93,9 @@ void main() {
 
     test('maps FunctionException {error} body to ServerFailure', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(() => functions.invoke(any(), body: any(named: 'body'))).thenThrow(
+      when(
+        () => functions.invoke(any(), body: any(named: 'body')),
+      ).thenThrow(
         const FunctionException(
           status: 400,
           details: {'error': 'النص قصير جدًا'},
@@ -190,7 +197,10 @@ void main() {
 
       final result = await callTranscribe();
 
-      expect(result, const Left(ServerFailure('الفيديو أطول من الحد المسموح')));
+      expect(
+        result,
+        const Left(ServerFailure('الفيديو أطول من الحد المسموح')),
+      );
     });
 
     test('maps TimeoutException to ServerFailure', () async {

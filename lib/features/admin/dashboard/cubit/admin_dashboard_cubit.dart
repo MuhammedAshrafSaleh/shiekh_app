@@ -14,8 +14,7 @@ class AdminDashboardCubit extends Cubit<AdminDashboardState> {
     final statsResult = await _repo.getStats();
     final booksResult = await _repo.getAllBooks();
 
-    final failure =
-        statsResult.fold((f) => f, (_) => null) ??
+    final failure = statsResult.fold((f) => f, (_) => null) ??
         booksResult.fold((f) => f, (_) => null);
 
     if (failure != null) {
@@ -23,26 +22,25 @@ class AdminDashboardCubit extends Cubit<AdminDashboardState> {
       return;
     }
 
-    emit(
-      AdminDashboardLoaded(
-        stats: statsResult.getOrElse(
-          () => const AdminStats(
+    emit(AdminDashboardLoaded(
+      stats: statsResult.getOrElse(() => const AdminStats(
             totalBooks: 0,
             totalStudents: 0,
             totalLessons: 0,
             pendingQa: 0,
-          ),
-        ),
-        books: booksResult.getOrElse(() => []),
-      ),
-    );
+          )),
+      books: booksResult.getOrElse(() => []),
+    ));
   }
 
   Future<void> deleteBook(String bookId) async {
     final result = await _repo.deleteBook(bookId);
-    result.fold((failure) => emit(AdminDashboardError(failure.message)), (_) {
-      emit(AdminDashboardDeleteSuccess());
-      load();
-    });
+    result.fold(
+      (failure) => emit(AdminDashboardError(failure.message)),
+      (_) {
+        emit(AdminDashboardDeleteSuccess());
+        load();
+      },
+    );
   }
 }

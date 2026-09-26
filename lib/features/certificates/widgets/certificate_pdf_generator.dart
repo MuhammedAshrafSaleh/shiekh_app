@@ -47,10 +47,8 @@ class CertificatePdfGenerator {
 
     final grade =
         '${certificate.finalScore}٪${certificate.gradeLabel != null ? ' (${certificate.gradeLabel})' : ''}';
-    final issuedDate = DateFormat(
-      'yyyy/M/d',
-      'ar',
-    ).format(certificate.issuedAt);
+    final issuedDate =
+        DateFormat('yyyy/M/d', 'ar').format(certificate.issuedAt);
 
     final pdf = pw.Document(theme: theme);
 
@@ -63,16 +61,17 @@ class CertificatePdfGenerator {
           return pw.Stack(
             children: [
               // 1. Paper background
-              pw.Positioned.fill(child: pw.Container(color: _pPaper)),
+              pw.Positioned.fill(
+                child: pw.Container(color: _pPaper),
+              ),
 
               // 2. Outer primary border
               pw.Positioned.fill(
                 child: pw.Container(
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(color: _pPrimary, width: 3),
-                    borderRadius: const pw.BorderRadius.all(
-                      pw.Radius.circular(4),
-                    ),
+                    borderRadius:
+                        const pw.BorderRadius.all(pw.Radius.circular(4)),
                   ),
                 ),
               ),
@@ -86,9 +85,8 @@ class CertificatePdfGenerator {
                 child: pw.Container(
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(color: _pGold, width: 0.8),
-                    borderRadius: const pw.BorderRadius.all(
-                      pw.Radius.circular(2),
-                    ),
+                    borderRadius:
+                        const pw.BorderRadius.all(pw.Radius.circular(2)),
                   ),
                 ),
               ),
@@ -96,7 +94,8 @@ class CertificatePdfGenerator {
               // 4. Corner ornaments
               pw.Positioned.fill(
                 child: pw.CustomPaint(
-                  painter: (canvas, size) => _paintCorners(canvas, size),
+                  painter: (canvas, size) =>
+                      _paintCorners(canvas, size),
                 ),
               ),
 

@@ -3,11 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../core/app_messenger.dart';
 import '../core/config/app_config.dart';
-import '../core/theme/app_theme.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_theme.dart' show AppTheme;
 import '../core/theme/theme_cubit.dart';
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/cubit/auth_state.dart';
+import '../features/auth/pending_conversion.dart';
+import '../features/auth/post_auth_flow.dart';
+import '../features/books/data/book_repository.dart';
 import '../features/notifications/cubit_notifs/notifications_cubit.dart';
 import 'router.dart';
 
@@ -33,9 +38,7 @@ class _SheikhyAppState extends State<SheikhyApp> {
       // Preload notifications so the home badge reflects the unread count
       // as soon as a student signs in (or the session is restored).
       listenWhen: (prev, curr) =>
-          curr is AuthAuthenticated &&
-          !curr.isAdmin &&
-          prev is! AuthAuthenticated,
+          curr is AuthAuthenticated && !curr.isAdmin && prev is! AuthAuthenticated,
       listener: (context, state) =>
           context.read<NotificationsCubit>().loadNotifications(),
       child: BlocBuilder<ThemeCubit, ThemeMode>(

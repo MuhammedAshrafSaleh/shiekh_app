@@ -9,11 +9,10 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
-import '../../auth/cubit/auth_cubit.dart';
-import '../../auth/cubit/auth_state.dart';
 import '../../notes/cubit/notes_cubit.dart';
 import '../../notes/data/notes_repository.dart';
 import '../../lesson/data/lesson_repository.dart';
@@ -34,15 +33,10 @@ class LessonPage extends StatefulWidget {
   final String lessonId;
   final String bookId;
 
-  /// When non-null, the video tab seeks to this position on open (from `?t=`).
-  /// Takes precedence over the saved resume position.
-  final int? seekToSeconds;
-
   const LessonPage({
     super.key,
     required this.lessonId,
     required this.bookId,
-    this.seekToSeconds,
   });
 
   @override
@@ -81,20 +75,19 @@ class _LessonPageState extends State<LessonPage> {
       builder: (context, state) {
         return switch (state) {
           LessonInitial() || LessonLoading() => _LessonSkeleton(
-            lessonId: widget.lessonId,
-            bookId: widget.bookId,
-          ),
+              lessonId: widget.lessonId,
+              bookId: widget.bookId,
+            ),
           LessonError(:final message) => _LessonErrorView(
-            message: message,
-            lessonId: widget.lessonId,
-            bookId: widget.bookId,
-          ),
+              message: message,
+              lessonId: widget.lessonId,
+              bookId: widget.bookId,
+            ),
           LessonLoaded() => _LessonView(
-            state: state,
-            lessonId: widget.lessonId,
-            bookId: widget.bookId,
-            seekToSeconds: widget.seekToSeconds,
-          ),
+              state: state,
+              lessonId: widget.lessonId,
+              bookId: widget.bookId,
+            ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -147,8 +140,9 @@ class _LessonErrorView extends StatelessWidget {
             child: SheikhyErrorState(
               heading: 'تعذّر تحميل الدرس',
               message: message,
-              onRetry: () =>
-                  context.read<LessonCubit>().loadLesson(lessonId, bookId),
+              onRetry: () => context
+                  .read<LessonCubit>()
+                  .loadLesson(lessonId, bookId),
             ),
           ),
         ],
@@ -170,10 +164,7 @@ class _MinimalLessonHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: AppBorders.hairline,
-          ),
+          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
         ),
       ),
       child: SafeArea(
@@ -219,7 +210,8 @@ class _LessonView extends StatefulWidget {
   State<_LessonView> createState() => _LessonViewState();
 }
 
-class _LessonViewState extends State<_LessonView> {
+class _LessonViewState extends State<_LessonView>
+    with TickerProviderStateMixin {
   bool _quizAnswering = false;
 
   // Stable keys so the media coordinator can reach the (kept-alive) media tab
@@ -227,10 +219,51 @@ class _LessonViewState extends State<_LessonView> {
   final GlobalKey _videoTabKey = GlobalKey();
   final GlobalKey _audioTabKey = GlobalKey();
 
+  // Owned tab controller so tab changes can be rejected while a quiz is in
+  // progress. The TabBar wraps each tab in its own InkWell (an ancestor we
+  // can't remove), so the gesture block is backed by this hard controller-level
+  // guard as the reliable stop.
+  TabController? _tabController;
+  int _quizTabIndex = 0;
+  bool _enforcingLock = false;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _lockSnack;
+
   void _onAnsweringChanged(bool answering) {
     if (_quizAnswering != answering) {
       setState(() => _quizAnswering = answering);
     }
+  }
+
+  // While the quiz is active, any move off the quiz tab (a tap leaking through
+  // the TabBar's InkWell) is reverted on the indexIsChanging notification,
+  // before the target tab renders.
+  void _enforceQuizLock() {
+    final c = _tabController;
+    if (c == null || !_quizAnswering || _enforcingLock) return;
+    if (_quizTabIndex >= 0 && c.index != _quizTabIndex) {
+      _enforcingLock = true;
+      c.index = _quizTabIndex; // jump back, cancels the in-flight animateTo
+      _enforcingLock = false;
+    }
+  }
+
+  void _showQuizLockedSnackBar() {
+    // Don't stack on rapid taps: ignore while one is already showing.
+    if (_lockSnack != null) return;
+    _lockSnack = ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('لازم تخلّص الاختبار الأول'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    _lockSnack!.closed.then((_) => _lockSnack = null);
+  }
+
+  @override
+  void dispose() {
+    _tabController?.removeListener(_enforceQuizLock);
+    _tabController?.dispose();
+    super.dispose();
   }
 
   Future<void> _handleBack() async {
@@ -338,9 +371,20 @@ class _LessonViewState extends State<_LessonView> {
                     onAnsweringChanged: _onAnsweringChanged,
                   ),
                 )
-              : _QuizGate(bookId: widget.bookId, lessonId: widget.lessonId),
+              : AccountGate(
+                  reason: GateReason.enrollment,
+                  bookId: widget.bookId,
+                  returnTo:
+                      '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
+                  title: 'الاختبار غير متاح الآن',
+                  guestMessage: 'سجّل حساباً أولاً عشان تقدر تحل الاختبار',
+                  enrolledMessage: 'سجّل في الكتاب أولاً عشان تقدر تحل الاختبار',
+                ),
         ),
     ];
+
+    final quizTabIndex = tabs.indexWhere((t) => t.label == 'اختبار');
+    _quizTabIndex = quizTabIndex;
 
     if (tabs.isEmpty) {
       return Scaffold(
@@ -364,6 +408,20 @@ class _LessonViewState extends State<_LessonView> {
       );
     }
 
+    // Own the tab controller (recreate only if the tab set size changes) so the
+    // quiz lock can hard-reject index changes. Replaces DefaultTabController.
+    if (_tabController == null || _tabController!.length != tabs.length) {
+      final previousIndex = _tabController?.index ?? 0;
+      _tabController?.removeListener(_enforceQuizLock);
+      _tabController?.dispose();
+      _tabController = TabController(
+        length: tabs.length,
+        vsync: this,
+        initialIndex: previousIndex.clamp(0, tabs.length - 1),
+      );
+      _tabController!.addListener(_enforceQuizLock);
+    }
+
     return BlocProvider<NotesCubit>(
       create: (ctx) =>
           NotesCubit(ctx.read<NotesRepository>())
@@ -375,35 +433,44 @@ class _LessonViewState extends State<_LessonView> {
           final leave = await showLeaveQuizDialog(context);
           if (leave && context.mounted) context.pop();
         },
-        child: DefaultTabController(
-          length: tabs.length,
-          child: Scaffold(
-            backgroundColor: AppColors.paper,
-            body: Column(
-              children: [
-                _MediaTabCoordinator(
-                  tabs: tabs,
-                  videoTabKey: _videoTabKey,
-                  audioTabKey: _audioTabKey,
+        child: Scaffold(
+          backgroundColor: AppColors.paper,
+          body: Column(
+            children: [
+              _MediaTabCoordinator(
+                controller: _tabController!,
+                tabs: tabs,
+                videoTabKey: _videoTabKey,
+                audioTabKey: _audioTabKey,
+              ),
+              _LessonHeader(
+                state: widget.state,
+                onAskTap: () => _openAskSheet(context),
+                onBack: _handleBack,
+              ),
+              _LessonTabBar(
+                controller: _tabController!,
+                tabs: tabs,
+                quizLocked: _quizAnswering,
+                quizTabIndex: quizTabIndex,
+                onLockedTap: _showQuizLockedSnackBar,
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: _quizAnswering
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
+                  children: tabs.map((t) => t.content).toList(),
                 ),
-                _LessonHeader(
-                  state: widget.state,
-                  onAskTap: () => _openAskSheet(context),
-                  onBack: _handleBack,
-                ),
-                _LessonTabBar(tabs: tabs),
-                Expanded(
-                  child: TabBarView(
-                    children: tabs.map((t) => t.content).toList(),
-                  ),
-                ),
-                _LessonActionBar(
-                  tabs: tabs,
-                  state: widget.state,
-                  bookId: widget.bookId,
-                ),
-              ],
-            ),
+              ),
+              _LessonActionBar(
+                controller: _tabController!,
+                tabs: tabs,
+                state: widget.state,
+                bookId: widget.bookId,
+              ),
+            ],
           ),
         ),
       ),
@@ -432,10 +499,7 @@ class _LessonHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: AppBorders.hairline,
-          ),
+          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
         ),
       ),
       child: SafeArea(
@@ -457,9 +521,8 @@ class _LessonHeader extends StatelessWidget {
                   children: [
                     Text(
                       'الدرس ${lesson.orderIndex}',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.inkFaint,
-                      ),
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.inkFaint),
                     ),
                     const SizedBox(height: AppSpacing.s1),
                     Text(
@@ -532,10 +595,7 @@ class _LessonTabBar extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: AppBorders.hairline,
-          ),
+          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
         ),
       ),
       child: TabBar(
@@ -553,7 +613,12 @@ class _LessonTabBar extends StatelessWidget {
         unselectedLabelStyle: GoogleFonts.tajawal(fontSize: 14),
         dividerColor: Colors.transparent,
         tabs: tabs
-            .map((t) => Tab(icon: Icon(t.icon, size: 20), text: t.label))
+            .map(
+              (t) => Tab(
+                icon: Icon(t.icon, size: 20),
+                text: t.label,
+              ),
+            )
             .toList(),
       ),
     );
@@ -563,11 +628,13 @@ class _LessonTabBar extends StatelessWidget {
 // ── Tab-aware action bar ──────────────────────────────────────────────────────
 
 class _LessonActionBar extends StatefulWidget {
+  final TabController controller;
   final List<_TabDef> tabs;
   final LessonLoaded state;
   final String bookId;
 
   const _LessonActionBar({
+    required this.controller,
     required this.tabs,
     required this.state,
     required this.bookId,
@@ -578,38 +645,50 @@ class _LessonActionBar extends StatefulWidget {
 }
 
 class _LessonActionBarState extends State<_LessonActionBar> {
-  TabController? _tabController;
   int _activeIndex = 0;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final controller = DefaultTabController.maybeOf(context);
-    if (controller != null && _tabController != controller) {
-      _tabController?.removeListener(_onTabChanged);
-      _tabController = controller;
-      _tabController!.addListener(_onTabChanged);
-      _activeIndex = controller.index;
+  void initState() {
+    super.initState();
+    _activeIndex = widget.controller.index;
+    widget.controller.addListener(_onTabChanged);
+  }
+
+  @override
+  void didUpdateWidget(_LessonActionBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onTabChanged);
+      widget.controller.addListener(_onTabChanged);
+      _activeIndex = widget.controller.index;
     }
   }
 
   void _onTabChanged() {
-    if (mounted && _tabController != null) {
-      setState(() => _activeIndex = _tabController!.index);
+    if (mounted) {
+      setState(() => _activeIndex = widget.controller.index);
     }
   }
 
   @override
   void dispose() {
-    _tabController?.removeListener(_onTabChanged);
+    widget.controller.removeListener(_onTabChanged);
     super.dispose();
   }
 
-  _TabDef? get _activeTab =>
-      _activeIndex < widget.tabs.length ? widget.tabs[_activeIndex] : null;
+  String get _activeCompletionLabel {
+    final tab = _activeIndex < widget.tabs.length
+        ? widget.tabs[_activeIndex]
+        : null;
+    return tab?.completionLabel ?? 'حفظ الدرس';
+  }
 
-  bool get _isQuizTab => _activeTab?.completionLabel == null;
-  bool get _isVideoTab => _activeTab?.isVideoTab == true;
+  bool get _isQuizTab {
+    final tab = _activeIndex < widget.tabs.length
+        ? widget.tabs[_activeIndex]
+        : null;
+    return tab?.completionLabel == null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -619,61 +698,20 @@ class _LessonActionBarState extends State<_LessonActionBar> {
 
     final String label;
     final VoidCallback? onPressed;
-    final Widget? icon;
 
-    if (_isVideoTab) {
-      // 3-state video button
-      if (state.quizAttempted ||
-          state.quizExhausted ||
-          (!state.hasQuizQuestions && state.videoWatched) ||
-          state.isCompleted) {
-        // State 3 — quiz done (or no quiz and video watched)
-        if (state.nextLessonId != null) {
-          label = 'الدرس التالي';
-          icon = null;
-          onPressed = () => context.pushReplacement(
-            '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
-          );
-        } else {
-          label = 'مكتمل ✓';
-          icon = const Icon(Icons.check);
-          onPressed = null;
-        }
-      } else if (state.videoWatched && state.hasQuizQuestions) {
-        // State 2 — video watched, quiz pending
-        label = 'ابدأ الاختبار';
-        icon = null;
-        onPressed = () {
-          final quizIndex = widget.tabs.indexWhere(
-            (t) => t.completionLabel == null,
-          );
-          if (quizIndex >= 0) _tabController?.animateTo(quizIndex);
-        };
+    if (state.isCompleted) {
+      if (state.nextLessonId != null) {
+        label = 'الدرس التالي';
+        onPressed = () => context.pushReplacement(
+              '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
+            );
       } else {
-        // State 1 — video not yet marked watched
-        label = 'أنهيت المحاضرة';
-        icon = null;
-        onPressed = () => context.read<LessonCubit>().markVideoWatched();
+        label = 'مكتمل ✓';
+        onPressed = null;
       }
     } else {
-      // Non-video, non-quiz tabs — existing behavior
-      icon = state.isCompleted && state.nextLessonId == null
-          ? const Icon(Icons.check)
-          : null;
-      if (state.isCompleted) {
-        if (state.nextLessonId != null) {
-          label = 'الدرس التالي';
-          onPressed = () => context.pushReplacement(
-            '/lessons/${state.nextLessonId}?bookId=${widget.bookId}',
-          );
-        } else {
-          label = 'مكتمل ✓';
-          onPressed = null;
-        }
-      } else {
-        label = _activeTab?.completionLabel ?? 'حفظ الدرس';
-        onPressed = () => context.read<LessonCubit>().markVideoWatched();
-      }
+      label = _activeCompletionLabel;
+      onPressed = () => context.read<LessonCubit>().markVideoWatched();
     }
 
     return DecoratedBox(
@@ -694,7 +732,9 @@ class _LessonActionBarState extends State<_LessonActionBar> {
           ),
           child: SheikhyButton.primary(
             label: label,
-            icon: icon,
+            icon: state.isCompleted && state.nextLessonId == null
+                ? const Icon(Icons.check)
+                : null,
             fullWidth: true,
             isLoading: state.isSavingProgress,
             onPressed: onPressed,
@@ -707,18 +747,20 @@ class _LessonActionBarState extends State<_LessonActionBar> {
 
 // ── Media tab coordinator ─────────────────────────────────────────────────────
 //
-// Renders nothing. Lives inside the DefaultTabController subtree so it can reach
-// the controller. Media tabs are kept alive, so playback continues in the
-// background across non-media tabs (quiz/PDF). To avoid two players sounding at
-// once, entering a media tab pauses the OTHER media tab (covers video↔audio
-// directly and the transitive video→PDF→audio case). Position saving is handled
-// by the tabs themselves (15s timer while playing + dispose() on back).
+// Renders nothing. Listens to the owned tab controller (passed in). Media tabs
+// are kept alive, so playback continues in the background across non-media tabs
+// (quiz/PDF). To avoid two players sounding at once, entering a media tab pauses
+// the OTHER media tab (covers video↔audio directly and the transitive
+// video→PDF→audio case). Position saving is handled by the tabs themselves
+// (15s timer while playing + dispose() on back).
 class _MediaTabCoordinator extends StatefulWidget {
+  final TabController controller;
   final List<_TabDef> tabs;
   final GlobalKey videoTabKey;
   final GlobalKey audioTabKey;
 
   const _MediaTabCoordinator({
+    required this.controller,
     required this.tabs,
     required this.videoTabKey,
     required this.audioTabKey,
@@ -729,22 +771,24 @@ class _MediaTabCoordinator extends StatefulWidget {
 }
 
 class _MediaTabCoordinatorState extends State<_MediaTabCoordinator> {
-  TabController? _controller;
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTabChanged);
+  }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final controller = DefaultTabController.maybeOf(context);
-    if (controller != null && _controller != controller) {
-      _controller?.removeListener(_onTabChanged);
-      _controller = controller;
-      _controller!.addListener(_onTabChanged);
+  void didUpdateWidget(_MediaTabCoordinator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onTabChanged);
+      widget.controller.addListener(_onTabChanged);
     }
   }
 
   void _onTabChanged() {
-    final controller = _controller;
-    if (controller == null || !controller.indexIsChanging) return;
+    final controller = widget.controller;
+    if (!controller.indexIsChanging) return;
     final entering = controller.index;
     if (entering < 0 || entering >= widget.tabs.length) return;
     final tab = widget.tabs[entering];
@@ -765,7 +809,7 @@ class _MediaTabCoordinatorState extends State<_MediaTabCoordinator> {
 
   @override
   void dispose() {
-    _controller?.removeListener(_onTabChanged);
+    widget.controller.removeListener(_onTabChanged);
     super.dispose();
   }
 
@@ -791,95 +835,4 @@ class _TabDef {
     this.isVideoTab = false,
     this.isAudioTab = false,
   });
-}
-
-// ── Quiz gate (guest / registered-not-enrolled) ───────────────────────────────
-//
-// Shown as the quiz tab's content when the session isn't entitled to take the
-// quiz. The tab itself stays visible (lessonHasQuiz) so the quiz is discoverable;
-// tapping it reveals this gate instead of loading any content — so no quiz rows
-// are ever fetched for a guest. Basic dialog-free panel for now; Stage 3 replaces
-// it with the shared AccountGate component.
-class _QuizGate extends StatelessWidget {
-  final String bookId;
-  final String lessonId;
-
-  const _QuizGate({required this.bookId, required this.lessonId});
-
-  bool _isGuest(BuildContext context) {
-    final s = context.read<AuthCubit>().state;
-    return s is AuthAuthenticated && s.isGuest;
-  }
-
-  void _onCta(BuildContext context) {
-    if (_isGuest(context)) {
-      // Convert in place, then return to this lesson auto-enrolled.
-      final signupLoc = Uri(
-        path: '/signup',
-        queryParameters: {
-          'returnTo': '/lessons/$lessonId?bookId=$bookId',
-          'autoEnrollBookId': bookId,
-        },
-      ).toString();
-      context.push(signupLoc);
-    } else {
-      // Registered but not enrolled → back to book details to enroll.
-      context.go('/books/$bookId');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final guest = _isGuest(context);
-    final message = guest
-        ? 'سجّل حساباً أولاً عشان تقدر تحل الاختبار'
-        : 'سجّل في الكتاب أولاً عشان تقدر تحل الاختبار';
-    final ctaLabel = guest ? 'أنشئ حساباً' : 'التسجيل في الكتاب';
-    final ctaIcon = guest
-        ? Icons.person_add_alt_1_outlined
-        : Icons.how_to_reg_outlined;
-
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsetsDirectional.all(AppSpacing.pageGutter),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: AppColors.goldSoft,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.lock_outline,
-                color: AppColors.goldDeep,
-                size: 30,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s4),
-            Text(
-              'الاختبار غير متاح الآن',
-              style: AppTextStyles.h3,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.s2),
-            Text(
-              message,
-              style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.s5),
-            SheikhyButton.primary(
-              label: ctaLabel,
-              icon: Icon(ctaIcon),
-              onPressed: () => _onCta(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

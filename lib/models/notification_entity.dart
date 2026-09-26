@@ -3,8 +3,7 @@ import 'package:equatable/equatable.dart';
 
 class NotificationEntity extends Equatable {
   final String id;
-  final String
-  type; // general | live_stream | new_lesson | reminder | achievement
+  final String type; // general | live_stream | new_lesson | reminder | achievement
   final String title;
   final String body;
   final String? linkUrl;
@@ -40,15 +39,15 @@ class NotificationEntity extends Equatable {
   }
 
   NotificationEntity copyWith({bool? isRead}) => NotificationEntity(
-    id: id,
-    type: type,
-    title: title,
-    body: body,
-    linkUrl: linkUrl,
-    sendAt: sendAt,
-    createdAt: createdAt,
-    isRead: isRead ?? this.isRead,
-  );
+        id: id,
+        type: type,
+        title: title,
+        body: body,
+        linkUrl: linkUrl,
+        sendAt: sendAt,
+        createdAt: createdAt,
+        isRead: isRead ?? this.isRead,
+      );
 
   @override
   List<Object?> get props => [id, type, title, body, linkUrl, sendAt, isRead];

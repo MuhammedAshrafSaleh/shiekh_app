@@ -135,16 +135,40 @@ white block inside the cream heritage fields. **Fixed at source:**
   When dropped, also remove the `lastPositionSeconds` field/getter from
   `lesson_progress_entity.dart` and `lesson_with_progress_entity.dart`.
 
-## Known gaps — Guest Mode (Stage 3 fix pending)
+## Dormant columns (drop after confirmed stable)
 
-- **Lesson quiz not enrollment-gated at the data layer.** The
-  `lesson_quiz_questions_student` view filters on `not is_guest()` but **not** on
-  enrollment, and `submit_lesson_quiz` (`0001_app_support.sql`) checks only
-  `is_guest()` + null uid — **no enrollment check**. So a *registered-but-not-
-  enrolled* user can currently fetch a lesson's quiz questions and submit an
-  attempt directly (bypassing the UI). Guests are unaffected (RLS returns 0 rows).
-  **Interim mitigation (shipped Stage 2):** the quiz tab is visible-but-gated in
-  the UI for unenrolled users (`_QuizGate` in `lesson_page.dart`).
-  **Stage 3 fix (pending):** add an enrollment check to `submit_lesson_quiz` and
-  to the `lesson_quiz_questions_student` view so the access model
-  ("quiz requires enrollment") is enforced server-side, not just in the UI.
+- **`lesson_progress.last_position_seconds`** — superseded by
+  `video_position_seconds` / `audio_position_seconds` (migration
+  `0009_split_media_position.sql`). Video and audio previously shared this single
+  column, so each medium's position-save timer overwrote the other's resume point.
+  The new per-medium columns fix that. The column is now **dormant**: no code
+  writes it, and the only remaining reads are the fallback getters
+  `LessonProgressEntity.lastPositionSeconds` /
+  `LessonWithProgressEntity.lastPositionSeconds` (neither is consumed by any UI).
+  **Teardown (run only after confirming no legacy code reads it and the new
+  columns are stable in production):**
+
+  ```sql
+  ALTER TABLE lesson_progress DROP COLUMN last_position_seconds;
+  ```
+
+  When dropped, also remove the `lastPositionSeconds` field/getter from
+  `lesson_progress_entity.dart` and `lesson_with_progress_entity.dart`.
+
+## Known gaps — Guest Mode
+
+- **Lesson quiz not enrollment-gated at the data layer — ✅ CLOSED by
+  `0014_quiz_entitlement.sql`.** Previously the `lesson_quiz_questions_student`
+  view filtered on `not is_guest()` but **not** on enrollment, and
+  `submit_lesson_quiz` / `grade_lesson_quiz` checked only `is_guest()` + null uid,
+  so a *registered-but-not-enrolled* user could fetch quiz questions and submit an
+  attempt directly (bypassing the `_QuizGate` UI gate in `lesson_page.dart`).
+  0014 enforces **strict enrollment** server-side: the view adds an
+  `enrollments` EXISTS condition (unenrolled → zero rows), and
+  `submit_lesson_quiz`, `grade_lesson_quiz`, and `get_lesson_quiz_review` each
+  raise `NOT_ENROLLED` (`P0001`) when the caller has no enrollment for the
+  lesson's book. Even the free first lesson requires enrollment for its quiz
+  (quiz access is stricter than `can_read_lesson` content access — lesson 1 is for
+  sampling content, not assessment). Guest guard (`42501`) fires before the
+  enrollment check. Verified by `supabase/tests/0014_quiz_entitlement_test.sql`
+  across enrolled / registered-unenrolled / guest personas.

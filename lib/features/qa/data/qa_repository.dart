@@ -80,8 +80,7 @@ class QaRepository {
 
   // CC-22: uses student_questions_public view (no user_id exposed)
   Future<Either<Failure, List<StudentQuestionEntity>>> getBookQuestions(
-    String bookId,
-  ) async {
+      String bookId) async {
     final networkError = _checkNetwork<List<StudentQuestionEntity>>();
     if (networkError != null) return networkError;
 
@@ -94,7 +93,8 @@ class QaRepository {
           .limit(100);
 
       final questions = (response as List)
-          .map((e) => StudentQuestionEntity.fromJson(e as Map<String, dynamic>))
+          .map((e) =>
+              StudentQuestionEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(questions);

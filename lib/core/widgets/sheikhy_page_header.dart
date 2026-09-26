@@ -37,7 +37,10 @@ class SheikhyPageHeader extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: GirihBackground(color: AppColors.goldLight, opacity: 0.14),
+            child: GirihBackground(
+              color: AppColors.goldLight,
+              opacity: 0.14,
+            ),
           ),
           SafeArea(
             bottom: false,

@@ -35,8 +35,7 @@ class NotificationsRepository {
       final response = await _client
           .from('notifications')
           .select(
-            'id, type, title, body, link_url, send_at, created_at, notification_reads!left(id)',
-          )
+              'id, type, title, body, link_url, send_at, created_at, notification_reads!left(id)')
           .lte('send_at', DateTime.now().toIso8601String())
           .order('send_at', ascending: false)
           .limit(100);
@@ -59,7 +58,8 @@ class NotificationsRepository {
     }
   }
 
-  Future<Either<Failure, void>> markAllRead(List<String> unreadIds) async {
+  Future<Either<Failure, void>> markAllRead(
+      List<String> unreadIds) async {
     final networkError = _checkNetwork<void>();
     if (networkError != null) return networkError;
 
@@ -94,10 +94,10 @@ class NotificationsRepository {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) return Left(AuthFailure('يجب تسجيل الدخول أولاً'));
 
-      await _client.from('notification_reads').upsert({
-        'user_id': userId,
-        'notification_id': notificationId,
-      }, onConflict: 'user_id,notification_id');
+      await _client.from('notification_reads').upsert(
+        {'user_id': userId, 'notification_id': notificationId},
+        onConflict: 'user_id,notification_id',
+      );
       return const Right(null);
     } on PostgrestException catch (e) {
       _log.warning('markRead: ${e.message}');

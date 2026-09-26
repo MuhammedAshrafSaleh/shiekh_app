@@ -87,7 +87,10 @@ class SheikhyCourseCard extends StatelessWidget {
               PositionedDirectional(
                 top: AppSpacing.s4,
                 end: 20,
-                child: Wrap(spacing: AppSpacing.s2, children: badges),
+                child: Wrap(
+                  spacing: AppSpacing.s2,
+                  children: badges,
+                ),
               ),
           ],
         ),
@@ -136,11 +139,8 @@ class SheikhyCourseCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: AppSpacing.s1),
-                        const Icon(
-                          Icons.arrow_back,
-                          size: 16,
-                          color: AppColors.goldDeep,
-                        ),
+                        const Icon(Icons.arrow_back,
+                            size: 16, color: AppColors.goldDeep),
                       ],
                     ),
                 ],

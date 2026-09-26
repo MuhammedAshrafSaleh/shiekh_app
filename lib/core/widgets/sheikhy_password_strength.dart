@@ -31,8 +31,7 @@ class SheikhyPasswordStrength extends StatelessWidget {
     if (password.length >= 8) s++;
     if (RegExp(r'\d').hasMatch(password)) s++;
     if (RegExp(r'[A-Za-zء-ي]').hasMatch(password)) s++;
-    if (password.length >= 12 ||
-        RegExp(r'[^A-Za-z0-9ء-ي]').hasMatch(password)) {
+    if (password.length >= 12 || RegExp(r'[^A-Za-z0-9ء-ي]').hasMatch(password)) {
       s++;
     }
     return s.clamp(0, _segments);

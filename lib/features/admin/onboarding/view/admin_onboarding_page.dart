@@ -28,21 +28,17 @@ class AdminOnboardingPage extends StatelessWidget {
         listener: (context, state) {
           final messenger = ScaffoldMessenger.of(context);
           if (state is AdminOnboardingActionSuccess) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.success,
-                duration: const Duration(seconds: 3),
-              ),
-            );
+            messenger.showSnackBar(SnackBar(
+              content: Text(state.message),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 3),
+            ));
           } else if (state is AdminOnboardingError) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.danger,
-                duration: const Duration(seconds: 4),
-              ),
-            );
+            messenger.showSnackBar(SnackBar(
+              content: Text(state.message),
+              backgroundColor: AppColors.danger,
+              duration: const Duration(seconds: 4),
+            ));
           }
         },
         buildWhen: (prev, curr) => curr is! AdminOnboardingActionSuccess,
@@ -92,7 +88,11 @@ class _SlidesList extends StatelessWidget {
 }
 
 class _SlideEditorCard extends StatefulWidget {
-  const _SlideEditorCard({super.key, required this.slide, required this.index});
+  const _SlideEditorCard({
+    super.key,
+    required this.slide,
+    required this.index,
+  });
 
   final OnboardingSlideEntity slide;
   final int index;
@@ -122,19 +122,17 @@ class _SlideEditorCardState extends State<_SlideEditorCard> {
   void _save() {
     final main = _mainController.text.trim();
     if (main.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('النص الأساسي مطلوب'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('النص الأساسي مطلوب'),
+        backgroundColor: AppColors.danger,
+      ));
       return;
     }
     context.read<AdminOnboardingCubit>().save(
-      id: widget.slide.id,
-      mainText: main,
-      subText: _subController.text,
-    );
+          id: widget.slide.id,
+          mainText: main,
+          subText: _subController.text,
+        );
   }
 
   @override
@@ -150,17 +148,13 @@ class _SlideEditorCardState extends State<_SlideEditorCard> {
               children: [
                 ReorderableDragStartListener(
                   index: widget.index,
-                  child: const Icon(
-                    Icons.drag_handle,
-                    color: AppColors.inkFaint,
-                  ),
+                  child: const Icon(Icons.drag_handle,
+                      color: AppColors.inkFaint),
                 ),
                 const SizedBox(width: AppSpacing.s2),
                 Text(
-                  'شاشة ${widget.index + 1}',
-                  style: AppTextStyles.small.copyWith(
-                    color: AppColors.inkMuted,
-                  ),
+                  'شاشة ${widget.index + 1} · $typeLabel',
+                  style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
                 ),
                 const Spacer(),
                 Text(
@@ -174,9 +168,11 @@ class _SlideEditorCardState extends State<_SlideEditorCard> {
                 Switch(
                   value: widget.slide.isActive,
                   activeThumbColor: AppColors.gold,
-                  onChanged: (v) => context
-                      .read<AdminOnboardingCubit>()
-                      .toggleActive(id: widget.slide.id, isActive: v),
+                  onChanged: (v) =>
+                      context.read<AdminOnboardingCubit>().toggleActive(
+                            id: widget.slide.id,
+                            isActive: v,
+                          ),
                 ),
               ],
             ),
@@ -218,7 +214,11 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(message, textAlign: TextAlign.center, style: AppTextStyles.body),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.body,
+          ),
           const SizedBox(height: AppSpacing.s5),
           SheikhyButton.secondary(
             label: 'إعادة المحاولة',

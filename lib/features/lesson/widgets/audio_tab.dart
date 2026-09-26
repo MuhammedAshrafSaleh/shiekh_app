@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
@@ -17,10 +16,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/drive_url.dart';
 import '../../../core/utils/media_duration.dart';
+import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_progress_bar.dart';
-import '../../auth/cubit/auth_cubit.dart';
-import '../../auth/cubit/auth_state.dart';
 import '../../notes/cubit/notes_cubit.dart';
 import '../../notes/cubit/notes_state.dart';
 import '../../notes/widgets/note_card.dart';
@@ -95,8 +93,7 @@ class _AudioTabState extends State<AudioTab>
     _player.durationStream.listen((d) {
       if (d != null && mounted) {
         Logger('AudioTab').info(
-          'raw duration=${d.inSeconds}s formatted=${formatMediaDuration(d)}',
-        );
+            'raw duration=${d.inSeconds}s formatted=${formatMediaDuration(d)}');
         setState(() => _duration = d);
       }
     });
@@ -200,7 +197,8 @@ class _AudioTabState extends State<AudioTab>
         if (mounted) {
           setState(() {
             _status = _AudioStatus.error;
-            _errorMessage = 'تجاوز الملف حصة Google Drive اليومية، جرّب لاحقاً';
+            _errorMessage =
+                'تجاوز الملف حصة Google Drive اليومية، جرّب لاحقاً';
           });
         }
         return;
@@ -250,17 +248,16 @@ class _AudioTabState extends State<AudioTab>
   Future<void> _openNoteEditor() async {
     final wasPlaying = _status == _AudioStatus.playing;
 
+    // Note-taking requires an account: a guest is shown the sign-up gate (which
+    // carries auto-enroll on conversion) and the note flow aborts. Registered
+    // users — enrolled or not — proceed.
     if (!mounted) return;
-    final authState = context.read<AuthCubit>().state;
-    if (authState is AuthAuthenticated && authState.isGuest) {
-      final signupLoc = Uri(
-        path: '/signup',
-        queryParameters: {
-          'returnTo': '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
-          'autoEnrollBookId': widget.bookId,
-        },
-      ).toString();
-      if (mounted) context.push(signupLoc);
+    if (!AccountGate.guard(
+      context,
+      returnTo: '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
+      bookId: widget.bookId,
+      guestMessage: 'أنشئ حساباً لتدوين ملاحظاتك على الدرس',
+    )) {
       return;
     }
 
@@ -294,37 +291,35 @@ class _AudioTabState extends State<AudioTab>
     return switch (_status) {
       _AudioStatus.checking => const _AudioChecking(),
       _AudioStatus.idle => _AudioIdle(
-        lessonTitle: widget.lessonTitle,
-        onDownload: _startDownload,
-      ),
+          lessonTitle: widget.lessonTitle,
+          onDownload: _startDownload,
+        ),
       _AudioStatus.downloading => _DownloadProgress(
-        progress: _downloadProgress,
-        onCancel: _cancelDownload,
-      ),
+          progress: _downloadProgress,
+          onCancel: _cancelDownload,
+        ),
       _AudioStatus.error => _AudioError(
-        message: _errorMessage ?? 'حدث خطأ أثناء التحميل',
-        onRetry: _initialize,
-      ),
+          message: _errorMessage ?? 'حدث خطأ أثناء التحميل',
+          onRetry: _initialize,
+        ),
       _ => _AudioPlayer(
-        lessonTitle: widget.lessonTitle,
-        status: _status,
-        position: _position,
-        duration: _duration,
-        onTogglePlay: _togglePlay,
-        onSeek: _seek,
-        onAddNote:
-            (!widget.previewMode &&
-                widget.lessonId != null &&
-                widget.bookId != null)
-            ? _openNoteEditor
-            : null,
-        onSeekToNote:
-            (!widget.previewMode &&
-                widget.lessonId != null &&
-                widget.bookId != null)
-            ? (seconds) => _player.seek(Duration(seconds: seconds))
-            : null,
-      ),
+          lessonTitle: widget.lessonTitle,
+          status: _status,
+          position: _position,
+          duration: _duration,
+          onTogglePlay: _togglePlay,
+          onSeek: _seek,
+          onAddNote: (!widget.previewMode &&
+                  widget.lessonId != null &&
+                  widget.bookId != null)
+              ? _openNoteEditor
+              : null,
+          onSeekToNote: (!widget.previewMode &&
+                  widget.lessonId != null &&
+                  widget.bookId != null)
+              ? (seconds) => _player.seek(Duration(seconds: seconds))
+              : null,
+        ),
     };
   }
 }
@@ -425,7 +420,10 @@ class _DownloadProgress extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s5),
-          SheikhyButton.text(label: 'إلغاء', onPressed: onCancel),
+          SheikhyButton.text(
+            label: 'إلغاء',
+            onPressed: onCancel,
+          ),
         ],
       ),
     );
@@ -453,7 +451,10 @@ class _AudioError extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.dangerBg,
               borderRadius: AppRadii.rLg,
-              border: Border.all(color: AppColors.danger, width: 1.5),
+              border: Border.all(
+                color: AppColors.danger,
+                width: 1.5,
+              ),
             ),
             child: const Icon(
               Icons.headset_off_outlined,
@@ -634,7 +635,9 @@ class _AudioPlayer extends StatelessWidget {
           ),
         ),
         if (onAddNote != null) ...[
-          SliverToBoxAdapter(child: _AddNoteAffordance(onTap: onAddNote!)),
+          SliverToBoxAdapter(
+            child: _AddNoteAffordance(onTap: onAddNote!),
+          ),
           BlocBuilder<NotesCubit, NotesState>(
             builder: (context, state) {
               if (state is NotesInitial || state is NotesLoading) {

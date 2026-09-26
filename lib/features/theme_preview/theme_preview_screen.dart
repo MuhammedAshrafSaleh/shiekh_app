@@ -154,10 +154,7 @@ class _Section extends StatelessWidget {
           spacing: AppSpacing.s3,
           runSpacing: AppSpacing.s1,
           children: [
-            Text(
-              title,
-              style: AppTextStyles.h2.copyWith(color: AppColors.primary),
-            ),
+            Text(title, style: AppTextStyles.h2.copyWith(color: AppColors.primary)),
             Text(tag, style: AppTextStyles.caption),
           ],
         ),
@@ -235,15 +232,8 @@ class _Swatch extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    name,
-                    style: AppTextStyles.small.copyWith(color: AppColors.ink),
-                  ),
-                  Text(
-                    token,
-                    style: AppTextStyles.caption,
-                    textDirection: TextDirection.ltr,
-                  ),
+                  Text(name, style: AppTextStyles.small.copyWith(color: AppColors.ink)),
+                  Text(token, style: AppTextStyles.caption, textDirection: TextDirection.ltr),
                 ],
               ),
             ),
@@ -280,15 +270,9 @@ class _TypeSection extends StatelessWidget {
               style: AppTextStyles.bodyLg,
             ),
             const SizedBox(height: AppSpacing.s2),
-            Text(
-              'النص العام في الواجهات: الوصف، التعليقات، وشرح الاختبار.',
-              style: AppTextStyles.body,
-            ),
+            Text('النص العام في الواجهات: الوصف، التعليقات، وشرح الاختبار.', style: AppTextStyles.body),
             const SizedBox(height: AppSpacing.s2),
-            Text(
-              'نص مساعد: أسماء الشيوخ، مدة الدرس، عدد الأسئلة.',
-              style: AppTextStyles.small,
-            ),
+            Text('نص مساعد: أسماء الشيوخ، مدة الدرس، عدد الأسئلة.', style: AppTextStyles.small),
             const SizedBox(height: AppSpacing.s2),
             Text('تسميات، وسوم، وأرقام الصفحات', style: AppTextStyles.caption),
           ],
@@ -341,16 +325,9 @@ class _ButtonsSection extends StatelessWidget {
               children: [
                 Text('معطّل / تحميل', style: AppTextStyles.caption),
                 const SizedBox(height: AppSpacing.s3),
-                const SheikhyButton.primary(
-                  label: 'الاختبار مُقفل',
-                  onPressed: null,
-                ),
+                const SheikhyButton.primary(label: 'الاختبار مُقفل', onPressed: null),
                 const SizedBox(height: AppSpacing.s3),
-                SheikhyButton.primary(
-                  label: 'يحفظ…',
-                  isLoading: true,
-                  onPressed: () {},
-                ),
+                SheikhyButton.primary(label: 'يحفظ…', isLoading: true, onPressed: () {}),
               ],
             ),
             Column(
@@ -401,10 +378,7 @@ class _CardsSection extends StatelessWidget {
               title: 'شرح الأربعين النووية',
               meta: 'الشيخ عبد الله المنصور · ١٢ درسًا · ٤ س ٣٠ د',
               badges: const [
-                SheikhyBadge(
-                  variant: SheikhyBadgeVariant.audio,
-                  label: 'فيديو',
-                ),
+                SheikhyBadge(variant: SheikhyBadgeVariant.audio, label: 'فيديو'),
               ],
               progress: 0.58,
               footerText: 'أنجزت ٧ من ١٢',
@@ -423,15 +397,9 @@ class _CardsSection extends StatelessWidget {
                     label: 'كتاب',
                   ),
                   const SizedBox(height: AppSpacing.s4),
-                  Text(
-                    'الآجُرُّومِيَّة',
-                    style: AppTextStyles.display.copyWith(fontSize: 30),
-                  ),
+                  Text('الآجُرُّومِيَّة', style: AppTextStyles.display.copyWith(fontSize: 30)),
                   const SizedBox(height: AppSpacing.s2),
-                  Text(
-                    'متن في النحو · ٦٤ صفحة · مع الشرح الصوتي',
-                    style: AppTextStyles.small,
-                  ),
+                  Text('متن في النحو · ٦٤ صفحة · مع الشرح الصوتي', style: AppTextStyles.small),
                 ],
               ),
             ),
@@ -547,10 +515,7 @@ class _InputsProgressSection extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: AppTextStyles.fieldLabel),
-        Text(
-          value,
-          style: AppTextStyles.small.copyWith(color: AppColors.goldDeep),
-        ),
+        Text(value, style: AppTextStyles.small.copyWith(color: AppColors.goldDeep)),
       ],
     );
   }

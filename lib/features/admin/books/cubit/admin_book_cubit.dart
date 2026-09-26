@@ -14,39 +14,44 @@ class AdminBookCubit extends Cubit<AdminBookState> {
 
     final sectionsResult = await _repo.getSections();
     if (sectionsResult.isLeft()) {
-      emit(AdminBookError(sectionsResult.fold((f) => f.message, (_) => '')));
+      emit(AdminBookError(
+          sectionsResult.fold((f) => f.message, (_) => '')));
       return;
     }
     final sections = sectionsResult.getOrElse(() => []);
 
-    final featuredResult = await _repo.getFeaturedCount(excludeId: bookId);
+    final featuredResult = await _repo.getFeaturedCount(
+      excludeId: bookId,
+    );
     final featuredCount = featuredResult.getOrElse(() => 0);
 
     if (bookId != null) {
       final bookResult = await _repo.getBook(bookId);
       bookResult.fold(
         (f) => emit(AdminBookError(f.message)),
-        (book) => emit(
-          AdminBookFormReady(
-            sections: sections,
-            existing: book,
-            featuredCount: featuredCount,
-          ),
-        ),
+        (book) => emit(AdminBookFormReady(
+          sections: sections,
+          existing: book,
+          featuredCount: featuredCount,
+        )),
       );
     } else {
-      emit(
-        AdminBookFormReady(sections: sections, featuredCount: featuredCount),
-      );
+      emit(AdminBookFormReady(
+        sections: sections,
+        featuredCount: featuredCount,
+      ));
     }
   }
 
   Future<void> uploadCover(String localPath) async {
     final result = await _repo.uploadCoverImage(localPath);
-    result.fold((f) => emit(AdminBookError(f.message)), (url) {
-      // Re-emit current form with upload signalled via a temp event
-      // Caller holds the URL to merge into form state
-    });
+    result.fold(
+      (f) => emit(AdminBookError(f.message)),
+      (url) {
+        // Re-emit current form with upload signalled via a temp event
+        // Caller holds the URL to merge into form state
+      },
+    );
   }
 
   Future<String?> uploadCoverAndGetUrl(String localPath) async {

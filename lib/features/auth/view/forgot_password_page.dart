@@ -97,8 +97,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     SheikhyNotice(
-                      message:
-                          _formError ??
+                      message: _formError ??
                           'أدخل البريد المسجّل، وسيصلك رمز صالح لعشر دقائق',
                       variant: _formError != null
                           ? SheikhyNoticeVariant.danger

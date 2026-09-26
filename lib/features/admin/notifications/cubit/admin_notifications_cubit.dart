@@ -53,6 +53,9 @@ class AdminNotificationsCubit extends Cubit<AdminNotificationsState> {
   Future<void> delete(String notificationId) async {
     final result = await _repo.deleteNotification(notificationId);
     if (isClosed) return;
-    result.fold((f) => emit(AdminNotificationsError(f.message)), (_) => load());
+    result.fold(
+      (f) => emit(AdminNotificationsError(f.message)),
+      (_) => load(),
+    );
   }
 }

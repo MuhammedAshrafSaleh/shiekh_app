@@ -142,27 +142,17 @@ class _OnboardingCarouselState extends State<_OnboardingCarousel> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // "تخطي" top-right (the start edge under RTL).
+        // "تخطي" top-end.
         Align(
-          alignment: AlignmentDirectional.centerStart,
+          alignment: AlignmentDirectional.centerEnd,
           child: Padding(
             padding: const EdgeInsetsDirectional.only(
-              start: AppSpacing.s4,
+              end: AppSpacing.s4,
               top: AppSpacing.s2,
             ),
-            child: InkWell(
-              onTap: _goToLogin,
-              borderRadius: AppRadii.rMd,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.symmetric(
-                  horizontal: AppSpacing.s3,
-                  vertical: AppSpacing.s2,
-                ),
-                child: Text(
-                  'تخطي',
-                  style: AppTextStyles.h3.copyWith(color: AppColors.surface),
-                ),
-              ),
+            child: SheikhyButton.text(
+              label: 'تخطي',
+              onPressed: _goToLogin,
             ),
           ),
         ),

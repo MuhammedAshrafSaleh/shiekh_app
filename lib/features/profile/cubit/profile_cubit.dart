@@ -29,17 +29,13 @@ class ProfileCubit extends Cubit<ProfileState> {
         return false;
       },
       (_) {
-        emit(
-          ProfileLoaded(
-            ProfileStats(
-              fullName: fullName,
-              email: current.stats.email,
-              enrolledBooks: current.stats.enrolledBooks,
-              completedLessons: current.stats.completedLessons,
-              certificates: current.stats.certificates,
-            ),
-          ),
-        );
+        emit(ProfileLoaded(ProfileStats(
+          fullName: fullName,
+          email: current.stats.email,
+          enrolledBooks: current.stats.enrolledBooks,
+          completedLessons: current.stats.completedLessons,
+          certificates: current.stats.certificates,
+        )));
         return true;
       },
     );

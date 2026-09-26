@@ -36,13 +36,10 @@ class AdminQaRepository {
       final data = await baseQuery
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
-      return Right(
-        (data as List)
-            .map(
-              (e) => StudentQuestionEntity.fromJson(e as Map<String, dynamic>),
-            )
-            .toList(),
-      );
+      return Right((data as List)
+          .map((e) =>
+              StudentQuestionEntity.fromJson(e as Map<String, dynamic>))
+          .toList());
     } on PostgrestException catch (e) {
       _log.warning('getQuestions: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -96,8 +93,7 @@ class AdminQaRepository {
 
   /// Subscribe to new Q&A inserts (admin inbox realtime).
   RealtimeChannel subscribeToNewQuestions(
-    void Function(Map<String, dynamic>) onInsert,
-  ) {
+      void Function(Map<String, dynamic>) onInsert) {
     return _client
         .channel('admin:student_questions')
         .onPostgresChanges(

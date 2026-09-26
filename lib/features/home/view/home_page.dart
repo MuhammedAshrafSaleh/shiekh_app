@@ -141,9 +141,9 @@ class _LoadedView extends StatelessWidget {
       color: AppColors.primary,
       backgroundColor: AppColors.surface,
       onRefresh: () => Future.wait([
-        context.read<HomeCubit>().loadHome(),
-        context.read<NotificationsCubit>().loadNotifications(),
-      ]),
+            context.read<HomeCubit>().loadHome(),
+            context.read<NotificationsCubit>().loadNotifications(),
+          ]),
       child: CustomScrollView(
         slivers: [
           if (state.data.banners.isNotEmpty)

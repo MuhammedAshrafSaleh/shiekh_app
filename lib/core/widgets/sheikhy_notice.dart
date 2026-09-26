@@ -28,20 +28,20 @@ class SheikhyNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final (Color fg, Color bg, IconData icon) = switch (variant) {
       SheikhyNoticeVariant.danger => (
-        AppColors.danger,
-        AppColors.dangerBg,
-        Icons.error_outline,
-      ),
+          AppColors.danger,
+          AppColors.dangerBg,
+          Icons.error_outline,
+        ),
       SheikhyNoticeVariant.info => (
-        AppColors.info,
-        AppColors.infoBg,
-        Icons.info_outline,
-      ),
+          AppColors.info,
+          AppColors.infoBg,
+          Icons.info_outline,
+        ),
       SheikhyNoticeVariant.success => (
-        AppColors.success,
-        AppColors.success.withValues(alpha: 0.10),
-        Icons.check_circle_outline,
-      ),
+          AppColors.success,
+          AppColors.success.withValues(alpha: 0.10),
+          Icons.check_circle_outline,
+        ),
     };
 
     return Container(

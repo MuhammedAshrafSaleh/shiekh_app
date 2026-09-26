@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/app_messenger.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart' as hs;
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/mcq_option_card.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/show_exam_start_dialog.dart';
@@ -37,7 +39,10 @@ class ExamPage extends StatelessWidget {
     return BlocConsumer<ExamBloc, ExamState>(
       listener: (context, state) {
         if (state is ExamCompleted) {
-          context.go('/books/$bookId/exam/result', extra: state);
+          context.go(
+            '/books/$bookId/exam/result',
+            extra: state,
+          );
         }
         if (state is ExamError) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -51,21 +56,27 @@ class ExamPage extends StatelessWidget {
       },
       builder: (context, state) {
         return switch (state) {
-          ExamInitial() ||
-          ExamLoading() => _LoadingScaffold(bookTitle: bookTitle),
-          ExamMetaLoaded() => _IntroView(state: state, bookTitle: bookTitle),
+          ExamInitial() || ExamLoading() => _LoadingScaffold(
+              bookTitle: bookTitle,
+            ),
+          ExamMetaLoaded() => _IntroView(
+              state: state,
+              bookTitle: bookTitle,
+            ),
           ExamInProgress() => _InProgressView(
-            state: state,
-            bookTitle: bookTitle,
-          ),
+              state: state,
+              bookTitle: bookTitle,
+            ),
           ExamCompleted() => Scaffold(
-            backgroundColor: AppColors.paper,
-            body: const Center(child: CircularProgressIndicator()),
-          ),
+              backgroundColor: AppColors.paper,
+              body: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
           ExamError(:final message) => _ErrorScaffold(
-            bookId: bookId,
-            message: message,
-          ),
+              bookId: bookId,
+              message: message,
+            ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -127,6 +138,37 @@ class _ErrorScaffold extends StatelessWidget {
   }
 }
 
+// ─── Gated (not enrolled) ─────────────────────────────────────────────────────
+
+class _GatedScaffold extends StatelessWidget {
+  final String bookId;
+  final String bookTitle;
+  const _GatedScaffold({required this.bookId, required this.bookTitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SheikhyPageHeader(title: bookTitle, showBack: true),
+          Expanded(
+            child: AccountGate(
+              reason: GateReason.enrollment,
+              bookId: bookId,
+              returnTo: '/books/$bookId/exam',
+              title: 'الاختبار النهائي غير متاح',
+              guestMessage: 'أنشئ حساباً وسجّل في الكتاب لأداء الاختبار النهائي.',
+              enrolledMessage: 'سجّل في الكتاب أولاً لأداء الاختبار النهائي.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Intro View ──────────────────────────────────────────────────────────────
 
 class _IntroView extends StatelessWidget {
@@ -153,14 +195,18 @@ class _IntroView extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SheikhyPageHeader(title: 'الاختبار النهائي', showBack: true),
+          SheikhyPageHeader(
+            title: 'الاختبار النهائي',
+            showBack: true,
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsetsDirectional.fromSTEB(
                 hs.AppSpacing.pageGutter,
                 hs.AppSpacing.s6,
                 hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s6 + MediaQuery.viewPaddingOf(context).bottom,
+                hs.AppSpacing.s6 +
+                    MediaQuery.viewPaddingOf(context).bottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,8 +280,7 @@ class _IntroView extends StatelessWidget {
                     ),
                     const SizedBox(height: hs.AppSpacing.s3),
                   ],
-                  if (state.settings.isPublished &&
-                      state.questionCount == 0) ...[
+                  if (state.settings.isPublished && state.questionCount == 0) ...[
                     SheikhyNotice(
                       variant: SheikhyNoticeVariant.danger,
                       message: 'لا توجد أسئلة في الاختبار بعد',
@@ -280,8 +325,7 @@ class _IntroView extends StatelessWidget {
                           },
                           style: TextButton.styleFrom(
                             padding: const EdgeInsetsDirectional.only(
-                              start: hs.AppSpacing.s2,
-                            ),
+                                start: hs.AppSpacing.s2),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
@@ -305,13 +349,12 @@ class _IntroView extends StatelessWidget {
                     onPressed: state.isLocked || state.isStarting
                         ? null
                         : () async {
-                            final confirmed = await showExamStartDialog(
-                              context,
-                            );
+                            final confirmed =
+                                await showExamStartDialog(context);
                             if (confirmed && context.mounted) {
-                              context.read<ExamBloc>().add(
-                                const ExamStartRequested(),
-                              );
+                              context
+                                  .read<ExamBloc>()
+                                  .add(const ExamStartRequested());
                             }
                           },
                     label: state.attemptsUsed == 0
@@ -459,7 +502,10 @@ class _PastAttemptsSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text('المحاولات السابقة', style: AppTextStyles.h3),
+                Text(
+                  'المحاولات السابقة',
+                  style: AppTextStyles.h3,
+                ),
               ],
             ),
           ),
@@ -473,9 +519,8 @@ class _PastAttemptsSheet extends StatelessWidget {
               itemBuilder: (_, i) {
                 final a = attempts[i];
                 final passed = a.passed;
-                final accentColor = passed
-                    ? AppColors.success
-                    : AppColors.danger;
+                final accentColor =
+                    passed ? AppColors.success : AppColors.danger;
                 return Padding(
                   padding: const EdgeInsetsDirectional.symmetric(
                     horizontal: hs.AppSpacing.pageGutter,
@@ -550,7 +595,8 @@ class _PastAttemptsSheet extends StatelessWidget {
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(
                               'مراجعة',
@@ -604,10 +650,7 @@ class _QuestionBar extends StatelessWidget {
       color: AppColors.surface,
       foregroundDecoration: const BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: AppColors.border,
-            width: AppBorders.hairline,
-          ),
+          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
         ),
       ),
       child: SafeArea(
@@ -661,7 +704,8 @@ class _QuestionBar extends StatelessWidget {
 
                 // End (left in RTL): live timer
                 BlocSelector<ExamBloc, ExamState, int>(
-                  selector: (s) => s is ExamInProgress ? s.secondsRemaining : 0,
+                  selector: (s) =>
+                      s is ExamInProgress ? s.secondsRemaining : 0,
                   builder: (_, secs) => TimerDisplay(secondsRemaining: secs),
                 ),
                 const SizedBox(width: hs.AppSpacing.s2),
@@ -676,18 +720,36 @@ class _QuestionBar extends StatelessWidget {
 
 // ─── In-Progress View ─────────────────────────────────────────────────────────
 
-void _showLeaveExamDialog(BuildContext context) {
+void _showBackgroundWarningDialog(BuildContext context) {
   showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('مغادرة الاختبار؟'),
+      title: const Text('تحذير'),
       content: const Text(
-        'إذا غادرت الآن سيُحتسب هذا كمحاولة مستخدمة ولن تتمكن من استردادها.',
+        'تم رصد خروجك من التطبيق. لو خرجت تاني هيتم تسليم الامتحان تلقائياً.',
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: const Text('الاستمرار في الاختبار'),
+          child: const Text('حسناً'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showLeaveExamDialog(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('تأكيد الخروج'),
+      content: const Text(
+        'لو خرجت من الامتحان هيتم تسليمه بإجاباتك الحالية، وهتتحسب محاولة مستخدمة ومش هتقدر ترجّعها. متأكد؟',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('كمّل الامتحان'),
         ),
         TextButton(
           onPressed: () {
@@ -695,146 +757,200 @@ void _showLeaveExamDialog(BuildContext context) {
             context.read<ExamBloc>().add(const ExamSubmitConfirmed());
           },
           style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-          child: const Text('مغادرة'),
+          child: const Text('سلّم واخرج'),
         ),
       ],
     ),
   );
 }
 
-class _InProgressView extends StatelessWidget {
+class _InProgressView extends StatefulWidget {
   final ExamInProgress state;
   final String bookTitle;
 
   const _InProgressView({required this.state, required this.bookTitle});
 
   @override
+  State<_InProgressView> createState() => _InProgressViewState();
+}
+
+class _InProgressViewState extends State<_InProgressView> {
+  late final ExamBloc _bloc;
+  late final AppLifecycleListener _lifecycleListener;
+  bool _isAway = false;
+
+  void _markAway() {
+    if (!_isAway) _isAway = true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _bloc = context.read<ExamBloc>();
+    _lifecycleListener = AppLifecycleListener(
+      onPause: _markAway,
+      onHide: _markAway,
+      onResume: () {
+        if (!_isAway) return;
+        _isAway = false;
+        _bloc.add(const ExamBackgroundLeave());
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final q = state.currentQuestion;
     final selectedChoice = state.answers[q.id];
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _showLeaveExamDialog(context);
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.paper,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Heritage question bar (replaces Material AppBar)
-            _QuestionBar(
-              currentIndex: state.currentIndex,
-              totalQuestions: state.questions.length,
+    return BlocListener<ExamBloc, ExamState>(
+      listenWhen: (prev, curr) =>
+          prev is ExamInProgress &&
+          curr is ExamInProgress &&
+          prev.backgroundLeaveCount != curr.backgroundLeaveCount,
+      listener: (context, curr) {
+        final s = curr as ExamInProgress;
+        if (s.backgroundLeaveCount == 1) {
+          _showBackgroundWarningDialog(context);
+        } else if (s.backgroundLeaveCount == ExamInProgress.backgroundLeaveLimit) {
+          appMessengerKey.currentState?.showSnackBar(
+            SnackBar(
+              content: const Text('تم تسليم الامتحان لأنك خرجت من التطبيق'),
+              backgroundColor: AppColors.warning,
+              duration: const Duration(seconds: 5),
             ),
+          );
+        }
+      },
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _showLeaveExamDialog(context);
+        },
+        child: Scaffold(
+      backgroundColor: AppColors.paper,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Heritage question bar (replaces Material AppBar)
+          _QuestionBar(
+            currentIndex: state.currentIndex,
+            totalQuestions: state.questions.length,
+          ),
 
-            // Question + choices + navigator
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s4,
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s4,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      q.questionText,
-                      style: AppTextStyles.bodyLg.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+          // Question + choices + navigator
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s4,
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s4,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    q.questionText,
+                    style: AppTextStyles.bodyLg.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: hs.AppSpacing.s4),
-                    for (final choice in ['a', 'b', 'c', 'd'])
-                      McqOptionCard(
-                        label: _choiceLetter(choice),
-                        text: q.choiceLabel(choice),
-                        optionState: selectedChoice == choice
-                            ? McqOptionState.selected
-                            : McqOptionState.idle,
-                        onTap: state.isSubmitting
-                            ? null
-                            : () => context.read<ExamBloc>().add(
+                  ),
+                  const SizedBox(height: hs.AppSpacing.s4),
+                  for (final choice in ['a', 'b', 'c', 'd'])
+                    McqOptionCard(
+                      label: _choiceLetter(choice),
+                      text: q.choiceLabel(choice),
+                      optionState: selectedChoice == choice
+                          ? McqOptionState.selected
+                          : McqOptionState.idle,
+                      onTap: state.isSubmitting
+                          ? null
+                          : () => context.read<ExamBloc>().add(
                                 ExamAnswerSelected(q.id, choice),
                               ),
-                      ),
-                    const SizedBox(height: hs.AppSpacing.s2),
-                    ExamNavigatorGrid(
-                      questions: state.questions,
-                      answers: state.answers,
-                      currentIndex: state.currentIndex,
-                      onNavigate: (i) =>
-                          context.read<ExamBloc>().add(ExamNavigateTo(i)),
                     ),
-                  ],
-                ),
+                  const SizedBox(height: hs.AppSpacing.s2),
+                  ExamNavigatorGrid(
+                    questions: state.questions,
+                    answers: state.answers,
+                    currentIndex: state.currentIndex,
+                    onNavigate: (i) =>
+                        context.read<ExamBloc>().add(ExamNavigateTo(i)),
+                  ),
+                ],
               ),
             ),
+          ),
 
-            // Prev / Next / Submit
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s2,
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s4,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SheikhyButton.secondary(
-                        fullWidth: true,
-                        label: 'السابق',
-                        onPressed: state.currentIndex > 0 && !state.isSubmitting
-                            ? () => context.read<ExamBloc>().add(
+          // Prev / Next / Submit
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s2,
+                hs.AppSpacing.pageGutter,
+                hs.AppSpacing.s4,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SheikhyButton.secondary(
+                      fullWidth: true,
+                      label: 'السابق',
+                      onPressed: state.currentIndex > 0 && !state.isSubmitting
+                          ? () => context.read<ExamBloc>().add(
                                 ExamNavigateTo(state.currentIndex - 1),
                               )
-                            : null,
-                        icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                      ),
+                          : null,
+                      icon: const Icon(Icons.arrow_forward_ios, size: 16),
                     ),
-                    const SizedBox(width: hs.AppSpacing.s3),
-                    Expanded(
-                      child: state.currentIndex < state.questions.length - 1
-                          ? SheikhyButton.primary(
-                              fullWidth: true,
-                              label: 'التالي',
-                              onPressed: state.isSubmitting
-                                  ? null
-                                  : () => context.read<ExamBloc>().add(
+                  ),
+                  const SizedBox(width: hs.AppSpacing.s3),
+                  Expanded(
+                    child: state.currentIndex < state.questions.length - 1
+                        ? SheikhyButton.primary(
+                            fullWidth: true,
+                            label: 'التالي',
+                            onPressed: state.isSubmitting
+                                ? null
+                                : () => context.read<ExamBloc>().add(
                                       ExamNavigateTo(state.currentIndex + 1),
                                     ),
-                              icon: const Icon(Icons.arrow_back_ios, size: 16),
-                            )
-                          : SheikhyButton.primary(
-                              fullWidth: true,
-                              isLoading: state.isSubmitting,
-                              label: 'تسليم',
-                              onPressed: state.isSubmitting
-                                  ? null
-                                  : () => _confirmSubmit(context),
-                              icon: const Icon(Icons.send_rounded, size: 16),
-                            ),
-                    ),
-                  ],
-                ),
+                            icon: const Icon(Icons.arrow_back_ios, size: 16),
+                          )
+                        : SheikhyButton.primary(
+                            fullWidth: true,
+                            isLoading: state.isSubmitting,
+                            label: 'تسليم',
+                            onPressed: state.isSubmitting
+                                ? null
+                                : () => _confirmSubmit(context),
+                            icon: const Icon(Icons.send_rounded, size: 16),
+                          ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
       ),
     );
   }
 
   void _confirmSubmit(BuildContext context) {
-    final unanswered = state.unansweredCount;
-    final answered = state.answeredCount;
-    final total = state.questions.length;
+    final unanswered = widget.state.unansweredCount;
+    final answered = widget.state.answeredCount;
+    final total = widget.state.questions.length;
     final hasUnanswered = unanswered > 0;
 
     String ar(int n) {
@@ -898,7 +1014,8 @@ class _InProgressView extends StatelessWidget {
                 hasUnanswered
                     ? 'لقد أجبت على ${ar(answered)} من ${ar(total)} سؤال، الأسئلة المتبقية ستُعتبر خاطئة.'
                     : 'لقد أجبت على جميع الأسئلة. هل تريد تسليم الاختبار الآن؟',
-                style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+                style:
+                    AppTextStyles.body.copyWith(color: AppColors.inkMuted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: hs.AppSpacing.s5),

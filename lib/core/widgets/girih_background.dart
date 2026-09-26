@@ -100,11 +100,7 @@ class GirihPainter extends CustomPainter {
 /// arabesque unit motif (skArabesque) — diamond + diagonal spokes (unit 44).
 /// Used behind course-card heads over the primary color.
 class ArabesquePainter extends CustomPainter {
-  ArabesquePainter({
-    required this.color,
-    required this.opacity,
-    this.unit = 44,
-  });
+  ArabesquePainter({required this.color, required this.opacity, this.unit = 44});
 
   final Color color;
   final double opacity;

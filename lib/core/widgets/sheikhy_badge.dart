@@ -42,7 +42,10 @@ class SheikhyBadge extends StatelessWidget {
       ),
       child: Text(
         label ?? s.text,
-        style: AppTextStyles.caption.copyWith(color: s.fg, letterSpacing: 0),
+        style: AppTextStyles.caption.copyWith(
+          color: s.fg,
+          letterSpacing: 0,
+        ),
       ),
     );
   }
@@ -54,20 +57,12 @@ class SheikhyBadge extends StatelessWidget {
       case SheikhyBadgeVariant.passed:
         return _BadgeStyle('مُجتاز', AppColors.success, AppColors.inkInvert);
       case SheikhyBadgeVariant.certified:
-        return _BadgeStyle(
-          'مُجاز',
-          AppColors.goldSoft,
-          AppColors.goldDeep,
-          border: AppColors.goldLight,
-        );
+        return _BadgeStyle('مُجاز', AppColors.goldSoft, AppColors.goldDeep,
+            border: AppColors.goldLight);
       case SheikhyBadgeVariant.draft:
         return _BadgeStyle('مسودة', AppColors.paperSunk, AppColors.inkMuted);
       case SheikhyBadgeVariant.expired:
-        return _BadgeStyle(
-          'انتهت المدة',
-          AppColors.danger,
-          AppColors.inkInvert,
-        );
+        return _BadgeStyle('انتهت المدة', AppColors.danger, AppColors.inkInvert);
       case SheikhyBadgeVariant.audio:
         return _BadgeStyle('صوتي', AppColors.infoBg, AppColors.info);
     }

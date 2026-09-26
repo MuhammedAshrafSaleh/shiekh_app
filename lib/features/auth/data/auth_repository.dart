@@ -97,6 +97,11 @@ class AuthRepository {
       return const Right(null);
     } on AuthException catch (e) {
       _log.warning('convertGuest failed: ${e.message}');
+      // The email belongs to another account — surface a distinct failure so the
+      // app can route to sign-in (rather than string-matching the message).
+      if (e.code == 'email_exists') {
+        return Left(EmailAlreadyInUseFailure(_mapAuthError(e.message)));
+      }
       return Left(AuthFailure(_mapAuthError(e.message)));
     } catch (e) {
       _log.severe('convertGuest unexpected: $e');

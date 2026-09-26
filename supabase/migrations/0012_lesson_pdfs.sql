@@ -27,8 +27,7 @@
 -- SECURITY DEFINER lets the function UPDATE public.lessons even though the caller
 -- (admin) has no direct grant path that RLS would otherwise satisfy; the WRITE
 -- GATE stays the lesson_pdfs admin-write policy — a student is rejected there and
--- never reaches the trigger. search_path is pinned to '' (injection hardening);
--- every identifier inside the function is therefore fully qualified.
+-- never reaches the trigger. search_path is pinned (injection hardening).
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -50,14 +49,6 @@ create index if not exists idx_lesson_pdfs_lesson
   on public.lesson_pdfs(lesson_id, order_index);
 
 alter table public.lesson_pdfs enable row level security;
-
--- ------------------------------------------------------------
--- 1b. GRANTs — RLS is NOT a substitute for table privileges. Without these the
---     API roles get "permission denied for table lesson_pdfs" even though the
---     policies are correct. RLS then narrows these grants row-by-row.
--- ------------------------------------------------------------
-grant select                 on public.lesson_pdfs to anon, authenticated;
-grant insert, update, delete on public.lesson_pdfs to authenticated;
 
 -- ------------------------------------------------------------
 -- 2. RLS — mirror the lessons entitlement pattern.
@@ -87,13 +78,12 @@ create policy "lesson_pdfs_admin_write" on public.lesson_pdfs
 --    Runs AFTER every row change; nulls pdf_url when the last PDF is deleted.
 --    SECURITY DEFINER (owner) so it can UPDATE public.lessons regardless of the
 --    caller; the lesson_pdfs admin-write policy is the real gate.
---    search_path = '' → all identifiers below are fully qualified.
 -- ------------------------------------------------------------
 create or replace function public.sync_lesson_pdf_url()
 returns trigger
 language plpgsql
 security definer
-set search_path = ''
+set search_path = public, pg_catalog
 as $$
 begin
   -- Refresh the affected lesson(s). NEW/OLD lesson_id differ only if a PDF is
@@ -158,9 +148,8 @@ drop table if exists public.lesson_pdfs;   -- removes rows + policies
 */
 
 -- ============================================================
--- ✅ TEST HARNESS — run AFTER applying sections 1–4 above, as a SECOND query.
--- It is wrapped in a transaction that ROLLS BACK, so nothing persists.
--- Verifies:
+-- ✅ TEST HARNESS — run FIRST, verbatim, in the SQL Editor. Wrapped in a
+-- transaction that ROLLS BACK, so nothing persists. Verifies:
 --   (A) no 42P17 recursion when a real authenticated user selects lesson_pdfs;
 --   (B) the SELECT policy hides other lessons' PDFs from a non-entitled user;
 --   (C) SECURITY DEFINER lets the trigger update lessons.pdf_url, and the mirror
@@ -169,7 +158,6 @@ drop table if exists public.lesson_pdfs;   -- removes rows + policies
 --       can never fire the trigger (no privilege escalation via the mirror).
 --
 -- Replace <ADMIN_UUID>, <STUDENT_UUID>, <LESSON_UUID> (a published lesson) below.
--- Expected output: AAA → BBB → null, then 'OK: student insert rejected'.
 -- ============================================================
 /*
 begin;
@@ -206,17 +194,15 @@ set local role authenticated;
 set local "request.jwt.claims" =
   '{"sub":"<STUDENT_UUID>","role":"authenticated","is_anonymous":false}';
 
--- Expected: the insert raises insufficient_privilege → notice 'OK: ...'.
--- If the insert SUCCEEDS, the explicit SECURITY FAIL exception propagates and
--- aborts the block — it is NOT caught here. Do not widen this handler to
--- `others`: that would swallow the SECURITY FAIL and make the test unfailable.
+-- Expected: ERROR new row violates row-level security policy for "lesson_pdfs".
+-- (If this SUCCEEDS, the write gate is broken — do NOT ship.)
 do $$
 begin
   insert into public.lesson_pdfs (lesson_id, title, url, order_index)
   values ('<LESSON_UUID>', 'اختراق', 'https://x', 0);
   raise exception 'SECURITY FAIL: student insert into lesson_pdfs succeeded';
 exception
-  when insufficient_privilege then
+  when insufficient_privilege or others then
     raise notice 'OK: student insert rejected (%).', sqlerrm;
 end $$;
 

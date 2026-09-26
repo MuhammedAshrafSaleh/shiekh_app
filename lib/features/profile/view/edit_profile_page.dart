@@ -98,10 +98,3 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
                 ],
               ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}

@@ -309,9 +309,8 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     final theme = Theme.of(context);
     // Resolve a saved transcript from in-memory error state first (phase-2 failed
     // this session), then fall back to the initially-loaded lesson.
-    final inMemory = state is GenerateQuestionsError
-        ? state.savedTranscript
-        : null;
+    final inMemory =
+        state is GenerateQuestionsError ? state.savedTranscript : null;
     final savedTranscript =
         inMemory ??
         ((widget.lesson?.hasSavedTranscript ?? false)
@@ -349,6 +348,7 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
             _SavedTranscriptNotice(
               transcript: savedTranscript,
               onUse: () => _useSavedTranscript(savedTranscript),
+              messenger: _messenger,
             ),
             const SizedBox(height: AppSpacing.md),
           ],
@@ -449,7 +449,10 @@ class _SavedTranscriptNotice extends StatelessWidget {
   final String transcript;
   final VoidCallback onUse;
 
-  const _SavedTranscriptNotice({required this.transcript, required this.onUse});
+  const _SavedTranscriptNotice({
+    required this.transcript,
+    required this.onUse,
+  });
 
   Future<void> _viewTranscript(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -566,9 +569,7 @@ class _BusyView extends StatelessWidget {
             const CircularProgressIndicator(),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              isTranscribing
-                  ? 'جاري تفريغ المحاضرة...'
-                  : 'جاري توليد الأسئلة...',
+              isTranscribing ? 'جاري تفريغ المحاضرة...' : 'جاري توليد الأسئلة...',
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),

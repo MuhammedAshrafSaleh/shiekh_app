@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../cubit/qa_cubit.dart';
@@ -51,34 +52,42 @@ class _BookQaPageState extends State<BookQaPage> {
       appBar: AppBar(title: const Text('الأسئلة والأجوبة')),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAskSheet,
+        // Asking requires an account; a guest is shown the sign-up gate (which
+        // carries auto-enroll on conversion) and the sheet is not opened.
+        onPressed: () => AccountGate.guard(
+          context,
+          returnTo: '/books/${widget.bookId}/qa',
+          bookId: widget.bookId,
+          guestMessage: 'أنشئ حساباً لطرح سؤالك على الشيخ',
+          onAllowed: _openAskSheet,
+        ),
         icon: const Icon(Icons.edit_outlined),
         label: const Text('اسأل سؤالاً'),
       ),
       body: BlocBuilder<QaCubit, QaState>(
         builder: (context, state) {
           return switch (state) {
-            QaInitial() ||
-            QaLoading() => const Center(child: CircularProgressIndicator()),
+            QaInitial() || QaLoading() =>
+              const Center(child: CircularProgressIndicator()),
             QaError(:final message) => ErrorState(
-              message: message,
-              onRetry: () =>
-                  context.read<QaCubit>().loadQuestions(widget.bookId),
-            ),
-            QaEmpty() => const EmptyState(
-              icon: Icons.question_answer_outlined,
-              message: 'لا توجد أسئلة بعد، كن أول من يسأل!',
-            ),
-            QaLoaded(:final questions) => RefreshIndicator(
-              onRefresh: () =>
-                  context.read<QaCubit>().loadQuestions(widget.bookId),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: questions.length,
-                itemBuilder: (_, index) =>
-                    QuestionCard(question: questions[index]),
+                message: message,
+                onRetry: () =>
+                    context.read<QaCubit>().loadQuestions(widget.bookId),
               ),
-            ),
+            QaEmpty() => const EmptyState(
+                icon: Icons.question_answer_outlined,
+                message: 'لا توجد أسئلة بعد، كن أول من يسأل!',
+              ),
+            QaLoaded(:final questions) => RefreshIndicator(
+                onRefresh: () =>
+                    context.read<QaCubit>().loadQuestions(widget.bookId),
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: questions.length,
+                  itemBuilder: (_, index) =>
+                      QuestionCard(question: questions[index]),
+                ),
+              ),
             _ => const SizedBox.shrink(),
           };
         },

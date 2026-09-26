@@ -64,44 +64,43 @@ class _SplashPageState extends State<SplashPage>
                 padding: const EdgeInsetsDirectional.symmetric(
                   horizontal: AppSpacing.pageGutter,
                 ),
-                child: Column(
-                  children: [
-                    const Spacer(flex: 3),
-                    _Avatar(
-                      asset: _sheikhPhotoAsset,
-                      fallbackInitials: _initials(Brand.sheikhName),
-                    ),
-                    const SizedBox(height: AppSpacing.s5),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        Brand.sheikhName,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.display.copyWith(
-                          color: AppColors.goldLight,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s2),
-                    Text(
-                      'دروسٌ ومتونٌ في العلم الشرعي',
+              child: Column(
+                children: [
+                  const Spacer(flex: 3),
+                  _Avatar(
+                    asset: _sheikhPhotoAsset,
+                    fallbackInitials: _initials(Brand.sheikhName),
+                  ),
+                  const SizedBox(height: AppSpacing.s5),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      Brand.sheikhName,
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.small.copyWith(
-                        color: AppColors.inkInvert.withValues(alpha: 0.85),
-                      ),
+                      style: AppTextStyles.display
+                          .copyWith(color: AppColors.goldLight),
                     ),
-                    const Spacer(flex: 3),
-                    _AnimatedDots(controller: _dotController),
-                    const SizedBox(height: AppSpacing.s5),
-                    Text(
-                      'طلبُ العلم فريضة',
-                      style: AppTextStyles.small.copyWith(
-                        color: AppColors.inkInvert.withValues(alpha: 0.6),
-                      ),
+                  ),
+                  const SizedBox(height: AppSpacing.s2),
+                  Text(
+                    'دروسٌ ومتونٌ في العلم الشرعي',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.inkInvert.withValues(alpha: 0.85),
                     ),
-                    const SizedBox(height: AppSpacing.s6),
-                  ],
-                ),
+                  ),
+                  const Spacer(flex: 3),
+                  _AnimatedDots(controller: _dotController),
+                  const SizedBox(height: AppSpacing.s5),
+                  Text(
+                    'طلبُ العلم فريضة',
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.inkInvert.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.s6),
+                ],
+              ),
               ),
             ),
           ),

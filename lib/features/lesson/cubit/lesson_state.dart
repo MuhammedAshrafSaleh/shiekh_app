@@ -90,18 +90,18 @@ class LessonLoaded extends LessonState {
 
   @override
   List<Object?> get props => [
-    lesson,
-    progress,
-    lessonHasQuiz,
-    isEnrolled,
-    hasQuizQuestions,
-    quizQuestionCount,
-    quizAttemptsUsed,
-    pastAttempts,
-    nextLessonId,
-    isSavingProgress,
-    videoWatched,
-  ];
+        lesson,
+        progress,
+        lessonHasQuiz,
+        isEnrolled,
+        hasQuizQuestions,
+        quizQuestionCount,
+        quizAttemptsUsed,
+        pastAttempts,
+        nextLessonId,
+        isSavingProgress,
+        videoWatched,
+      ];
 }
 
 class LessonError extends LessonState {

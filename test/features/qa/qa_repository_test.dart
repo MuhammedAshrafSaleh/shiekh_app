@@ -83,9 +83,9 @@ void main() {
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
       when(() => auth.currentUser).thenReturn(_FakeUser());
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'insert failed'));
+      when(() => client.from(any())).thenThrow(
+        const PostgrestException(message: 'insert failed'),
+      );
 
       final result = await repo.askQuestion(
         bookId: 'book-id',
@@ -116,9 +116,9 @@ void main() {
 
     test('returns ServerFailure when PostgrestException is thrown', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'view error'));
+      when(() => client.from(any())).thenThrow(
+        const PostgrestException(message: 'view error'),
+      );
 
       final result = await repo.getBookQuestions('book-id');
 
@@ -131,9 +131,9 @@ void main() {
 
     test('queries student_questions_public not student_questions', () async {
       when(() => connectivity.state).thenReturn(_onlineState);
-      when(
-        () => client.from(any()),
-      ).thenThrow(const PostgrestException(message: 'ok'));
+      when(() => client.from(any())).thenThrow(
+        const PostgrestException(message: 'ok'),
+      );
 
       await repo.getBookQuestions('book-id');
 

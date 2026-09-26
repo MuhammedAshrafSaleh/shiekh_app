@@ -21,6 +21,7 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     on<ExamTick>(_onTick);
     on<ExamSubmitConfirmed>(_onSubmitConfirmed);
     on<ExamAutoSubmit>(_onAutoSubmit);
+    on<ExamBackgroundLeave>(_onBackgroundLeave);
   }
 
   @override
@@ -45,6 +46,19 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
   Future<void> _onLoad(ExamLoadRequested event, Emitter<ExamState> emit) async {
     emit(ExamLoading());
 
+    // Enrollment gate (guest or registered-not-enrolled). A guest is never
+    // enrolled, so one check covers both. Runs before any exam data loads.
+    final enrolledResult = await _repo.isEnrolled(event.bookId);
+    final bool? enrolled = enrolledResult.fold((f) {
+      emit(ExamError(f.message));
+      return null;
+    }, (value) => value);
+    if (enrolled == null) return; // load failed — error already emitted
+    if (!enrolled) {
+      emit(ExamGated(bookId: event.bookId));
+      return;
+    }
+
     final session = await _repo.loadSession(event.bookId);
 
     if (session != null) {
@@ -59,9 +73,10 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
         final meta = metaResult.getOrElse(() => throw StateError(''));
         final questions = questionsResult.getOrElse(() => []);
 
-        final elapsed = DateTime.now().difference(session.startedAt).inSeconds;
-        final timeLimitSeconds = meta.settings.timeLimitMinutes * 60;
-        final secondsRemaining = timeLimitSeconds - elapsed;
+        final secondsRemaining = _secondsRemaining(
+          session.startedAt,
+          meta.settings.timeLimitMinutes,
+        );
 
         if (secondsRemaining > 0) {
           // Resume active session (CC-11)
@@ -189,13 +204,16 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     final current = state;
     if (current is! ExamInProgress || current.isSubmitting) return;
 
-    final newSeconds = current.secondsRemaining - 1;
-    if (newSeconds <= 0) {
+    final remaining = _secondsRemaining(
+      current.startedAt,
+      current.settings.timeLimitMinutes,
+    );
+    if (remaining <= 0) {
       _stopTimer();
       emit(current.copyWith(secondsRemaining: 0));
       add(const ExamAutoSubmit()); // CC-12
     } else {
-      emit(current.copyWith(secondsRemaining: newSeconds));
+      emit(current.copyWith(secondsRemaining: remaining));
     }
   }
 
@@ -204,7 +222,7 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     Emitter<ExamState> emit,
   ) async {
     final current = state;
-    if (current is! ExamInProgress) return;
+    if (current is! ExamInProgress || current.isSubmitting) return;
 
     _stopTimer();
     emit(current.copyWith(isSubmitting: true));
@@ -216,7 +234,7 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
     Emitter<ExamState> emit,
   ) async {
     final current = state;
-    if (current is! ExamInProgress) return;
+    if (current is! ExamInProgress || current.isSubmitting) return;
 
     _stopTimer();
     emit(current.copyWith(isSubmitting: true));
@@ -242,6 +260,44 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
         ),
       ),
     );
+  }
+
+  /// Seconds remaining based on wall-clock elapsed time, so background pauses
+  /// are correctly deducted rather than relying on tick count.
+  int _secondsRemaining(DateTime startedAt, int timeLimitMinutes) {
+    final elapsed = DateTime.now().difference(startedAt).inSeconds;
+    return timeLimitMinutes * 60 - elapsed;
+  }
+
+  Future<void> _onBackgroundLeave(
+    ExamBackgroundLeave event,
+    Emitter<ExamState> emit,
+  ) async {
+    final current = state;
+    if (current is! ExamInProgress || current.isSubmitting) return;
+
+    // Recompute time first — if the student stayed away until the clock ran
+    // out, treat it as a normal time-up submit with no warning or leave count.
+    final remaining = _secondsRemaining(
+      current.startedAt,
+      current.settings.timeLimitMinutes,
+    );
+    if (remaining <= 0) {
+      _stopTimer();
+      emit(current.copyWith(secondsRemaining: 0));
+      add(const ExamAutoSubmit());
+      return;
+    }
+
+    final newCount = current.backgroundLeaveCount + 1;
+    // Always emit the new count so the UI listener fires, then auto-submit on 2.
+    emit(current.copyWith(
+      backgroundLeaveCount: newCount,
+      secondsRemaining: remaining,
+    ));
+    if (newCount >= ExamInProgress.backgroundLeaveLimit) {
+      add(const ExamAutoSubmit());
+    }
   }
 
   void _saveSession(

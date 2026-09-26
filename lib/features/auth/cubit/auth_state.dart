@@ -45,6 +45,22 @@ class AuthOffline extends AuthState {}
 
 class AuthEmailConfirmationRequired extends AuthState {}
 
+/// A guest tried to convert to an email that already belongs to an account.
+/// Owned by the app-level listener: route to /login (carrying the pending
+/// intent) so they can sign into that account and finish the journey.
+class AuthGuestEmailTaken extends AuthState {}
+
+/// A guest conversion failed for a non-collision reason. Owned by the app-level
+/// listener, which surfaces [message] via a snackbar — the signup page may have
+/// been disposed mid-conversion, so it can't show the error inline itself.
+class AuthGuestConversionFailed extends AuthState {
+  final String message;
+  const AuthGuestConversionFailed(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
 class AuthPasswordResetSent extends AuthState {
   final String email;
   const AuthPasswordResetSent(this.email);
