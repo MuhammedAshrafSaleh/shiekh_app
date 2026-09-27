@@ -34,3 +34,7 @@
 - **CC-2** unpublish enrolled book → **hide + "غير متاح حاليًا"**, enrollment row persists.
 - **CC-11** app closed mid-exam → **persist start; resume remaining time or auto-submit if expired**.
 - **CC-20** lesson without enrolling → **require enrollment first** (tap opens enroll dialog).
+---
+
+## Backlog / Tech debt
+- **Rename `LessonNoteEntity` → `NoteEntity`.** Since the Suggestions feature (2026-09-27), this entity backs both `lesson_notes` and `suggestion_notes` (nullable `lessonId`/`bookId`/`suggestionId`), so the `Lesson`-prefixed name is misleading. Deferred to avoid churn right after the notes-source refactor; purely mechanical (rename class + `lesson_note_entity.dart` file + ~8 imports), behavior-preserving. Related accepted trade-offs kept as-is: `SuggestionNotesRepository` mirrors `NotesRepository` boilerplate (matches the per-repo pattern), and `BookNotesSource.add()` throws `UnsupportedError` (book scope never adds).
