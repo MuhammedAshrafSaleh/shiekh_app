@@ -14,15 +14,16 @@ class AchievementsData {
   final int certificateCount;
   final Map<DateTime, int> activityByDate; // date → event count (for heatmap)
 
+  /// Total study seconds, computed server-side by the `get_my_study_seconds`
+  /// RPC (completed lessons → full duration, in-progress → saved position).
+  final int totalStudySeconds;
+
   const AchievementsData({
     required this.completedLessons,
     required this.certificateCount,
     required this.activityByDate,
+    required this.totalStudySeconds,
   });
-
-  // Estimated hours: ~15 minutes per completed lesson
-  int get estimatedStudyHours =>
-      ((completedLessons * 15) / 60).ceil();
 }
 
 class AchievementsRepository {
@@ -64,12 +65,20 @@ class AchievementsRepository {
           .eq('user_id', userId)
           .limit(200);
 
-      final results =
-          await Future.wait([progressFuture, certsFuture, attemptsFuture]);
+      // Server-side study-seconds total (own rows only, via auth.uid()).
+      final studySecondsFuture = _client.rpc('get_my_study_seconds');
+
+      final results = await Future.wait<dynamic>([
+        progressFuture,
+        certsFuture,
+        attemptsFuture,
+        studySecondsFuture,
+      ]);
 
       final progressRows = results[0] as List;
       final certsRows = results[1] as List;
       final attemptsRows = results[2] as List;
+      final totalStudySeconds = (results[3] as num?)?.toInt() ?? 0;
 
       final completedLessons = progressRows.length;
       final certificateCount = certsRows.length;
@@ -96,18 +105,21 @@ class AchievementsRepository {
         final bucket = count >= 8
             ? 4
             : count >= 5
-                ? 3
-                : count >= 3
-                    ? 2
-                    : 1;
+            ? 3
+            : count >= 3
+            ? 2
+            : 1;
         return MapEntry(day, bucket);
       });
 
-      return Right(AchievementsData(
-        completedLessons: completedLessons,
-        certificateCount: certificateCount,
-        activityByDate: activityBucketed,
-      ));
+      return Right(
+        AchievementsData(
+          completedLessons: completedLessons,
+          certificateCount: certificateCount,
+          activityByDate: activityBucketed,
+          totalStudySeconds: totalStudySeconds,
+        ),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getAchievementsData: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -132,8 +144,7 @@ class AchievementsRepository {
           .limit(50);
 
       final certs = (response as List)
-          .map((e) =>
-              CertificateEntity.fromJson(e as Map<String, dynamic>))
+          .map((e) => CertificateEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(certs);

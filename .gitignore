@@ -49,3 +49,4 @@ dart_define.json
 
 # Supabase CLI local state (not source)
 supabase/.temp/
+dart_define.json
