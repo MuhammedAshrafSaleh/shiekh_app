@@ -15,10 +15,12 @@ import '../../../features/auth/cubit/auth_state.dart';
 import '../../../features/notifications/cubit_notifs/notifications_cubit.dart';
 import '../../../features/notifications/cubit_notifs/notifications_state.dart';
 import '../../../models/banner_entity.dart';
+import '../../../models/suggestion_entity.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
 import '../widgets/banner_carousel_section.dart';
 import '../widgets/featured_book_card.dart';
+import '../widgets/suggestions_slider_section.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -135,6 +137,16 @@ class _LoadedView extends StatelessWidget {
     }
   }
 
+  void _handleSuggestionTap(
+    BuildContext context,
+    SuggestionEntity suggestion,
+  ) {
+    // Routes registered in Tasks 4 (video) & 5 (audio); the suggestion is
+    // passed via `extra`.
+    final route = suggestion.isVideo ? '/suggestions/video' : '/suggestions/audio';
+    context.push(route, extra: suggestion);
+  }
+
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
@@ -157,6 +169,14 @@ class _LoadedView extends StatelessWidget {
                   banners: state.data.banners,
                   onTap: (banner) => _handleBannerTap(context, banner),
                 ),
+              ),
+            ),
+          if (state.data.suggestions.isNotEmpty)
+            SliverToBoxAdapter(
+              child: SuggestionsSliderSection(
+                suggestions: state.data.suggestions,
+                onTap: (suggestion) =>
+                    _handleSuggestionTap(context, suggestion),
               ),
             ),
           if (state.data.featuredBooks.isNotEmpty) ...[

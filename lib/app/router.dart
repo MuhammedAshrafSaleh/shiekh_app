@@ -57,6 +57,8 @@ import '../features/sections/cubit/sections_cubit.dart';
 import '../features/sections/data/section_repository.dart';
 import '../features/sections/view/section_books_page.dart';
 import '../features/sections/view/sections_page.dart';
+import '../features/suggestions/view/suggestion_audio_page.dart';
+import '../features/suggestions/view/suggestion_video_page.dart';
 import '../features/admin/dashboard/cubit/admin_dashboard_cubit.dart';
 import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
 import '../features/admin/dashboard/view/admin_dashboard_page.dart';
@@ -71,6 +73,10 @@ import '../features/admin/banners/cubit/admin_banner_cubit.dart';
 import '../features/admin/banners/data/admin_banner_repository.dart';
 import '../features/admin/banners/view/admin_banner_form_page.dart';
 import '../features/admin/banners/view/admin_banners_page.dart';
+import '../features/admin/suggestions/cubit/admin_suggestion_cubit.dart';
+import '../features/admin/suggestions/data/admin_suggestion_repository.dart';
+import '../features/admin/suggestions/view/admin_suggestion_form_page.dart';
+import '../features/admin/suggestions/view/admin_suggestions_page.dart';
 import '../features/admin/exam/cubit/admin_exam_cubit.dart';
 import '../features/admin/exam/data/admin_exam_repository.dart';
 import '../features/admin/exam/view/admin_exam_page.dart';
@@ -96,6 +102,7 @@ import '../models/banner_entity.dart';
 import '../models/book_entity.dart';
 import '../models/certificate_entity.dart';
 import '../models/section_entity.dart';
+import '../models/suggestion_entity.dart';
 
 class _PlaceholderPage extends StatelessWidget {
   final String title;
@@ -412,6 +419,30 @@ GoRouter buildRouter(AuthCubit authCubit) {
         },
       ),
 
+      // --- Suggestions video player (reuses lesson VideoTab in previewMode) ---
+      GoRoute(
+        path: '/suggestions/video',
+        builder: (context, state) {
+          final suggestion = state.extra as SuggestionEntity?;
+          if (suggestion == null) {
+            return const _SuggestionRouteError();
+          }
+          return SuggestionVideoPage(suggestion: suggestion);
+        },
+      ),
+
+      // --- Suggestions audio player (reuses lesson AudioTab in previewMode) ---
+      GoRoute(
+        path: '/suggestions/audio',
+        builder: (context, state) {
+          final suggestion = state.extra as SuggestionEntity?;
+          if (suggestion == null) {
+            return const _SuggestionRouteError();
+          }
+          return SuggestionAudioPage(suggestion: suggestion);
+        },
+      ),
+
       // --- Admin Shell (Task 6.1) ---
       ShellRoute(
         builder: (context, state, child) => _AdminShell(child: child),
@@ -645,8 +676,55 @@ GoRouter buildRouter(AuthCubit authCubit) {
           ),
         ],
       ),
+
+      // --- Admin: Suggestions (مقترحات) ---
+      GoRoute(
+        path: '/admin/suggestions',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminSuggestionCubit(ctx.read<AdminSuggestionRepository>())
+                ..load(),
+          child: const AdminSuggestionsPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  AdminSuggestionCubit(ctx.read<AdminSuggestionRepository>()),
+              child: const AdminSuggestionFormPage(),
+            ),
+          ),
+          GoRoute(
+            path: ':id/edit',
+            builder: (context, state) {
+              final suggestion = state.extra as SuggestionEntity;
+              return BlocProvider(
+                create: (ctx) => AdminSuggestionCubit(
+                  ctx.read<AdminSuggestionRepository>(),
+                ),
+                child: AdminSuggestionFormPage(existing: suggestion),
+              );
+            },
+          ),
+        ],
+      ),
     ],
   );
+}
+
+// Shown if a /suggestions/* route is reached without its SuggestionEntity extra
+// (e.g. a stray deep link) — normal navigation always passes it.
+class _SuggestionRouteError extends StatelessWidget {
+  const _SuggestionRouteError();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: const Center(child: Text('تعذّر فتح المحتوى')),
+    );
+  }
 }
 
 // --------------- Shell widgets ---------------

@@ -7,6 +7,7 @@ import '../core/audio/sound_service.dart';
 import '../core/theme/theme_cubit.dart';
 import '../features/achievements/data/achievements_repository.dart';
 import '../features/admin/banners/data/admin_banner_repository.dart';
+import '../features/admin/suggestions/data/admin_suggestion_repository.dart';
 import '../features/admin/books/data/admin_book_repository.dart';
 import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
 import '../features/admin/exam/data/admin_exam_repository.dart';
@@ -107,6 +108,10 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<AdminBannerRepository>(
                 create: (_) => AdminBannerRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<AdminSuggestionRepository>(
+                create: (_) =>
+                    AdminSuggestionRepository(supabase, connectivity),
               ),
               // --- Admin repositories (Phase 7) ---
               RepositoryProvider<AdminLessonRepository>(
