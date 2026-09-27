@@ -36,6 +36,11 @@ class _AdminSuggestionFormPageState extends State<AdminSuggestionFormPage> {
   String? _imageUrl;
   bool _uploadingImage = false;
 
+  /// The YouTube video id [_imageUrl] is a thumbnail of, or null when the image
+  /// is a custom upload / absent. Used to clear a stale thumbnail when the URL
+  /// changes to a different video.
+  String? _ytThumbVideoId;
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +59,7 @@ class _AdminSuggestionFormPageState extends State<AdminSuggestionFormPage> {
     _contentType = s?.contentType ?? SuggestionContentType.video;
     _isActive = s?.isActive ?? true;
     _imageUrl = s?.imageUrl;
+    _ytThumbVideoId = _extractYtThumbId(_imageUrl);
   }
 
   @override
@@ -156,7 +162,19 @@ class _AdminSuggestionFormPageState extends State<AdminSuggestionFormPage> {
                   ),
                   keyboardType: TextInputType.url,
                   validator: _validateUrl,
+                  onChanged: _onUrlChanged,
                 ),
+                if (_canUseYoutubeThumbnail) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OutlinedButton.icon(
+                      onPressed: _useYoutubeThumbnail,
+                      icon: const Icon(Icons.image_outlined),
+                      label: const Text('استخدم صورة الفيديو من يوتيوب'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
 
                 // Duration (minutes + seconds → duration_seconds)
@@ -237,6 +255,41 @@ class _AdminSuggestionFormPageState extends State<AdminSuggestionFormPage> {
     );
   }
 
+  bool get _canUseYoutubeThumbnail =>
+      _contentType == SuggestionContentType.video &&
+      VideoId.parseVideoId(_urlCtrl.text.trim()) != null;
+
+  void _onUrlChanged(String value) {
+    final newId = VideoId.parseVideoId(value.trim());
+    // Clear a now-stale YouTube thumbnail (belongs to a different video).
+    if (_ytThumbVideoId != null && _ytThumbVideoId != newId) {
+      _imageUrl = null;
+      _ytThumbVideoId = null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم مسح صورة الفيديو لتغيّر الرابط'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+    // Refresh button visibility as the URL becomes valid/invalid.
+    setState(() {});
+  }
+
+  void _useYoutubeThumbnail() {
+    final id = VideoId.parseVideoId(_urlCtrl.text.trim());
+    if (id == null) return;
+    setState(() {
+      _imageUrl = 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+      _ytThumbVideoId = id;
+    });
+  }
+
+  static String? _extractYtThumbId(String? url) {
+    if (url == null) return null;
+    return RegExp(r'img\.youtube\.com/vi/([^/]+)/').firstMatch(url)?.group(1);
+  }
+
   String? _validateUrl(String? v) {
     final url = v?.trim() ?? '';
     if (url.isEmpty) return 'الرابط مطلوب';
@@ -292,7 +345,10 @@ class _AdminSuggestionFormPageState extends State<AdminSuggestionFormPage> {
     if (!mounted) return;
     setState(() {
       _uploadingImage = false;
-      if (url != null) _imageUrl = url;
+      if (url != null) {
+        _imageUrl = url;
+        _ytThumbVideoId = null; // now a custom uploaded image
+      }
     });
   }
 
