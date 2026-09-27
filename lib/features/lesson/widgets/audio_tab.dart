@@ -38,8 +38,15 @@ class AudioTab extends StatefulWidget {
   final String? lessonId;
   final String? bookId;
 
+  /// When set, timestamped notes are enabled for this suggestion audio —
+  /// independently of [previewMode]. A `NotesCubit` bound to a suggestion
+  /// source must be provided above this widget.
+  final String? suggestionId;
+
   /// When true, the player runs without any progress tracking (no LessonCubit
-  /// calls) — used by the admin "preview as student" screen.
+  /// calls) — used by the admin "preview as student" screen and by suggestion
+  /// audio. Note-taking is gated separately (see the notes predicate), so a
+  /// suggestion audio can have notes on while progress stays off.
   final bool previewMode;
 
   const AudioTab({
@@ -49,6 +56,7 @@ class AudioTab extends StatefulWidget {
     this.initialPositionSeconds = 0,
     this.lessonId,
     this.bookId,
+    this.suggestionId,
     this.previewMode = false,
   });
 
@@ -60,6 +68,17 @@ class _AudioTabState extends State<AudioTab>
     with MediaTabController, AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
+
+  /// Notes are shown for a suggestion audio (any mode) or for a fully-wired
+  /// lesson audio. Decoupled from [previewMode] so suggestion notes work while
+  /// position-save/timer/resume stay off. Note: the notes UI lives inside the
+  /// loaded player state (`_AudioPlayer`), so it only renders — and its seek
+  /// callback only fires — after the file is downloaded and loaded.
+  bool get _notesEnabled =>
+      widget.suggestionId != null ||
+      (!widget.previewMode &&
+          widget.lessonId != null &&
+          widget.bookId != null);
 
   final _player = AudioPlayer();
   final _dio = Dio();
@@ -252,11 +271,16 @@ class _AudioTabState extends State<AudioTab>
     // carries auto-enroll on conversion) and the note flow aborts. Registered
     // users — enrolled or not — proceed.
     if (!mounted) return;
+    final isSuggestion = widget.suggestionId != null;
     if (!AccountGate.guard(
       context,
-      returnTo: '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
+      returnTo: isSuggestion
+          ? '/home'
+          : '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
       bookId: widget.bookId,
-      guestMessage: 'أنشئ حساباً لتدوين ملاحظاتك على الدرس',
+      guestMessage: isSuggestion
+          ? 'أنشئ حساباً لتدوين ملاحظاتك'
+          : 'أنشئ حساباً لتدوين ملاحظاتك على الدرس',
     )) {
       return;
     }
@@ -309,14 +333,8 @@ class _AudioTabState extends State<AudioTab>
           duration: _duration,
           onTogglePlay: _togglePlay,
           onSeek: _seek,
-          onAddNote: (!widget.previewMode &&
-                  widget.lessonId != null &&
-                  widget.bookId != null)
-              ? _openNoteEditor
-              : null,
-          onSeekToNote: (!widget.previewMode &&
-                  widget.lessonId != null &&
-                  widget.bookId != null)
+          onAddNote: _notesEnabled ? _openNoteEditor : null,
+          onSeekToNote: _notesEnabled
               ? (seconds) => _player.seek(Duration(seconds: seconds))
               : null,
         ),
