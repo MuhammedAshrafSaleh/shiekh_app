@@ -3,15 +3,21 @@ import 'package:equatable/equatable.dart';
 
 import '../../../models/banner_entity.dart';
 import '../../../models/book_with_progress_entity.dart';
+import '../../../models/suggestion_entity.dart';
 
 class HomeData extends Equatable {
   final List<BannerEntity> banners;
   final List<BookWithProgressEntity> featuredBooks;
+  final List<SuggestionEntity> suggestions;
 
-  const HomeData({required this.banners, required this.featuredBooks});
+  const HomeData({
+    required this.banners,
+    required this.featuredBooks,
+    required this.suggestions,
+  });
 
   @override
-  List<Object?> get props => [banners, featuredBooks];
+  List<Object?> get props => [banners, featuredBooks, suggestions];
 }
 
 abstract class HomeState extends Equatable {

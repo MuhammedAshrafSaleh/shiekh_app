@@ -36,7 +36,7 @@ class _LectureNotesPageState extends State<LectureNotesPage> {
   @override
   void initState() {
     super.initState();
-    context.read<NotesCubit>().loadBookNotes(widget.bookId);
+    context.read<NotesCubit>().load();
   }
 
   @override
@@ -59,9 +59,7 @@ class _LectureNotesPageState extends State<LectureNotesPage> {
                   NotesError(:final message) => SheikhyErrorState(
                     heading: 'تعذّر تحميل الملحوظات',
                     message: message,
-                    onRetry: () => context
-                        .read<NotesCubit>()
-                        .loadBookNotes(widget.bookId),
+                    onRetry: () => context.read<NotesCubit>().load(),
                   ),
                   NotesLoaded(:final notes) => _NotesList(
                     notes: notes
@@ -72,9 +70,7 @@ class _LectureNotesPageState extends State<LectureNotesPage> {
                               a.positionSeconds.compareTo(b.positionSeconds),
                         ),
                     bookId: widget.bookId,
-                    onRetry: () => context
-                        .read<NotesCubit>()
-                        .loadBookNotes(widget.bookId),
+                    onRetry: () => context.read<NotesCubit>().load(),
                   ),
                   _ => const SizedBox.shrink(),
                 };

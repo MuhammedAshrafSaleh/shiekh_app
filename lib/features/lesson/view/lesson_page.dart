@@ -15,6 +15,7 @@ import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../notes/cubit/notes_cubit.dart';
 import '../../notes/data/notes_repository.dart';
+import '../../notes/data/notes_source.dart';
 import '../../lesson/data/lesson_repository.dart';
 import '../../qa/cubit/qa_cubit.dart';
 import '../../qa/data/qa_repository.dart';
@@ -431,9 +432,13 @@ class _LessonViewState extends State<_LessonView>
     }
 
     return BlocProvider<NotesCubit>(
-      create: (ctx) =>
-          NotesCubit(ctx.read<NotesRepository>())
-            ..loadLessonNotes(widget.lessonId),
+      create: (ctx) => NotesCubit(
+        LessonNotesSource(
+          ctx.read<NotesRepository>(),
+          lessonId: widget.lessonId,
+          bookId: widget.bookId,
+        ),
+      )..load(),
       child: PopScope(
         canPop: !_quizAnswering,
         onPopInvokedWithResult: (didPop, _) async {

@@ -39,8 +39,15 @@ class VideoTab extends StatefulWidget {
   final String? lessonId;
   final String? bookId;
 
+  /// When set, timestamped notes are enabled for this suggestion video —
+  /// independently of [previewMode]. A `NotesCubit` bound to a suggestion
+  /// source must be provided above this widget.
+  final String? suggestionId;
+
   /// When true, the player runs without any progress tracking (no LessonCubit
-  /// calls) — used by the admin "preview as student" screen.
+  /// calls) — used by the admin "preview as student" screen and by suggestion
+  /// videos. Note-taking is gated separately (see the notes predicate), so a
+  /// suggestion video can have notes on while progress stays off.
   final bool previewMode;
 
   const VideoTab({
@@ -49,6 +56,7 @@ class VideoTab extends StatefulWidget {
     required this.initialPositionSeconds,
     this.lessonId,
     this.bookId,
+    this.suggestionId,
     this.previewMode = false,
   });
 
@@ -73,6 +81,15 @@ class _VideoTabState extends State<VideoTab>
 
   _Status _status = _Status.loading;
   bool _invalidUrl = false;
+
+  /// Notes are shown for a suggestion video (any mode) or for a fully-wired
+  /// lesson video. Decoupled from [previewMode] so suggestion notes work while
+  /// progress/watched/resume stay off.
+  bool get _notesEnabled =>
+      widget.suggestionId != null ||
+      (!widget.previewMode &&
+          widget.lessonId != null &&
+          widget.bookId != null);
 
   @override
   void initState() {
@@ -183,23 +200,28 @@ class _VideoTabState extends State<VideoTab>
     // carries auto-enroll on conversion) and the note flow aborts. Registered
     // users — enrolled or not — proceed.
     if (!mounted) return;
+    final isSuggestion = widget.suggestionId != null;
     if (!AccountGate.guard(
       context,
-      returnTo: '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
+      returnTo: isSuggestion
+          ? '/home'
+          : '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
       bookId: widget.bookId,
-      guestMessage: 'أنشئ حساباً لتدوين ملاحظاتك على الدرس',
+      guestMessage: isSuggestion
+          ? 'أنشئ حساباً لتدوين ملاحظاتك'
+          : 'أنشئ حساباً لتدوين ملاحظاتك على الدرس',
     )) {
       return;
     }
 
     final seconds = controller.value.position.inSeconds;
+    final source = context.read<NotesCubit>().source;
     await controller.pause();
 
     if (!mounted) return;
     await NoteEditorSheet.show(
       context,
-      lessonId: widget.lessonId!,
-      bookId: widget.bookId!,
+      source: source,
       positionSeconds: seconds,
     );
 
@@ -251,9 +273,7 @@ class _VideoTabState extends State<VideoTab>
               ),
             ),
           ),
-          if (!widget.previewMode &&
-              widget.lessonId != null &&
-              widget.bookId != null) ...[
+          if (_notesEnabled) ...[
             SliverToBoxAdapter(
               child: _AddNoteAffordance(onTap: _openNoteEditor),
             ),
@@ -317,7 +337,7 @@ class _VideoTabState extends State<VideoTab>
                   delegate: SliverChildBuilderDelegate(
                     (ctx, i) => NoteCard(
                       note: notes[i],
-                      bookId: widget.bookId!,
+                      bookId: widget.bookId,
                       onSeek: () => _videoController?.seekTo(
                         Duration(seconds: notes[i].positionSeconds),
                       ),

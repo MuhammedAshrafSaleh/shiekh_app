@@ -10,6 +10,7 @@ import '../../../features/notifications/cubit/connectivity_cubit.dart';
 import '../../../models/banner_entity.dart';
 import '../../../models/book_entity.dart';
 import '../../../models/book_with_progress_entity.dart';
+import '../../../models/suggestion_entity.dart';
 
 class HomeRepository {
   final SupabaseClient _client;
@@ -41,6 +42,35 @@ class HomeRepository {
       return Right(banners);
     } on PostgrestException catch (e) {
       _log.warning('getActiveBanners: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Active suggestions for the "مقترحات" home slider. Ordered server-side:
+  /// sort_order ASC (NULLs last), then created_at ASC. Failure/empty is handled
+  /// by HomeCubit as a hidden section — it must not fail the whole Home load.
+  Future<Either<Failure, List<SuggestionEntity>>> getActiveSuggestions() async {
+    final networkError = _checkNetwork<List<SuggestionEntity>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final response = await _client
+          .from('suggestions')
+          .select()
+          // No .limit(): spec allows unlimited suggestions; the slider builds
+          // items lazily so fetching all active rows is acceptable.
+          .eq('is_active', true)
+          .order('sort_order', ascending: true, nullsFirst: false)
+          .order('created_at', ascending: true);
+
+      final suggestions = (response as List)
+          .map((e) => SuggestionEntity.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return Right(suggestions);
+    } on PostgrestException catch (e) {
+      _log.warning('getActiveSuggestions: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

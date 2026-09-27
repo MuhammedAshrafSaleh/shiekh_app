@@ -7,6 +7,7 @@ import '../core/audio/sound_service.dart';
 import '../core/theme/theme_cubit.dart';
 import '../features/achievements/data/achievements_repository.dart';
 import '../features/admin/banners/data/admin_banner_repository.dart';
+import '../features/admin/suggestions/data/admin_suggestion_repository.dart';
 import '../features/admin/books/data/admin_book_repository.dart';
 import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
 import '../features/admin/exam/data/admin_exam_repository.dart';
@@ -30,6 +31,7 @@ import '../features/notifications/data/notifications_repository.dart';
 import '../features/onboarding/data/onboarding_repository.dart';
 import '../features/profile/data/profile_repository.dart';
 import '../features/notes/data/notes_repository.dart';
+import '../features/notes/data/suggestion_notes_repository.dart';
 import '../features/qa/data/qa_repository.dart';
 import '../features/sections/data/section_repository.dart';
 import 'app.dart';
@@ -108,6 +110,10 @@ class SheikhyProviders extends StatelessWidget {
               RepositoryProvider<AdminBannerRepository>(
                 create: (_) => AdminBannerRepository(supabase, connectivity),
               ),
+              RepositoryProvider<AdminSuggestionRepository>(
+                create: (_) =>
+                    AdminSuggestionRepository(supabase, connectivity),
+              ),
               // --- Admin repositories (Phase 7) ---
               RepositoryProvider<AdminLessonRepository>(
                 create: (_) => AdminLessonRepository(supabase, connectivity),
@@ -131,6 +137,10 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<NotesRepository>(
                 create: (_) => NotesRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<SuggestionNotesRepository>(
+                create: (_) =>
+                    SuggestionNotesRepository(supabase, connectivity),
               ),
             ],
             child: MultiBlocProvider(

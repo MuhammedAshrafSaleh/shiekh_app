@@ -10,6 +10,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/girih_background.dart';
 import '../../../core/widgets/sheikhy_badge.dart';
 import '../../../models/banner_entity.dart';
+import 'home_slider_config.dart';
 
 class BannerCarouselSection extends StatefulWidget {
   const BannerCarouselSection({
@@ -46,7 +47,7 @@ class _BannerCarouselSectionState extends State<BannerCarouselSection> {
             height: 180,
             viewportFraction: 1.0,
             autoPlay: widget.banners.length > 1,
-            autoPlayInterval: const Duration(seconds: 4),
+            autoPlayInterval: kBannerAutoScrollInterval,
             onPageChanged: (index, _) =>
                 setState(() => _currentIndex = index),
           ),

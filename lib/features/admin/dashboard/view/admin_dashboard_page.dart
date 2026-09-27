@@ -252,6 +252,24 @@ class _QuickActions extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickActionButton(
+                icon: Icons.recommend_outlined,
+                label: 'إدارة المقترحات',
+                onTap: () => context.push('/admin/suggestions'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            const Expanded(child: SizedBox()),
+            const SizedBox(width: AppSpacing.sm),
+            const Expanded(child: SizedBox()),
+            const SizedBox(width: AppSpacing.sm),
+            const Expanded(child: SizedBox()),
+          ],
+        ),
       ],
     );
   }

@@ -30,6 +30,9 @@ Open the Supabase **SQL Editor** and run each file in order:
 docs/schema.sql                        # base 15-table schema + RLS policies
 supabase/migrations/0001_app_support.sql   # student-safe views + exam/quiz RPCs
 supabase/migrations/0002_hardening.sql     # reorder_lessons RPC + featured-cap trigger
+# …then run every remaining numbered migration in order (0003 → 0018), including:
+supabase/migrations/0017_suggestions.sql        # مقترحات home slider (suggestions table + RLS)
+supabase/migrations/0018_suggestion_notes.sql   # timestamped notes on suggestion videos + audio
 ```
 
 Verify after running `0001_app_support.sql`:
@@ -72,6 +75,9 @@ In Supabase Dashboard → **Storage**:
 2. Set it to **Public** (anonymous reads).
 3. Add an RLS INSERT policy restricted to `is_admin()` (see `docs/schema.sql`
    for the helper function).
+4. Banner and suggestion images both live in this same `media` bucket —
+   under the `banners/` and `suggestions/` prefixes respectively. No extra
+   bucket or per-prefix policy is needed.
 
 ---
 
@@ -174,7 +180,7 @@ profile row), see `docs/admin_recovery.sql`.
 
 ## Checklist
 
-- [ ] `schema.sql` + both migrations run without errors
+- [ ] `schema.sql` + all numbered migrations (0001 → 0018) run without errors
 - [ ] Three student-safe views exist (`lesson_quiz_questions_student`, etc.)
 - [ ] `on_auth_user_created` trigger present (not duplicated)
 - [ ] `media` Storage bucket created and public
