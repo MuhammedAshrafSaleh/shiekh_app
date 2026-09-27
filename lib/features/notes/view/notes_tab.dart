@@ -35,14 +35,14 @@ class NotesTab extends StatelessWidget {
             heading: 'تعذّر تحميل الملحوظات',
             message: message,
             onRetry: () =>
-                context.read<NotesCubit>().loadBookNotes(bookId),
+                context.read<NotesCubit>().load(),
           ),
           NotesLoaded(:final notes) => _LevelOneList(
             bookId: bookId,
             lessons: lessons,
             notes: notes,
             onRetry: () =>
-                context.read<NotesCubit>().loadBookNotes(bookId),
+                context.read<NotesCubit>().load(),
           ),
           _ => const SizedBox.shrink(),
         };
@@ -69,7 +69,10 @@ class _LevelOneList extends StatelessWidget {
     // Build note count per lessonId.
     final countByLesson = <String, int>{};
     for (final note in notes) {
-      final lessonId = note.lessonId as String;
+      // Book scope only yields lesson notes; skip defensively if a note has no
+      // lesson parent (the field is nullable now that suggestion notes exist).
+      final lessonId = note.lessonId as String?;
+      if (lessonId == null) continue;
       countByLesson[lessonId] = (countByLesson[lessonId] ?? 0) + 1;
     }
 

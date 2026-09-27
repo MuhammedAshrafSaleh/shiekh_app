@@ -1,14 +1,18 @@
 // lib/features/suggestions/view/suggestion_video_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../models/suggestion_entity.dart';
 import '../../lesson/widgets/video_tab.dart';
+import '../../notes/cubit/notes_cubit.dart';
+import '../../notes/data/notes_source.dart';
+import '../../notes/data/suggestion_notes_repository.dart';
 
 /// Plays a suggestion's YouTube video in-app by reusing the lesson [VideoTab]
-/// player in `previewMode` (no lesson/notes/progress side effects). VideoTab
-/// owns loading, invalid-link error, and fullscreen; this page only frames it
-/// with a Scaffold + AppBar showing the suggestion title.
+/// player in `previewMode` (no progress/watched/resume side effects). Notes are
+/// enabled via [suggestionId] + a suggestion-scoped [NotesCubit] provided here;
+/// VideoTab owns loading, invalid-link error, and fullscreen.
 class SuggestionVideoPage extends StatelessWidget {
   const SuggestionVideoPage({super.key, required this.suggestion});
 
@@ -16,20 +20,29 @@ class SuggestionVideoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.paper,
-      appBar: AppBar(
-        title: Text(
-          suggestion.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+    return BlocProvider(
+      create: (ctx) => NotesCubit(
+        SuggestionNotesSource(
+          ctx.read<SuggestionNotesRepository>(),
+          suggestionId: suggestion.id,
         ),
-      ),
-      body: SafeArea(
-        child: VideoTab(
-          videoUrl: suggestion.contentUrl,
-          initialPositionSeconds: 0,
-          previewMode: true,
+      )..load(),
+      child: Scaffold(
+        backgroundColor: AppColors.paper,
+        appBar: AppBar(
+          title: Text(
+            suggestion.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        body: SafeArea(
+          child: VideoTab(
+            videoUrl: suggestion.contentUrl,
+            initialPositionSeconds: 0,
+            suggestionId: suggestion.id,
+            previewMode: true,
+          ),
         ),
       ),
     );

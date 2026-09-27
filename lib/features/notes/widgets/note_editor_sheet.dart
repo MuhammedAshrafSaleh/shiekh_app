@@ -12,21 +12,20 @@ import '../../../core/widgets/sheikhy_button.dart';
 import '../../../models/lesson_note_entity.dart';
 import '../cubit/note_editor_cubit.dart';
 import '../cubit/note_editor_state.dart';
-import '../data/notes_repository.dart';
+import '../data/notes_source.dart';
 
 enum NoteEditorMode { add, edit }
 
-/// A modal bottom sheet for adding or editing a lesson note.
+/// A modal bottom sheet for adding or editing a note.
 ///
-/// Provides its own [NoteEditorCubit] — call via [NoteEditorSheet.show].
-/// The sheet pauses the video before opening; the caller resumes it after the
-/// returned Future completes (regardless of how the sheet was dismissed).
+/// Provides its own [NoteEditorCubit], bound to the [NotesSource] the caller
+/// passes (lesson or suggestion scope). The caller pauses playback before
+/// opening and resumes it after the returned Future completes.
 class NoteEditorSheet extends StatefulWidget {
   final NoteEditorMode mode;
+  final NotesSource source;
 
-  // Add-mode fields
-  final String? lessonId;
-  final String? bookId;
+  // Add-mode field
   final int? positionSeconds;
 
   // Edit-mode field
@@ -34,8 +33,7 @@ class NoteEditorSheet extends StatefulWidget {
 
   const NoteEditorSheet._({
     required this.mode,
-    this.lessonId,
-    this.bookId,
+    required this.source,
     this.positionSeconds,
     this.existingNote,
   });
@@ -44,8 +42,7 @@ class NoteEditorSheet extends StatefulWidget {
   /// (whether saved or cancelled).
   static Future<void> show(
     BuildContext context, {
-    required String lessonId,
-    required String bookId,
+    required NotesSource source,
     required int positionSeconds,
   }) {
     return showModalBottomSheet<void>(
@@ -56,11 +53,10 @@ class NoteEditorSheet extends StatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xl)),
       ),
       builder: (_) => BlocProvider(
-        create: (ctx) => NoteEditorCubit(ctx.read<NotesRepository>()),
+        create: (_) => NoteEditorCubit(source),
         child: NoteEditorSheet._(
           mode: NoteEditorMode.add,
-          lessonId: lessonId,
-          bookId: bookId,
+          source: source,
           positionSeconds: positionSeconds,
         ),
       ),
@@ -70,6 +66,7 @@ class NoteEditorSheet extends StatefulWidget {
   /// Shows the sheet in edit mode (text only). Returns after dismissed.
   static Future<void> showEdit(
     BuildContext context, {
+    required NotesSource source,
     required LessonNoteEntity note,
   }) {
     return showModalBottomSheet<void>(
@@ -80,9 +77,10 @@ class NoteEditorSheet extends StatefulWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.xl)),
       ),
       builder: (_) => BlocProvider(
-        create: (ctx) => NoteEditorCubit(ctx.read<NotesRepository>()),
+        create: (_) => NoteEditorCubit(source),
         child: NoteEditorSheet._(
           mode: NoteEditorMode.edit,
+          source: source,
           existingNote: note,
         ),
       ),
@@ -119,8 +117,6 @@ class _NoteEditorSheetState extends State<NoteEditorSheet> {
 
     if (widget.mode == NoteEditorMode.add) {
       context.read<NoteEditorCubit>().save(
-        lessonId: widget.lessonId!,
-        bookId: widget.bookId!,
         positionSeconds: widget.positionSeconds!,
         text: text,
       );

@@ -262,13 +262,13 @@ class _AudioTabState extends State<AudioTab>
     }
 
     final seconds = _player.position.inSeconds;
+    final source = context.read<NotesCubit>().source;
     await _player.pause();
 
     if (!mounted) return;
     await NoteEditorSheet.show(
       context,
-      lessonId: widget.lessonId!,
-      bookId: widget.bookId!,
+      source: source,
       positionSeconds: seconds,
     );
 

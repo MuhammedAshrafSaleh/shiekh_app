@@ -1,24 +1,20 @@
 // lib/features/notes/cubit/note_editor_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../data/notes_repository.dart';
+import '../data/notes_source.dart';
 import 'note_editor_state.dart';
 
 class NoteEditorCubit extends Cubit<NoteEditorState> {
-  final NotesRepository _repo;
+  final NotesSource _source;
 
-  NoteEditorCubit(this._repo) : super(NoteEditorInitial());
+  NoteEditorCubit(this._source) : super(NoteEditorInitial());
 
   Future<void> save({
-    required String lessonId,
-    required String bookId,
     required int positionSeconds,
     required String text,
   }) async {
     emit(NoteEditorSaving());
-    final result = await _repo.addNote(
-      lessonId: lessonId,
-      bookId: bookId,
+    final result = await _source.add(
       positionSeconds: positionSeconds,
       text: text,
     );
@@ -33,7 +29,7 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
     required String text,
   }) async {
     emit(NoteEditorSaving());
-    final result = await _repo.updateNoteText(noteId, text);
+    final result = await _source.updateText(noteId, text);
     result.fold(
       (failure) => emit(NoteEditorError(failure.message)),
       (note) => emit(NoteEditorSuccess(note)),

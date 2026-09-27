@@ -46,6 +46,7 @@ import '../features/profile/view/edit_profile_page.dart';
 import '../features/profile/view/profile_page.dart';
 import '../features/notes/cubit/notes_cubit.dart';
 import '../features/notes/data/notes_repository.dart';
+import '../features/notes/data/notes_source.dart';
 import '../features/notes/view/lecture_notes_page.dart';
 import '../features/qa/cubit/my_questions_cubit.dart';
 import '../features/qa/cubit/qa_cubit.dart';
@@ -279,7 +280,9 @@ GoRouter buildRouter(AuthCubit authCubit) {
               ),
               BlocProvider(
                 create: (ctx) =>
-                    NotesCubit(ctx.read<NotesRepository>()),
+                    NotesCubit(
+                      BookNotesSource(ctx.read<NotesRepository>(), bookId: bookId),
+                    ),
               ),
             ],
             child: BookDetailsPage(bookId: bookId),
@@ -307,7 +310,9 @@ GoRouter buildRouter(AuthCubit authCubit) {
                   state.extra is String ? state.extra as String : '';
               return BlocProvider(
                 create: (ctx) =>
-                    NotesCubit(ctx.read<NotesRepository>()),
+                    NotesCubit(
+                      BookNotesSource(ctx.read<NotesRepository>(), bookId: bookId),
+                    ),
                 child: LectureNotesPage(
                   bookId: bookId,
                   lessonId: lessonId,

@@ -157,7 +157,7 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
       }
     }
     if (returningFromLesson || returningFromNotes) {
-      context.read<NotesCubit>().loadBookNotes(widget.bookId);
+      context.read<NotesCubit>().load();
     }
   }
 
@@ -359,7 +359,7 @@ class _BookDetailsViewState extends State<_BookDetailsView>
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
-      context.read<NotesCubit>().loadBookNotes(widget.bookId);
+      context.read<NotesCubit>().load();
     }
   }
 

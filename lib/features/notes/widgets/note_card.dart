@@ -15,24 +15,31 @@ import 'note_editor_sheet.dart';
 
 class NoteCard extends StatelessWidget {
   final LessonNoteEntity note;
-  final String bookId;
+  final String? bookId;
   final VoidCallback? onSeek;
 
   const NoteCard({
     super.key,
     required this.note,
-    required this.bookId,
+    this.bookId,
     this.onSeek,
   });
 
   void _seekToNote(BuildContext context) {
+    // Fallback nav only applies to lesson notes (book-scope lists). Suggestion
+    // notes always supply [onSeek], so this path is never taken for them.
+    if (note.lessonId == null) return;
     context.push(
       '/lessons/${note.lessonId}?bookId=$bookId&t=${note.positionSeconds}',
     );
   }
 
   Future<void> _edit(BuildContext context) async {
-    await NoteEditorSheet.showEdit(context, note: note);
+    await NoteEditorSheet.showEdit(
+      context,
+      source: context.read<NotesCubit>().source,
+      note: note,
+    );
     if (context.mounted) {
       context.read<NotesCubit>().refreshAfterEdit();
     }
