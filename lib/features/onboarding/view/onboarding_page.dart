@@ -144,15 +144,29 @@ class _OnboardingCarouselState extends State<_OnboardingCarousel> {
       children: [
         // "تخطي" top-end.
         Align(
-          alignment: AlignmentDirectional.centerEnd,
+          alignment: AlignmentDirectional.centerStart,
           child: Padding(
             padding: const EdgeInsetsDirectional.only(
-              end: AppSpacing.s4,
+              start: AppSpacing.s4,
               top: AppSpacing.s2,
             ),
-            child: SheikhyButton.text(
-              label: 'تخطي',
+            child: TextButton(
               onPressed: _goToLogin,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.inkInvert,
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: AppSpacing.s4,
+                  vertical: AppSpacing.s3,
+                ),
+                minimumSize: const Size(64, 48),
+              ),
+              child: Text(
+                'تخطي',
+                style: AppTextStyles.buttonLabel.copyWith(
+                  color: AppColors.inkInvert,
+                  fontSize: 17,
+                ),
+              ),
             ),
           ),
         ),
