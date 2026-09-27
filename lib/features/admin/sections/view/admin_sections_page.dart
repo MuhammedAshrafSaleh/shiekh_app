@@ -19,11 +19,13 @@ class AdminSectionsPage extends StatelessWidget {
     return BlocConsumer<AdminSectionsCubit, AdminSectionsState>(
       listener: (context, state) {
         if (state is AdminSectionsError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
           // Reload after error shown to restore list
           if (state.message.contains('حذف')) {
             context.read<AdminSectionsCubit>().load();
@@ -41,8 +43,7 @@ class AdminSectionsPage extends StatelessWidget {
               ),
             ],
           ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.startFloat,
+          floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
               await context.push('/admin/sections/new');
@@ -55,8 +56,112 @@ class AdminSectionsPage extends StatelessWidget {
           ),
           body: switch (state) {
             AdminSectionsLoading() => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: CircularProgressIndicator(),
+            ),
             AdminSectionsError() => ErrorState(
-                message: state.message,
-                onRetry: () => context.read<AdminSectionsCubit>().load(),
+              message: state.message,
+              onRetry: () => context.read<AdminSectionsCubit>().load(),
+            ),
+            AdminSectionsLoaded() when state.sections.isEmpty => EmptyState(
+              icon: Icons.category_outlined,
+              message: 'لا توجد أقسام بعد',
+              actionLabel: 'إضافة قسم',
+              onAction: () async {
+                await context.push('/admin/sections/new');
+                if (context.mounted) {
+                  context.read<AdminSectionsCubit>().load();
+                }
+              },
+            ),
+            AdminSectionsLoaded() => RefreshIndicator(
+              onRefresh: () => context.read<AdminSectionsCubit>().load(),
+              child: ListView.builder(
+                padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+                itemCount: state.sections.length,
+                itemBuilder: (context, i) =>
+                    _SectionListItem(section: state.sections[i]),
+              ),
+            ),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+        );
+      },
+    );
+  }
+}
+
+class _SectionListItem extends StatelessWidget {
+  final SectionEntity section;
+  const _SectionListItem({required this.section});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          child: Icon(
+            SectionIcons.fromKey(section.icon),
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+        ),
+        title: Text(section.name),
+        subtitle: Text(
+          '${section.bookCount} ${section.bookCount == 1 ? 'كتاب' : 'كتب'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () async {
+                await context.push(
+                  '/admin/sections/${section.id}/edit',
+                  extra: section,
+                );
+                if (context.mounted) {
+                  context.read<AdminSectionsCubit>().load();
+                }
+              },
+              tooltip: 'تعديل',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: () => _confirmDelete(context, section),
+              tooltip: 'حذف',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, SectionEntity section) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('حذف القسم'),
+        content: Text(
+          'هل تريد حذف قسم "${section.name}"؟\n\n'
+          'لا يمكن حذف القسم إذا كانت تحته كتب مرتبطة به.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<AdminSectionsCubit>().deleteSection(section.id);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+  }
+}

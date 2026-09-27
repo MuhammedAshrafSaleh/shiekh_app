@@ -69,6 +69,7 @@ class _VideoTabState extends State<VideoTab>
   ChewieController? _chewieController;
   Timer? _positionTimer;
   bool _watchedThreshold = false;
+  LessonCubit? _lessonCubit;
 
   _Status _status = _Status.loading;
   bool _invalidUrl = false;
@@ -79,12 +80,20 @@ class _VideoTabState extends State<VideoTab>
     _load();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!widget.previewMode) {
+      _lessonCubit = context.read<LessonCubit>();
+    }
+  }
+
   Future<void> _load() async {
     // Resolution is deduped/cached by the repository (usually already prefetched
     // when the lesson opened), so this typically returns instantly.
-    final result = await context
-        .read<VideoStreamRepository>()
-        .resolveStreamUrl(widget.videoUrl);
+    final result = await context.read<VideoStreamRepository>().resolveStreamUrl(
+      widget.videoUrl,
+    );
     if (!mounted) return;
 
     final url = result.fold((failure) {
@@ -149,7 +158,7 @@ class _VideoTabState extends State<VideoTab>
     if (total <= 0) return;
     if (value.position.inSeconds / total >= 0.9) {
       _watchedThreshold = true;
-      context.read<LessonCubit>().markVideoWatched();
+      _lessonCubit?.markVideoWatched();
     }
   }
 
@@ -157,7 +166,46 @@ class _VideoTabState extends State<VideoTab>
     if (widget.previewMode || !mounted) return;
     final value = _videoController?.value;
     if (value == null || !value.isInitialized) return;
-    context.read<LessonCubit>().saveVideoPosition(value.position.inSeconds);
+    _lessonCubit?.savePosition(value.position.inSeconds, MediaType.video);
+  }
+
+  @override
+  void pausePlayback() => _videoController?.pause();
+
+  Future<void> _openNoteEditor() async {
+    final controller = _videoController;
+    if (controller == null) return;
+
+    // Capture play state before any async gap.
+    final wasPlaying = controller.value.isPlaying;
+
+    // Note-taking requires an account: a guest is shown the sign-up gate (which
+    // carries auto-enroll on conversion) and the note flow aborts. Registered
+    // users — enrolled or not — proceed.
+    if (!mounted) return;
+    if (!AccountGate.guard(
+      context,
+      returnTo: '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
+      bookId: widget.bookId,
+      guestMessage: 'أنشئ حساباً لتدوين ملاحظاتك على الدرس',
+    )) {
+      return;
+    }
+
+    final seconds = controller.value.position.inSeconds;
+    await controller.pause();
+
+    if (!mounted) return;
+    await NoteEditorSheet.show(
+      context,
+      lessonId: widget.lessonId!,
+      bookId: widget.bookId!,
+      positionSeconds: seconds,
+    );
+
+    if (mounted) context.read<NotesCubit>().refreshAfterEdit();
+    // Resume only if it was playing before we opened the sheet.
+    if (wasPlaying && mounted) await controller.play();
   }
 
   Future<void> _openInYoutube() async {
@@ -182,23 +230,106 @@ class _VideoTabState extends State<VideoTab>
     super.build(context);
     return switch (_status) {
       _Status.loading => Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
       _Status.error => _VideoMessage(
-          icon: _invalidUrl
-              ? Icons.videocam_off_outlined
-              : Icons.smart_display_outlined,
-          message: _invalidUrl
-              ? 'رابط الفيديو غير صحيح، تواصل مع الإدارة'
-              : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
-          onOpenYoutube: _invalidUrl ? null : _openInYoutube,
-        ),
-      _Status.ready => Center(
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Chewie(controller: _chewieController!),
+        icon: _invalidUrl
+            ? Icons.videocam_off_outlined
+            : Icons.smart_display_outlined,
+        message: _invalidUrl
+            ? 'رابط الفيديو غير صحيح، تواصل مع الإدارة'
+            : 'تعذّر تشغيل الفيديو داخل التطبيق. يمكنك مشاهدته على يوتيوب.',
+        onOpenYoutube: _invalidUrl ? null : _openInYoutube,
+      ),
+      _Status.ready => CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Chewie(controller: _chewieController!),
+              ),
+            ),
           ),
-        ),
+          if (!widget.previewMode &&
+              widget.lessonId != null &&
+              widget.bookId != null) ...[
+            SliverToBoxAdapter(
+              child: _AddNoteAffordance(onTap: _openNoteEditor),
+            ),
+            BlocBuilder<NotesCubit, NotesState>(
+              builder: (context, state) {
+                if (state is NotesInitial || state is NotesLoading) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.symmetric(
+                        vertical: AppSpacing.s4,
+                      ),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                if (state is NotesError) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        AppSpacing.pageGutter,
+                        AppSpacing.s2,
+                        AppSpacing.pageGutter,
+                        AppSpacing.s4,
+                      ),
+                      child: Text(
+                        state.message,
+                        style: AppTextStyles.small.copyWith(
+                          color: AppColors.inkMuted,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+                final notes = (state as NotesLoaded).notes;
+                if (notes.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        AppSpacing.pageGutter,
+                        AppSpacing.s2,
+                        AppSpacing.pageGutter,
+                        AppSpacing.s4,
+                      ),
+                      child: Text(
+                        'لا توجد ملحوظات لهذه المحاضرة بعد',
+                        style: AppTextStyles.small.copyWith(
+                          color: AppColors.inkFaint,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => NoteCard(
+                      note: notes[i],
+                      bookId: widget.bookId!,
+                      onSeek: () => _videoController?.seekTo(
+                        Duration(seconds: notes[i].positionSeconds),
+                      ),
+                    ),
+                    childCount: notes.length,
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
+      ),
     };
   }
 }

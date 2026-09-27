@@ -137,6 +137,7 @@ class _SlideEditorCardState extends State<_SlideEditorCard> {
 
   @override
   Widget build(BuildContext context) {
+    final typeLabel = widget.slide.isHadith ? 'حديث' : 'عادي';
     return Card(
       margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.s4),
       child: Padding(

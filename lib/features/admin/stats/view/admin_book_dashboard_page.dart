@@ -1,19 +1,114 @@
+// lib/features/admin/stats/view/admin_book_dashboard_page.dart
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/error_state.dart';
+import '../../../../models/lesson_entity.dart';
+import '../../../../models/student_question_entity.dart';
+import '../cubit/admin_stats_cubit.dart';
+import '../cubit/admin_stats_state.dart';
+import '../data/admin_stats_repository.dart';
+
+class AdminBookDashboardPage extends StatelessWidget {
+  final String bookId;
+  final String bookTitle;
+  final int initialTab;
+
+  const AdminBookDashboardPage({
+    super.key,
+    required this.bookId,
+    required this.bookTitle,
+    this.initialTab = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<AdminStatsCubit, AdminStatsState>(
+      listener: (context, state) {
+        if (state is AdminStatsError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        final questionCount = state is AdminStatsLoaded
+            ? state.questions.length
+            : 0;
+        return DefaultTabController(
+          length: 3,
+          initialIndex: initialTab,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(bookTitle),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () => context.read<AdminStatsCubit>().load(bookId),
+                ),
+              ],
+              bottom: TabBar(
+                tabs: [
+                  const Tab(
+                    icon: Icon(Icons.list_alt_outlined),
+                    text: 'الدروس',
+                  ),
+                  const Tab(
+                    icon: Icon(Icons.bar_chart_outlined),
+                    text: 'الإحصاءات',
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.question_answer_outlined),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('الأسئلة'),
+                        if (questionCount > 0) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          CircleAvatar(
+                            radius: 9,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            child: Text(
+                              '$questionCount',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             body: switch (state) {
-              AdminStatsLoading() =>
-                const Center(child: CircularProgressIndicator()),
+              AdminStatsLoading() => const Center(
+                child: CircularProgressIndicator(),
+              ),
               AdminStatsError() => ErrorState(
-                  message: state.message,
-                  onRetry: () =>
-                      context.read<AdminStatsCubit>().load(bookId),
-                ),
+                message: state.message,
+                onRetry: () => context.read<AdminStatsCubit>().load(bookId),
+              ),
               AdminStatsLoaded() => TabBarView(
-                  children: [
-                    _LessonsTab(
-                        lessons: state.lessons, bookId: bookId),
-                    _StatsTab(stats: state.stats),
-                    _QuestionsTab(questions: state.questions),
-                  ],
-                ),
+                children: [
+                  _LessonsTab(lessons: state.lessons, bookId: bookId),
+                  _StatsTab(stats: state.stats),
+                  _QuestionsTab(questions: state.questions),
+                ],
+              ),
               _ => const Center(child: CircularProgressIndicator()),
             },
           ),
@@ -45,8 +140,7 @@ class _LessonsTab extends StatelessWidget {
             FilledButton.icon(
               icon: const Icon(Icons.add),
               label: const Text('إضافة درس'),
-              onPressed: () =>
-                  context.push('/admin/books/$bookId/lessons'),
+              onPressed: () => context.push('/admin/books/$bookId/lessons'),
             ),
           ],
         ),
@@ -63,8 +157,7 @@ class _LessonsTab extends StatelessWidget {
             child: FilledButton.icon(
               icon: const Icon(Icons.edit_outlined),
               label: const Text('إدارة الدروس'),
-              onPressed: () =>
-                  context.push('/admin/books/$bookId/lessons'),
+              onPressed: () => context.push('/admin/books/$bookId/lessons'),
             ),
           );
         }
@@ -92,13 +185,14 @@ class _LessonSummaryTile extends StatelessWidget {
           backgroundColor: isPublished
               ? Theme.of(context).colorScheme.primaryContainer
               : Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: Text('$index',
-              style: Theme.of(context).textTheme.labelSmall),
+          child: Text('$index', style: Theme.of(context).textTheme.labelSmall),
         ),
         title: Text(lesson.title),
         trailing: Container(
           padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
           decoration: BoxDecoration(
             color: isPublished
                 ? Colors.green.withValues(alpha: 0.1)
@@ -175,10 +269,9 @@ class _StatsTab extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         Text(
           'تسجيلات الطلاب (آخر 30 يوم)',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: AppSpacing.md),
         SizedBox(
@@ -219,18 +312,20 @@ class _StatCard extends StatelessWidget {
                 Icon(icon, size: 18, color: color),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
-                  child: Text(label,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             Text(
               value,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold, color: color),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -256,11 +351,14 @@ class _EnrollmentChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -317,10 +415,9 @@ class _QuestionsTab extends StatelessWidget {
               Expanded(
                 child: Text(
                   'عدد الأسئلة: ${questions.length}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               TextButton.icon(
@@ -343,8 +440,7 @@ class _QuestionsTab extends StatelessWidget {
             itemBuilder: (context, i) {
               final q = questions[i];
               return Card(
-                margin: const EdgeInsetsDirectional.only(
-                    bottom: AppSpacing.sm),
+                margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: q.isAnswered
@@ -402,11 +498,13 @@ class _QuestionsTab extends StatelessWidget {
               Navigator.of(dialogCtx).pop();
               final ok = await cubit.clearBookQuestions();
               if (ok && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('تم مسح جميع الأسئلة'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 3),
-                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم مسح جميع الأسئلة'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
               }
             },
             child: const Text('مسح نهائياً'),
@@ -453,8 +551,7 @@ class _QuestionSheetState extends State<_QuestionSheet> {
   @override
   void initState() {
     super.initState();
-    _answerCtrl =
-        TextEditingController(text: widget.question.answerText ?? '');
+    _answerCtrl = TextEditingController(text: widget.question.answerText ?? '');
   }
 
   @override
@@ -470,17 +567,23 @@ class _QuestionSheetState extends State<_QuestionSheet> {
     final cubit = context.read<AdminStatsCubit>();
     final ok = widget.question.isAnswered
         ? await cubit.editAnswer(
-            questionId: widget.question.id, answerText: text)
+            questionId: widget.question.id,
+            answerText: text,
+          )
         : await cubit.answerQuestion(
-            questionId: widget.question.id, answerText: text);
+            questionId: widget.question.id,
+            answerText: text,
+          );
     if (!mounted) return;
     Navigator.of(context).pop();
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('تم حفظ الإجابة'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم حفظ الإجابة'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -490,9 +593,7 @@ class _QuestionSheetState extends State<_QuestionSheet> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text('حذف السؤال'),
-        content: const Text(
-          'هل أنت متأكد من حذف هذا السؤال؟ لا يمكن التراجع.',
-        ),
+        content: const Text('هل أنت متأكد من حذف هذا السؤال؟ لا يمكن التراجع.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
@@ -506,11 +607,13 @@ class _QuestionSheetState extends State<_QuestionSheet> {
               if (!mounted) return;
               Navigator.of(context).pop();
               if (ok) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('تم حذف السؤال'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 3),
-                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('تم حذف السؤال'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
               }
             },
             child: const Text('حذف نهائياً'),
@@ -541,10 +644,9 @@ class _QuestionSheetState extends State<_QuestionSheet> {
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   q.askerName ?? 'طالب مجهول',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -567,17 +669,14 @@ class _QuestionSheetState extends State<_QuestionSheet> {
             const SizedBox(height: AppSpacing.md),
             Text(
               'الإجابة',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: AppSpacing.xs),
             TextField(
               controller: _answerCtrl,
-              decoration: const InputDecoration(
-                hintText: 'اكتب الإجابة...',
-              ),
+              decoration: const InputDecoration(hintText: 'اكتب الإجابة...'),
               maxLines: 5,
               autofocus: !q.isAnswered,
             ),

@@ -197,9 +197,10 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
               passed: grade.percentage >= 60,
               submittedAt: DateTime.now(),
             );
-            context
-                .read<LessonCubit>()
-                .markQuizAttempted(grade.attemptsUsed, newAttempt);
+            context.read<LessonCubit>().markQuizAttempted(
+              grade.attemptsUsed,
+              newAttempt,
+            );
           }
         }
       },
@@ -343,8 +344,9 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
               children: [
                 Text(
                   question.questionText,
-                  style: AppTextStyles.bodyLg
-                      .copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodyLg.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.s4),
                 for (final choice in ['a', 'b', 'c', 'd'])
@@ -354,8 +356,7 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
                     optionState: _answers[question.id] == choice
                         ? McqOptionState.selected
                         : McqOptionState.idle,
-                    onTap: () =>
-                        setState(() => _answers[question.id] = choice),
+                    onTap: () => setState(() => _answers[question.id] = choice),
                   ),
               ],
             ),
@@ -399,8 +400,7 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
                           fullWidth: true,
                           label: 'التالي',
                           icon: const Icon(Icons.arrow_back_ios, size: 16),
-                          onPressed: () =>
-                              setState(() => _currentIndex++),
+                          onPressed: () => setState(() => _currentIndex++),
                         ),
                 ),
               ],
@@ -412,12 +412,12 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
   }
 
   String _choiceLabel(String key) => switch (key) {
-        'a' => 'أ',
-        'b' => 'ب',
-        'c' => 'ج',
-        'd' => 'د',
-        _ => key,
-      };
+    'a' => 'أ',
+    'b' => 'ب',
+    'c' => 'ج',
+    'd' => 'د',
+    _ => key,
+  };
 
   void _showUnansweredWarning() {
     final unanswered = _questions.length - _answers.length;
@@ -619,8 +619,11 @@ class _QuizIntro extends StatelessWidget {
                 color: AppColors.primaryTint,
               ),
               alignment: Alignment.center,
-              child: Icon(Icons.quiz_outlined,
-                  size: 34, color: AppColors.primary),
+              child: Icon(
+                Icons.quiz_outlined,
+                size: 34,
+                color: AppColors.primary,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.s4),
@@ -652,8 +655,8 @@ class _QuizIntro extends StatelessWidget {
             valueColor: attemptsRemaining == 0
                 ? AppColors.danger
                 : attemptsRemaining == 1
-                    ? AppColors.warning
-                    : AppColors.success,
+                ? AppColors.warning
+                : AppColors.success,
           ),
 
           // Past attempts
@@ -734,9 +737,10 @@ class _IntroInfoCard extends StatelessWidget {
           Icon(icon, size: 20, color: AppColors.inkMuted),
           const SizedBox(width: AppSpacing.s4),
           Expanded(
-            child: Text(label,
-                style:
-                    AppTextStyles.small.copyWith(color: AppColors.inkMuted)),
+            child: Text(
+              label,
+              style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+            ),
           ),
           Text(
             value,
@@ -807,10 +811,7 @@ class _AttemptCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s3),
-          SheikhyButton.text(
-            label: 'مراجعة',
-            onPressed: onReview,
-          ),
+          SheikhyButton.text(label: 'مراجعة', onPressed: onReview),
         ],
       ),
     );
@@ -874,8 +875,9 @@ class _QuizResult extends StatelessWidget {
                   const SizedBox(height: AppSpacing.s1),
                   Text(
                     'النتيجة',
-                    style:
-                        AppTextStyles.caption.copyWith(color: AppColors.inkMuted),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.inkMuted,
+                    ),
                   ),
                 ],
               ),
@@ -906,7 +908,9 @@ class _QuizResult extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: AppRadii.rPill,
                 border: Border.all(
-                    color: AppColors.border, width: AppBorders.hairline),
+                  color: AppColors.border,
+                  width: AppBorders.hairline,
+                ),
               ),
               child: Text(
                 '${ar(result.correct)} من ${ar(result.total)} إجابة صحيحة',
@@ -1061,12 +1065,12 @@ class _ReviewQuestionCard extends StatelessWidget {
   }
 
   String _choiceLabel(String key) => switch (key) {
-        'a' => 'أ',
-        'b' => 'ب',
-        'c' => 'ج',
-        'd' => 'د',
-        _ => key,
-      };
+    'a' => 'أ',
+    'b' => 'ب',
+    'c' => 'ج',
+    'd' => 'د',
+    _ => key,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1083,7 +1087,9 @@ class _ReviewQuestionCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: AppColors.paperSunk,
                 border: Border.all(
-                    color: AppColors.border, width: AppBorders.hairline),
+                  color: AppColors.border,
+                  width: AppBorders.hairline,
+                ),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -1100,8 +1106,7 @@ class _ReviewQuestionCard extends StatelessWidget {
             Expanded(
               child: Text(
                 question.questionText,
-                style:
-                    AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1110,8 +1115,7 @@ class _ReviewQuestionCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.s2),
           Text(
             'لم تتم الإجابة على هذا السؤال',
-            style:
-                AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
+            style: AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
           ),
         ],
         const SizedBox(height: AppSpacing.s3),

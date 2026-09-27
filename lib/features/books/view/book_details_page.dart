@@ -9,7 +9,6 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/girih_background.dart';
 import '../../../core/widgets/mihrab_arch.dart';
 import '../../../core/widgets/ornament_divider.dart';
@@ -25,6 +24,89 @@ import '../cubit/book_details_cubit.dart';
 import '../cubit/book_details_state.dart';
 import '../widgets/final_exam_card.dart';
 import '../widgets/lesson_list_item.dart';
+
+/// True when the current session is an anonymous guest.
+bool _isGuest(BuildContext context) {
+  final s = context.read<AuthCubit>().state;
+  return s is AuthAuthenticated && s.isGuest;
+}
+
+/// Basic (Stage 2) guest gate: prompt to create an account, carrying the
+/// destination so conversion returns here and auto-enrolls. Replaced by the
+/// shared AccountGate in Stage 3.
+void _showGuestSignupGate(
+  BuildContext context, {
+  required String returnTo,
+  required String bookId,
+}) {
+  final signupLoc = Uri(
+    path: '/signup',
+    queryParameters: {'returnTo': returnTo, 'autoEnrollBookId': bookId},
+  ).toString();
+
+  showDialog<void>(
+    context: context,
+    barrierColor: AppColors.ink.withValues(alpha: 0.5),
+    builder: (dialogCtx) => Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.rXl),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pageGutter,
+        vertical: AppSpacing.s8,
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.s5),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.primaryTint,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.person_add_alt_1_outlined,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            Text(
+              'أنشئ حساباً لمتابعة التعلّم',
+              style: AppTextStyles.h3,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s2),
+            Text(
+              'الدرس الأول متاح للجميع. لمتابعة بقية الدروس أنشئ حساباً مجانياً وسنعيدك إلى حيث توقفت.',
+              style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.s5),
+            SheikhyButton.primary(
+              fullWidth: true,
+              label: 'أنشئ حساباً',
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              onPressed: () {
+                dialogCtx.pop();
+                context.push(signupLoc);
+              },
+            ),
+            const SizedBox(height: AppSpacing.s2),
+            SheikhyButton.secondary(
+              fullWidth: true,
+              label: 'لاحقاً',
+              onPressed: () => dialogCtx.pop(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 class BookDetailsPage extends StatefulWidget {
   final String bookId;
@@ -61,14 +143,21 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
     if (!mounted) return;
     final currentPath =
         _router?.routerDelegate.currentConfiguration.uri.path ?? '';
-    final returningFromLesson = _lastKnownRoute.startsWith('/lessons/') &&
-        currentPath == '/books/${widget.bookId}';
+    final bookPath = '/books/${widget.bookId}';
+    final returningFromLesson =
+        _lastKnownRoute.startsWith('/lessons/') && currentPath == bookPath;
+    final returningFromNotes =
+        _lastKnownRoute.startsWith('$bookPath/notes/') &&
+        currentPath == bookPath;
     _lastKnownRoute = currentPath;
     if (returningFromLesson) {
       final cubit = context.read<BookDetailsCubit>();
       if (cubit.state is BookDetailsLoaded) {
         cubit.refreshProgress(widget.bookId);
       }
+    }
+    if (returningFromLesson || returningFromNotes) {
+      context.read<NotesCubit>().loadBookNotes(widget.bookId);
     }
   }
 
@@ -90,17 +179,16 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
         body: BlocBuilder<BookDetailsCubit, BookDetailsState>(
           builder: (context, state) {
             return switch (state) {
-              BookDetailsInitial() ||
-              BookDetailsLoading() =>
+              BookDetailsInitial() || BookDetailsLoading() =>
                 _BookDetailsSkeleton(bookId: widget.bookId),
               BookDetailsError(:final message) => _BookDetailsErrorView(
-                  message: message,
-                  bookId: widget.bookId,
-                ),
+                message: message,
+                bookId: widget.bookId,
+              ),
               BookDetailsLoaded() => _BookDetailsView(
-                  state: state,
-                  bookId: widget.bookId,
-                ),
+                state: state,
+                bookId: widget.bookId,
+              ),
               _ => const SizedBox.shrink(),
             };
           },
@@ -145,7 +233,10 @@ class _BookDetailsSkeleton extends StatelessWidget {
                         _SkeletonBox(width: 32, height: 32, radius: 16),
                         SizedBox(width: AppSpacing.s4),
                         Expanded(
-                          child: _SkeletonBox(width: double.infinity, height: 14),
+                          child: _SkeletonBox(
+                            width: double.infinity,
+                            height: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -203,13 +294,7 @@ class _MinimalHeader extends StatelessWidget {
           color: AppColors.inkInvert,
         ),
         tooltip: 'رجوع',
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/home');
-          }
-        },
+        onPressed: () => context.pop(),
       ),
       title: Text(
         'تفاصيل الكتاب',
@@ -240,8 +325,7 @@ class _BookDetailsErrorView extends StatelessWidget {
           child: SheikhyErrorState(
             heading: 'تعذّر تحميل الكتاب',
             message: message,
-            onRetry: () =>
-                context.read<BookDetailsCubit>().loadBook(bookId),
+            onRetry: () => context.read<BookDetailsCubit>().loadBook(bookId),
           ),
         ),
       ],
@@ -251,19 +335,49 @@ class _BookDetailsErrorView extends StatelessWidget {
 
 // ── Full loaded view ──────────────────────────────────────────────────────────
 
-class _BookDetailsView extends StatelessWidget {
+class _BookDetailsView extends StatefulWidget {
   final BookDetailsLoaded state;
   final String bookId;
 
   const _BookDetailsView({required this.state, required this.bookId});
 
   @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        _HeritageSliverHeader(state: state, bookId: bookId),
+  State<_BookDetailsView> createState() => _BookDetailsViewState();
+}
 
-        // Progress + description
+class _BookDetailsViewState extends State<_BookDetailsView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 1) {
+      context.read<NotesCubit>().loadBookNotes(widget.bookId);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final bookId = widget.bookId;
+
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        _HeritageSliverHeader(state: state, bookId: bookId),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(
@@ -275,29 +389,30 @@ class _BookDetailsView extends StatelessWidget {
             child: _BookMeta(state: state),
           ),
         ),
-
-        // Ornament divider
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.s4),
             child: OrnamentDivider(),
           ),
         ),
-
-        // "الدروس" heading
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(
-              AppSpacing.pageGutter,
-              0,
-              AppSpacing.pageGutter,
-              AppSpacing.s3,
-            ),
-            child: Text('الدروس', style: AppTextStyles.h3),
-          ),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _BookTabBarDelegate(_tabController),
         ),
+      ],
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildDurusTab(state, bookId),
+          NotesTab(bookId: bookId, lessons: state.lessons),
+        ],
+      ),
+    );
+  }
 
-        // Lessons list or empty state
+  Widget _buildDurusTab(BookDetailsLoaded state, String bookId) {
+    return CustomScrollView(
+      slivers: [
         if (state.lessons.isEmpty)
           const SliverToBoxAdapter(
             child: Padding(
@@ -312,20 +427,18 @@ class _BookDetailsView extends StatelessWidget {
         else
           SliverList.separated(
             itemCount: state.lessons.length,
-            separatorBuilder: (context, index) => Container(
+            separatorBuilder: (_, index) => Container(
               margin: const EdgeInsetsDirectional.only(
                 start: AppSpacing.pageGutter + 32 + AppSpacing.s4,
               ),
               height: 1,
               color: AppColors.borderSubtle,
             ),
-            itemBuilder: (context, index) {
+            itemBuilder: (_, index) {
               final item = state.lessons[index];
-              // Access model: lesson 1 (first in order) is open to everyone;
-              // lesson 2+ requires enrollment. The list is ordered by
-              // order_index, so index 0 is the first lesson.
               final isFirstLesson = index == 0;
-              final isSequentiallyLocked = state.isEnrolled &&
+              final isSequentiallyLocked =
+                  state.isEnrolled &&
                   index > 0 &&
                   !state.lessons[index - 1].isCompleted;
               return LessonListItem(
@@ -334,26 +447,24 @@ class _BookDetailsView extends StatelessWidget {
                 isOpenToAll: isFirstLesson,
                 isLocked: isSequentiallyLocked,
                 onTap: () {
-                  // Lesson 1: open to guests / unenrolled / enrolled alike.
                   if (isFirstLesson) {
-                    _openLesson(context, item.lesson.id);
+                    _openLesson(item.lesson.id);
                     return;
                   }
                   if (!state.isEnrolled) {
-                    _gateUnenrolled(context, item.lesson.id);
+                    _gateUnenrolled(item.lesson.id);
                     return;
                   }
                   if (isSequentiallyLocked) {
-                    _showLockedLessonDialog(context);
+                    _showLockedLessonDialog();
                     return;
                   }
-                  _openLesson(context, item.lesson.id);
+                  _openLesson(item.lesson.id);
                 },
               );
             },
           ),
 
-        // Final exam card
         if (state.hasFinalExam)
           SliverToBoxAdapter(
             child: FinalExamCard(
@@ -361,14 +472,11 @@ class _BookDetailsView extends StatelessWidget {
               isExamPublished: state.hasFinalExam,
               completionPercentage: state.completionPercentage,
               bestAttempt: state.bestExamAttempt,
-              onTap: () => context.push(
-                '/books/$bookId/exam',
-                extra: state.book.title,
-              ),
+              onTap: () =>
+                  context.push('/books/$bookId/exam', extra: state.book.title),
             ),
           ),
 
-        // Bottom CTA
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(
@@ -384,37 +492,33 @@ class _BookDetailsView extends StatelessWidget {
     );
   }
 
-  void _openLesson(BuildContext context, String lessonId) {
-    context.push('/lessons/$lessonId?bookId=$bookId').then((_) {
-      if (context.mounted) {
-        context.read<BookDetailsCubit>().refreshProgress(bookId);
+  void _openLesson(String lessonId) {
+    context.push('/lessons/$lessonId?bookId=${widget.bookId}').then((_) {
+      if (mounted) {
+        context.read<BookDetailsCubit>().refreshProgress(widget.bookId);
       }
     });
   }
 
   // Lesson 2+ tapped without enrollment: a guest is prompted to create an
   // account (returning to this exact lesson); a registered user to enroll.
-  void _gateUnenrolled(BuildContext context, String lessonId) {
+  void _gateUnenrolled(String lessonId) {
     if (_isGuest(context)) {
       _showGuestSignupGate(
         context,
-        returnTo: '/lessons/$lessonId?bookId=$bookId',
-        bookId: bookId,
+        returnTo: '/lessons/$lessonId?bookId=${widget.bookId}',
+        bookId: widget.bookId,
       );
     } else {
-      _showEnrollDialog(context);
+      _showEnrollConfirmDialog(
+        context: context,
+        bookTitle: widget.state.book.title,
+        onConfirm: () => context.read<BookDetailsCubit>().enroll(widget.bookId),
+      );
     }
   }
 
-  void _showEnrollDialog(BuildContext context) {
-    _showEnrollConfirmDialog(
-      context: context,
-      bookTitle: state.book.title,
-      onConfirm: () => context.read<BookDetailsCubit>().enroll(bookId),
-    );
-  }
-
-  void _showLockedLessonDialog(BuildContext context) {
+  void _showLockedLessonDialog() {
     showDialog<void>(
       context: context,
       barrierColor: AppColors.ink.withValues(alpha: 0.5),
@@ -470,6 +574,65 @@ class _BookDetailsView extends StatelessWidget {
   }
 }
 
+// ── Pinned tab bar for NestedScrollView ───────────────────────────────────────
+
+class _BookTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabController controller;
+
+  const _BookTabBarDelegate(this.controller);
+
+  static const double _height = 48;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: AppBorders.hairline,
+          ),
+        ),
+      ),
+      child: TabBar(
+        controller: controller,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
+          insets: EdgeInsets.zero,
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelColor: AppColors.primary,
+        unselectedLabelColor: AppColors.inkFaint,
+        labelStyle: GoogleFonts.reemKufi(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: GoogleFonts.tajawal(fontSize: 14),
+        dividerColor: Colors.transparent,
+        tabs: const [
+          Tab(text: 'الدروس'),
+          Tab(text: 'المحفوظات'),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_BookTabBarDelegate oldDelegate) =>
+      controller != oldDelegate.controller;
+}
+
 // ── Shared enrollment confirmation dialog ─────────────────────────────────────
 
 void _showEnrollConfirmDialog({
@@ -492,7 +655,6 @@ void _showEnrollConfirmDialog({
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon circle
             Container(
               width: 56,
               height: 56,
@@ -508,24 +670,18 @@ void _showEnrollConfirmDialog({
               ),
             ),
             const SizedBox(height: AppSpacing.s4),
-
-            // Title
             Text(
               'التسجيل في الكتاب',
               style: AppTextStyles.h3,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.s2),
-
-            // Body
             Text(
               'هل تريد التسجيل في كتاب "$bookTitle"؟ ستتمكّن من الوصول إلى جميع دروسه.',
               style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.s5),
-
-            // Confirm
             SheikhyButton.primary(
               fullWidth: true,
               label: 'تسجيل',
@@ -536,8 +692,6 @@ void _showEnrollConfirmDialog({
               },
             ),
             const SizedBox(height: AppSpacing.s2),
-
-            // Cancel
             SheikhyButton.secondary(
               fullWidth: true,
               label: 'إلغاء',
@@ -610,9 +764,7 @@ class _HeritageSliverHeader extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             // Primary green fill
-            DecoratedBox(
-              decoration: BoxDecoration(color: AppColors.primary),
-            ),
+            DecoratedBox(decoration: BoxDecoration(color: AppColors.primary)),
             // Girih lattice
             GirihBackground(color: AppColors.goldLight, opacity: 0.14),
             // MihrabArch at bottom-end, bleeds off edge (mirrors course card pattern)
@@ -727,8 +879,7 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.isEnrolled) {
-      final nextLesson =
-          state.lessons.where((l) => !l.isCompleted).firstOrNull;
+      final nextLesson = state.lessons.where((l) => !l.isCompleted).firstOrNull;
       if (nextLesson == null) return const SizedBox.shrink();
       return SheikhyButton.primary(
         label: 'استمرار المذاكرة',
@@ -743,8 +894,7 @@ class _ActionButton extends StatelessWidget {
       buildWhen: (p, c) => c is BookDetailsLoaded,
       builder: (context, s) {
         final loaded = s is BookDetailsLoaded ? s : state;
-        final authState = context.read<AuthCubit>().state;
-        final guest = authState is AuthAuthenticated && authState.isGuest;
+        final guest = _isGuest(context);
         return SheikhyButton.primary(
           label: guest ? 'أنشئ حساباً للتسجيل' : 'التسجيل في الكتاب',
           icon: Icon(
@@ -752,7 +902,7 @@ class _ActionButton extends StatelessWidget {
           ),
           fullWidth: true,
           isLoading: loaded.isEnrolling,
-          onPressed: loaded.isEnrolling ? null : () => _onPressed(context, guest),
+          onPressed: loaded.isEnrolling ? null : () => _onPressed(context),
         );
       },
     );
@@ -761,11 +911,7 @@ class _ActionButton extends StatelessWidget {
   void _onPressed(BuildContext context) {
     if (_isGuest(context)) {
       // Guest can't enroll; convert first, then return here auto-enrolled.
-      _showGuestSignupGate(
-        context,
-        returnTo: '/books/$bookId',
-        bookId: bookId,
-      );
+      _showGuestSignupGate(context, returnTo: '/books/$bookId', bookId: bookId);
     } else {
       _showEnrollDialog(context);
     }

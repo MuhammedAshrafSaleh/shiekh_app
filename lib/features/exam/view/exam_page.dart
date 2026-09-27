@@ -39,10 +39,7 @@ class ExamPage extends StatelessWidget {
     return BlocConsumer<ExamBloc, ExamState>(
       listener: (context, state) {
         if (state is ExamCompleted) {
-          context.go(
-            '/books/$bookId/exam/result',
-            extra: state,
-          );
+          context.go('/books/$bookId/exam/result', extra: state);
         }
         if (state is ExamError) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -56,27 +53,22 @@ class ExamPage extends StatelessWidget {
       },
       builder: (context, state) {
         return switch (state) {
-          ExamInitial() || ExamLoading() => _LoadingScaffold(
-              bookTitle: bookTitle,
-            ),
-          ExamMetaLoaded() => _IntroView(
-              state: state,
-              bookTitle: bookTitle,
-            ),
+          ExamInitial() ||
+          ExamLoading() => _LoadingScaffold(bookTitle: bookTitle),
+          ExamGated() => _GatedScaffold(bookId: bookId, bookTitle: bookTitle),
+          ExamMetaLoaded() => _IntroView(state: state, bookTitle: bookTitle),
           ExamInProgress() => _InProgressView(
-              state: state,
-              bookTitle: bookTitle,
-            ),
+            state: state,
+            bookTitle: bookTitle,
+          ),
           ExamCompleted() => Scaffold(
-              backgroundColor: AppColors.paper,
-              body: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+            backgroundColor: AppColors.paper,
+            body: const Center(child: CircularProgressIndicator()),
+          ),
           ExamError(:final message) => _ErrorScaffold(
-              bookId: bookId,
-              message: message,
-            ),
+            bookId: bookId,
+            message: message,
+          ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -195,18 +187,14 @@ class _IntroView extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SheikhyPageHeader(
-            title: 'الاختبار النهائي',
-            showBack: true,
-          ),
+          SheikhyPageHeader(title: 'الاختبار النهائي', showBack: true),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsetsDirectional.fromSTEB(
                 hs.AppSpacing.pageGutter,
                 hs.AppSpacing.s6,
                 hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s6 +
-                    MediaQuery.viewPaddingOf(context).bottom,
+                hs.AppSpacing.s6 + MediaQuery.viewPaddingOf(context).bottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -280,7 +268,8 @@ class _IntroView extends StatelessWidget {
                     ),
                     const SizedBox(height: hs.AppSpacing.s3),
                   ],
-                  if (state.settings.isPublished && state.questionCount == 0) ...[
+                  if (state.settings.isPublished &&
+                      state.questionCount == 0) ...[
                     SheikhyNotice(
                       variant: SheikhyNoticeVariant.danger,
                       message: 'لا توجد أسئلة في الاختبار بعد',
@@ -325,7 +314,8 @@ class _IntroView extends StatelessWidget {
                           },
                           style: TextButton.styleFrom(
                             padding: const EdgeInsetsDirectional.only(
-                                start: hs.AppSpacing.s2),
+                              start: hs.AppSpacing.s2,
+                            ),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
@@ -349,12 +339,13 @@ class _IntroView extends StatelessWidget {
                     onPressed: state.isLocked || state.isStarting
                         ? null
                         : () async {
-                            final confirmed =
-                                await showExamStartDialog(context);
+                            final confirmed = await showExamStartDialog(
+                              context,
+                            );
                             if (confirmed && context.mounted) {
-                              context
-                                  .read<ExamBloc>()
-                                  .add(const ExamStartRequested());
+                              context.read<ExamBloc>().add(
+                                const ExamStartRequested(),
+                              );
                             }
                           },
                     label: state.attemptsUsed == 0
@@ -502,10 +493,7 @@ class _PastAttemptsSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  'المحاولات السابقة',
-                  style: AppTextStyles.h3,
-                ),
+                Text('المحاولات السابقة', style: AppTextStyles.h3),
               ],
             ),
           ),
@@ -519,8 +507,9 @@ class _PastAttemptsSheet extends StatelessWidget {
               itemBuilder: (_, i) {
                 final a = attempts[i];
                 final passed = a.passed;
-                final accentColor =
-                    passed ? AppColors.success : AppColors.danger;
+                final accentColor = passed
+                    ? AppColors.success
+                    : AppColors.danger;
                 return Padding(
                   padding: const EdgeInsetsDirectional.symmetric(
                     horizontal: hs.AppSpacing.pageGutter,
@@ -595,8 +584,7 @@ class _PastAttemptsSheet extends StatelessWidget {
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,
-                              tapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(
                               'مراجعة',
@@ -650,7 +638,10 @@ class _QuestionBar extends StatelessWidget {
       color: AppColors.surface,
       foregroundDecoration: const BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: AppColors.border, width: AppBorders.hairline),
+          bottom: BorderSide(
+            color: AppColors.border,
+            width: AppBorders.hairline,
+          ),
         ),
       ),
       child: SafeArea(
@@ -704,8 +695,7 @@ class _QuestionBar extends StatelessWidget {
 
                 // End (left in RTL): live timer
                 BlocSelector<ExamBloc, ExamState, int>(
-                  selector: (s) =>
-                      s is ExamInProgress ? s.secondsRemaining : 0,
+                  selector: (s) => s is ExamInProgress ? s.secondsRemaining : 0,
                   builder: (_, secs) => TimerDisplay(secondsRemaining: secs),
                 ),
                 const SizedBox(width: hs.AppSpacing.s2),
@@ -835,116 +825,117 @@ class _InProgressViewState extends State<_InProgressView> {
           if (!didPop) _showLeaveExamDialog(context);
         },
         child: Scaffold(
-      backgroundColor: AppColors.paper,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Heritage question bar (replaces Material AppBar)
-          _QuestionBar(
-            currentIndex: state.currentIndex,
-            totalQuestions: state.questions.length,
-          ),
+        backgroundColor: AppColors.paper,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Heritage question bar (replaces Material AppBar)
+            _QuestionBar(
+              currentIndex: state.currentIndex,
+              totalQuestions: state.questions.length,
+            ),
 
-          // Question + choices + navigator
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsetsDirectional.fromSTEB(
-                hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s4,
-                hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s4,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    q.questionText,
-                    style: AppTextStyles.bodyLg.copyWith(
-                      fontWeight: FontWeight.w600,
+            // Question + choices + navigator
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  hs.AppSpacing.pageGutter,
+                  hs.AppSpacing.s4,
+                  hs.AppSpacing.pageGutter,
+                  hs.AppSpacing.s4,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      q.questionText,
+                      style: AppTextStyles.bodyLg.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: hs.AppSpacing.s4),
-                  for (final choice in ['a', 'b', 'c', 'd'])
-                    McqOptionCard(
-                      label: _choiceLetter(choice),
-                      text: q.choiceLabel(choice),
-                      optionState: selectedChoice == choice
-                          ? McqOptionState.selected
-                          : McqOptionState.idle,
-                      onTap: state.isSubmitting
-                          ? null
-                          : () => context.read<ExamBloc>().add(
+                    const SizedBox(height: hs.AppSpacing.s4),
+                    for (final choice in ['a', 'b', 'c', 'd'])
+                      McqOptionCard(
+                        label: _choiceLetter(choice),
+                        text: q.choiceLabel(choice),
+                        optionState: selectedChoice == choice
+                            ? McqOptionState.selected
+                            : McqOptionState.idle,
+                        onTap: state.isSubmitting
+                            ? null
+                            : () => context.read<ExamBloc>().add(
                                 ExamAnswerSelected(q.id, choice),
                               ),
+                      ),
+                    const SizedBox(height: hs.AppSpacing.s2),
+                    ExamNavigatorGrid(
+                      questions: state.questions,
+                      answers: state.answers,
+                      currentIndex: state.currentIndex,
+                      onNavigate: (i) =>
+                          context.read<ExamBloc>().add(ExamNavigateTo(i)),
                     ),
-                  const SizedBox(height: hs.AppSpacing.s2),
-                  ExamNavigatorGrid(
-                    questions: state.questions,
-                    answers: state.answers,
-                    currentIndex: state.currentIndex,
-                    onNavigate: (i) =>
-                        context.read<ExamBloc>().add(ExamNavigateTo(i)),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // Prev / Next / Submit
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(
-                hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s2,
-                hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s4,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SheikhyButton.secondary(
-                      fullWidth: true,
-                      label: 'السابق',
-                      onPressed: state.currentIndex > 0 && !state.isSubmitting
-                          ? () => context.read<ExamBloc>().add(
+            // Prev / Next / Submit
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  hs.AppSpacing.pageGutter,
+                  hs.AppSpacing.s2,
+                  hs.AppSpacing.pageGutter,
+                  hs.AppSpacing.s4,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SheikhyButton.secondary(
+                        fullWidth: true,
+                        label: 'السابق',
+                        onPressed: state.currentIndex > 0 && !state.isSubmitting
+                            ? () => context.read<ExamBloc>().add(
                                 ExamNavigateTo(state.currentIndex - 1),
                               )
-                          : null,
-                      icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                            : null,
+                        icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: hs.AppSpacing.s3),
-                  Expanded(
-                    child: state.currentIndex < state.questions.length - 1
-                        ? SheikhyButton.primary(
-                            fullWidth: true,
-                            label: 'التالي',
-                            onPressed: state.isSubmitting
-                                ? null
-                                : () => context.read<ExamBloc>().add(
+                    const SizedBox(width: hs.AppSpacing.s3),
+                    Expanded(
+                      child: state.currentIndex < state.questions.length - 1
+                          ? SheikhyButton.primary(
+                              fullWidth: true,
+                              label: 'التالي',
+                              onPressed: state.isSubmitting
+                                  ? null
+                                  : () => context.read<ExamBloc>().add(
                                       ExamNavigateTo(state.currentIndex + 1),
                                     ),
-                            icon: const Icon(Icons.arrow_back_ios, size: 16),
-                          )
-                        : SheikhyButton.primary(
-                            fullWidth: true,
-                            isLoading: state.isSubmitting,
-                            label: 'تسليم',
-                            onPressed: state.isSubmitting
-                                ? null
-                                : () => _confirmSubmit(context),
-                            icon: const Icon(Icons.send_rounded, size: 16),
-                          ),
-                  ),
-                ],
+                              icon: const Icon(Icons.arrow_back_ios, size: 16),
+                            )
+                          : SheikhyButton.primary(
+                              fullWidth: true,
+                              isLoading: state.isSubmitting,
+                              label: 'تسليم',
+                              onPressed: state.isSubmitting
+                                  ? null
+                                  : () => _confirmSubmit(context),
+                              icon: const Icon(Icons.send_rounded, size: 16),
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      ),
-    );
+    ),
+  );
   }
 
   void _confirmSubmit(BuildContext context) {
@@ -1014,8 +1005,7 @@ class _InProgressViewState extends State<_InProgressView> {
                 hasUnanswered
                     ? 'لقد أجبت على ${ar(answered)} من ${ar(total)} سؤال، الأسئلة المتبقية ستُعتبر خاطئة.'
                     : 'لقد أجبت على جميع الأسئلة. هل تريد تسليم الاختبار الآن؟',
-                style:
-                    AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+                style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: hs.AppSpacing.s5),
