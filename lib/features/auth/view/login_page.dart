@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/sheikhy_auth_header.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_checkbox.dart';
@@ -154,11 +155,11 @@ class _LoginPageState extends State<LoginPage> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsetsDirectional.fromSTEB(
+                padding: EdgeInsetsDirectional.fromSTEB(
                   AppSpacing.pageGutter,
                   AppSpacing.s6,
                   AppSpacing.pageGutter,
-                  AppSpacing.s5,
+                  AppSpacing.s5 + context.safeBottom,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
