@@ -326,69 +326,79 @@ class _BookListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsetsDirectional.only(bottom: AppSpacing.sm),
-      child: ListTile(
-        contentPadding: const EdgeInsetsDirectional.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs,
-        ),
-        title: Text(
-          book.title,
-          style: Theme.of(context)
-              .textTheme
-              .bodyLarge
-              ?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsetsDirectional.only(top: AppSpacing.xs),
-          child: Wrap(
-            spacing: AppSpacing.xs,
-            children: [
-              StatusBadge(
-                status: book.status == 'published'
-                    ? BadgeStatus.published
-                    : BadgeStatus.draft,
-              ),
-              StatusBadge(
-                status: book.reviewStatus == 'completed'
-                    ? BadgeStatus.completed
-                    : BadgeStatus.inReview,
-              ),
-
-            ],
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.question_answer_outlined),
-              onPressed: () => context.push(
-                '/admin/books/${book.id}/dashboard?title=${Uri.encodeComponent(book.title)}&tab=questions',
-              ),
-              tooltip: 'أسئلة الطلاب',
-            ),
-            IconButton(
-              icon: const Icon(Icons.quiz_outlined),
-              onPressed: () => context.push(
-                '/admin/books/${book.id}/exam?title=${Uri.encodeComponent(book.title)}',
-              ),
-              tooltip: 'الاختبار النهائي',
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () =>
-                  context.push('/admin/books/${book.id}/edit'),
-              tooltip: 'تعديل',
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => _confirmDelete(context, book),
-              tooltip: 'حذف',
-            ),
-          ],
-        ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: () => context.push(
           '/admin/books/${book.id}/lessons?title=${Uri.encodeComponent(book.title)}',
+        ),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                book.title,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  StatusBadge(
+                    status: book.status == 'published'
+                        ? BadgeStatus.published
+                        : BadgeStatus.draft,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  StatusBadge(
+                    status: book.reviewStatus == 'completed'
+                        ? BadgeStatus.completed
+                        : BadgeStatus.inReview,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.question_answer_outlined),
+                    onPressed: () => context.push(
+                      '/admin/books/${book.id}/dashboard?title=${Uri.encodeComponent(book.title)}&tab=questions',
+                    ),
+                    tooltip: 'أسئلة الطلاب',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.quiz_outlined),
+                    onPressed: () => context.push(
+                      '/admin/books/${book.id}/exam?title=${Uri.encodeComponent(book.title)}',
+                    ),
+                    tooltip: 'الاختبار النهائي',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () =>
+                        context.push('/admin/books/${book.id}/edit'),
+                    tooltip: 'تعديل',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => _confirmDelete(context, book),
+                    tooltip: 'حذف',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
