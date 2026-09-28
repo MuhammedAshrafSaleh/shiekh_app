@@ -195,7 +195,7 @@ class _IntroView extends StatelessWidget {
                 hs.AppSpacing.pageGutter,
                 hs.AppSpacing.s6,
                 hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s6 + MediaQuery.viewPaddingOf(context).bottom,
+                hs.AppSpacing.s6 + context.safeBottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
