@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../models/lesson_with_progress_entity.dart';
@@ -90,7 +91,10 @@ class _LevelOneList extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding: const EdgeInsetsDirectional.symmetric(vertical: 8),
+      padding: EdgeInsetsDirectional.only(
+        top: 8,
+        bottom: 8 + context.safeBottom,
+      ),
       itemCount: lecturesWithNotes.length,
       separatorBuilder: (_, _) => Divider(
         height: 1,

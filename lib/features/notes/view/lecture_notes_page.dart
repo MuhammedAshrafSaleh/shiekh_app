@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../cubit/notes_cubit.dart';
@@ -105,7 +106,10 @@ class _NotesList extends StatelessWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsetsDirectional.symmetric(vertical: AppSpacing.s3),
+      padding: EdgeInsetsDirectional.only(
+        top: AppSpacing.s3,
+        bottom: AppSpacing.s3 + context.safeBottom,
+      ),
       itemCount: notes.length,
       itemBuilder: (context, index) => NoteCard(
         note: notes[index],

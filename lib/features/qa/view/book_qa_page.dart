@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
@@ -82,7 +83,7 @@ class _BookQaPageState extends State<BookQaPage> {
                 onRefresh: () =>
                     context.read<QaCubit>().loadQuestions(widget.bookId),
                 child: ListView.builder(
-                  padding: EdgeInsets.zero,
+                  padding: EdgeInsetsDirectional.only(bottom: context.safeBottom),
                   itemCount: questions.length,
                   itemBuilder: (_, index) =>
                       QuestionCard(question: questions[index]),
