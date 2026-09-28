@@ -1,5 +1,6 @@
 // lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppColors {
@@ -10,6 +11,22 @@ abstract final class AppColors {
 }
 
 abstract final class AppTheme {
+  /// Theme-aware system bar overlay style (transparent bars, icon brightness
+  /// following the active theme). Shared by [AppBarTheme.systemOverlayStyle]
+  /// and the app-level `AnnotatedRegion` so both stay identical.
+  static SystemUiOverlayStyle overlayStyle(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light, // iOS
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarContrastEnforced: true,
+    );
+  }
+
   static ThemeData light({required Color primaryColor}) {
     final scheme = ColorScheme.fromSeed(
       seedColor: primaryColor,
@@ -38,6 +55,9 @@ abstract final class AppTheme {
     );
 
     return base.copyWith(
+      appBarTheme: AppBarTheme(
+        systemOverlayStyle: overlayStyle(scheme.brightness),
+      ),
       cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

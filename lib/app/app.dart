@@ -1,5 +1,6 @@
 // lib/app/app.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -58,6 +59,18 @@ class _SheikhyAppState extends State<SheikhyApp> {
             theme: AppTheme.light(primaryColor: AppConfig.primaryColor),
             darkTheme: AppTheme.dark(primaryColor: AppConfig.primaryColor),
             themeMode: themeMode,
+            // Theme-aware overlay style for screens without an AppBar. Screens
+            // that have an AppBar are covered by AppBarTheme.systemOverlayStyle
+            // (an AppBar overrides an AnnotatedRegion placed above it).
+            builder: (context, child) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return AnnotatedRegion<SystemUiOverlayStyle>(
+                value: AppTheme.overlayStyle(
+                  isDark ? Brightness.dark : Brightness.light,
+                ),
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
             // Router
             routerConfig: _routerWrapper.router,
           );
