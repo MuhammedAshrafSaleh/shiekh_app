@@ -9,6 +9,7 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_page_header.dart';
@@ -104,11 +105,11 @@ class _Body extends StatelessWidget {
               onRefresh: () =>
                   context.read<NotificationsCubit>().loadNotifications(),
               child: ListView.separated(
-                padding: const EdgeInsetsDirectional.fromSTEB(
+                padding: EdgeInsetsDirectional.fromSTEB(
                   AppSpacing.pageGutter,
                   AppSpacing.s3,
                   AppSpacing.pageGutter,
-                  AppSpacing.s7,
+                  AppSpacing.s7 + context.safeBottom,
                 ),
                 itemCount: notifications.length,
                 separatorBuilder: (_, _) =>

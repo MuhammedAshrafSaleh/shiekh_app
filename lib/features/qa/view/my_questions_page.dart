@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
@@ -71,11 +72,11 @@ class _Body extends StatelessWidget {
               onRefresh: () =>
                   context.read<MyQuestionsCubit>().loadMyQuestions(),
               child: ListView.separated(
-                padding: const EdgeInsetsDirectional.fromSTEB(
+                padding: EdgeInsetsDirectional.fromSTEB(
                   AppSpacing.pageGutter,
                   AppSpacing.s3,
                   AppSpacing.pageGutter,
-                  AppSpacing.s7,
+                  AppSpacing.s7 + context.safeBottom,
                 ),
                 itemCount: questions.length,
                 separatorBuilder: (_, _) =>
