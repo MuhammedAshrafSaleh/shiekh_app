@@ -230,11 +230,13 @@ class AdminExamRepository {
     final net = _checkNetwork<List<AdminQuizQuestionEntity>>();
     if (net != null) return net;
     try {
-      // Join through lessons
+      // Join through lessons. Only approved questions are eligible — matches
+      // the lesson-side bank and keeps unreviewed AI questions out of the exam.
       final data = await _client
           .from('lesson_quiz_questions')
           .select('*, lessons!inner(book_id)')
           .eq('lessons.book_id', bookId)
+          .eq('ai_review_status', 'approved')
           .order('order_index', ascending: true)
           .limit(200);
       return Right((data as List)
@@ -243,6 +245,30 @@ class AdminExamRepository {
           .toList());
     } on PostgrestException catch (e) {
       _log.warning('getBankQuestions: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Count of approved bank questions across the book's lessons — a lightweight
+  /// head query used only for the "استيراد من البنك" button label/enabled state.
+  /// Must share the same predicate as [getBankQuestions] so the count matches
+  /// what the import dialog shows.
+  Future<Either<Failure, int>> getBankQuestionsCount(String bookId) async {
+    final net = _checkNetwork<int>();
+    if (net != null) return net;
+    try {
+      final res = await _client
+          .from('lesson_quiz_questions')
+          .select('id, lessons!inner(book_id)')
+          .eq('lessons.book_id', bookId)
+          .eq('ai_review_status', 'approved')
+          .limit(1)
+          .count(CountOption.exact);
+      return Right(res.count);
+    } on PostgrestException catch (e) {
+      _log.warning('getBankQuestionsCount: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

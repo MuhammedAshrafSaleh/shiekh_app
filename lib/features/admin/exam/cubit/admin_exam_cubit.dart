@@ -18,11 +18,17 @@ class AdminExamCubit extends Cubit<AdminExamState> {
     await settingsResult.fold(
       (f) async => emit(AdminExamError(f.message)),
       (settings) async {
-        final qResult = await _repo.getQuestions(bookId);
+        final (qResult, bankCountResult) = await (
+          _repo.getQuestions(bookId),
+          _repo.getBankQuestionsCount(bookId),
+        ).wait;
         qResult.fold(
           (f) => emit(AdminExamError(f.message)),
-          (questions) =>
-              emit(AdminExamLoaded(settings: settings, questions: questions)),
+          (questions) => emit(AdminExamLoaded(
+            settings: settings,
+            questions: questions,
+            bankCount: bankCountResult.fold((_) => 0, (c) => c),
+          )),
         );
       },
     );
@@ -80,7 +86,8 @@ class AdminExamCubit extends Cubit<AdminExamState> {
         if (current is AdminExamLoaded) {
           emit(AdminExamLoaded(
               settings: current.settings,
-              questions: [...current.questions, q]));
+              questions: [...current.questions, q],
+              bankCount: current.bankCount));
         }
       },
     );
@@ -112,7 +119,10 @@ class AdminExamCubit extends Cubit<AdminExamState> {
           final qs = current.questions
               .map((q) => q.id == updated.id ? updated : q)
               .toList();
-          emit(AdminExamLoaded(settings: current.settings, questions: qs));
+          emit(AdminExamLoaded(
+              settings: current.settings,
+              questions: qs,
+              bankCount: current.bankCount));
         }
       },
     );
@@ -128,7 +138,10 @@ class AdminExamCubit extends Cubit<AdminExamState> {
           final qs = current.questions
               .where((q) => q.id != questionId)
               .toList();
-          emit(AdminExamLoaded(settings: current.settings, questions: qs));
+          emit(AdminExamLoaded(
+              settings: current.settings,
+              questions: qs,
+              bankCount: current.bankCount));
         }
       },
     );
@@ -175,6 +188,7 @@ class AdminExamCubit extends Cubit<AdminExamState> {
         emit(AdminExamLoaded(
           settings: current.settings,
           questions: reorderedQuestions,
+          bankCount: current.bankCount,
         ));
       },
     );
