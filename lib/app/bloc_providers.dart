@@ -16,6 +16,7 @@ import '../features/admin/notifications/data/admin_notifications_repository.dart
 import '../features/admin/onboarding/data/admin_onboarding_repository.dart';
 import '../features/admin/qa/data/admin_qa_repository.dart';
 import '../features/admin/sections/data/admin_section_repository.dart';
+import '../features/admin/shared/data/question_bank_repository.dart';
 import '../features/admin/stats/data/admin_stats_repository.dart';
 import '../features/auth/cubit/auth_cubit.dart';
 import '../features/auth/data/auth_repository.dart';
@@ -120,6 +121,9 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<AdminExamRepository>(
                 create: (_) => AdminExamRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<QuestionBankRepository>(
+                create: (_) => QuestionBankRepository(supabase, connectivity),
               ),
               RepositoryProvider<AdminStatsRepository>(
                 create: (_) => AdminStatsRepository(supabase, connectivity),

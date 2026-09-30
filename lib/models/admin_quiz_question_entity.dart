@@ -24,6 +24,11 @@ class AdminQuizQuestionEntity extends Equatable {
   final String? explanation;
   final String? sourceQuote;
 
+  /// Set when this row was itself copied from another lesson's question via the
+  /// bank import (migration 0019). Non-null ⇒ this is an imported copy, so it is
+  /// excluded from the bank. Lets the lesson form mark its already-added sources.
+  final String? sourceQuestionId;
+
   const AdminQuizQuestionEntity({
     required this.id,
     required this.lessonId,
@@ -39,6 +44,7 @@ class AdminQuizQuestionEntity extends Equatable {
     this.difficulty,
     this.explanation,
     this.sourceQuote,
+    this.sourceQuestionId,
   });
 
   factory AdminQuizQuestionEntity.fromJson(Map<String, dynamic> json) {
@@ -57,6 +63,7 @@ class AdminQuizQuestionEntity extends Equatable {
       difficulty: json['difficulty'] as String?,
       explanation: json['explanation'] as String?,
       sourceQuote: json['source_quote'] as String?,
+      sourceQuestionId: json['source_question_id'] as String?,
     );
   }
 
@@ -87,5 +94,6 @@ class AdminQuizQuestionEntity extends Equatable {
     difficulty,
     explanation,
     sourceQuote,
+    sourceQuestionId,
   ];
 }

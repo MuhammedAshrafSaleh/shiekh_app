@@ -87,17 +87,6 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     });
   }
 
-  /// Fetches the quiz bank (other lessons of the same book) for the picker.
-  Future<List<AdminQuizQuestionEntity>> getBankQuestions() async {
-    final current = state;
-    if (current is! AdminLessonFormLoaded || current.lesson == null) return [];
-    final result = await _repo.getQuizBankQuestions(
-      bookId: current.lesson!.bookId,
-      excludeLessonId: current.lesson!.id,
-    );
-    return result.fold((_) => [], (qs) => qs);
-  }
-
   /// Copies the selected bank questions into the current lesson, then reloads.
   Future<void> importFromBank(List<AdminQuizQuestionEntity> selected) async {
     final current = state;
