@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../models/practice_attempt_summary_entity.dart';
 import '../../../models/practice_eligible_lesson_entity.dart';
+import '../logic/practice_book_grouping.dart';
 import '../logic/practice_distribution.dart';
 
 abstract class PracticeSetupState extends Equatable {
@@ -30,6 +31,9 @@ class PracticeSetupLoaded extends PracticeSetupState {
   final List<PracticeEligibleLessonEntity> lessons;
   final List<PracticeAttemptSummaryEntity> history;
   final Set<String> selectedLessonIds;
+
+  /// Book titles whose accordion is currently expanded in the setup list.
+  final Set<String> expandedBooks;
   final int questionCount;
   final bool timerEnabled;
   final int timeLimitMinutes;
@@ -38,10 +42,14 @@ class PracticeSetupLoaded extends PracticeSetupState {
     required this.lessons,
     required this.history,
     required this.selectedLessonIds,
+    required this.expandedBooks,
     required this.questionCount,
     required this.timerEnabled,
     required this.timeLimitMinutes,
   });
+
+  /// Eligible lessons grouped by book, in the order returned by the RPC.
+  List<PracticeBookGroup> get bookGroups => groupLessonsByBook(lessons);
 
   /// Total approved questions across the currently selected lessons.
   int get totalAvailable => lessons
@@ -56,6 +64,7 @@ class PracticeSetupLoaded extends PracticeSetupState {
 
   PracticeSetupLoaded copyWith({
     Set<String>? selectedLessonIds,
+    Set<String>? expandedBooks,
     int? questionCount,
     bool? timerEnabled,
     int? timeLimitMinutes,
@@ -64,6 +73,7 @@ class PracticeSetupLoaded extends PracticeSetupState {
       lessons: lessons,
       history: history,
       selectedLessonIds: selectedLessonIds ?? this.selectedLessonIds,
+      expandedBooks: expandedBooks ?? this.expandedBooks,
       questionCount: questionCount ?? this.questionCount,
       timerEnabled: timerEnabled ?? this.timerEnabled,
       timeLimitMinutes: timeLimitMinutes ?? this.timeLimitMinutes,
@@ -75,6 +85,7 @@ class PracticeSetupLoaded extends PracticeSetupState {
     lessons,
     history,
     selectedLessonIds,
+    expandedBooks,
     questionCount,
     timerEnabled,
     timeLimitMinutes,

@@ -16,6 +16,7 @@ import '../../../models/practice_attempt_summary_entity.dart';
 import '../../../models/practice_eligible_lesson_entity.dart';
 import '../cubit/practice_setup_cubit.dart';
 import '../cubit/practice_setup_state.dart';
+import '../logic/practice_book_grouping.dart';
 import '../logic/practice_distribution.dart';
 
 /// Convert Western digits to Arabic-Indic for display consistency.
@@ -90,25 +91,7 @@ class _LoadedView extends StatelessWidget {
         slivers: [
           if (hasLessons) ...[
             _sectionTitle('اختر المحاضرات'),
-            SliverList.builder(
-              itemCount: state.lessons.length,
-              itemBuilder: (context, i) {
-                final lesson = state.lessons[i];
-                return Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                    AppSpacing.pageGutter,
-                    0,
-                    AppSpacing.pageGutter,
-                    AppSpacing.s3,
-                  ),
-                  child: _LessonTile(
-                    lesson: lesson,
-                    selected: state.selectedLessonIds.contains(lesson.lessonId),
-                    onTap: () => cubit.toggleLesson(lesson.lessonId),
-                  ),
-                );
-              },
-            ),
+            _buildBookRows(cubit),
             SliverToBoxAdapter(child: _Controls(state: state)),
           ] else
             SliverToBoxAdapter(
@@ -152,6 +135,205 @@ class _LoadedView extends StatelessWidget {
       child: Text(text, style: AppTextStyles.h3.copyWith(color: AppColors.ink)),
     ),
   );
+
+  /// Flattens the book groups (and the lessons of expanded books) into one
+  /// lazy SliverList of header / select-all / lesson rows.
+  Widget _buildBookRows(PracticeSetupCubit cubit) {
+    final rows = <_SetupRow>[];
+    for (final group in state.bookGroups) {
+      rows.add(_BookHeaderRow(group));
+      if (state.expandedBooks.contains(group.bookTitle)) {
+        rows.add(_SelectAllRow(group));
+        for (final lesson in group.lessons) {
+          rows.add(_LessonItemRow(lesson));
+        }
+      }
+    }
+
+    return SliverList.builder(
+      itemCount: rows.length,
+      itemBuilder: (context, i) {
+        final row = rows[i];
+        switch (row) {
+          case _BookHeaderRow(:final group):
+            final selectedCount = group.lessonIds
+                .where(state.selectedLessonIds.contains)
+                .length;
+            return Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AppSpacing.pageGutter,
+                0,
+                AppSpacing.pageGutter,
+                AppSpacing.s3,
+              ),
+              child: _BookHeader(
+                group: group,
+                expanded: state.expandedBooks.contains(group.bookTitle),
+                selectedCount: selectedCount,
+                onTap: () => cubit.toggleBookExpanded(group.bookTitle),
+              ),
+            );
+          case _SelectAllRow(:final group):
+            final allSelected = group.lessonIds.every(
+              state.selectedLessonIds.contains,
+            );
+            return Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AppSpacing.pageGutter + AppSpacing.s4,
+                0,
+                AppSpacing.pageGutter,
+                AppSpacing.s2,
+              ),
+              child: _SelectAllToggle(
+                allSelected: allSelected,
+                onPressed: () => allSelected
+                    ? cubit.clearBook(group.lessonIds)
+                    : cubit.selectAllInBook(group.lessonIds),
+              ),
+            );
+          case _LessonItemRow(:final lesson):
+            return Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AppSpacing.pageGutter + AppSpacing.s4,
+                0,
+                AppSpacing.pageGutter,
+                AppSpacing.s3,
+              ),
+              child: _LessonTile(
+                lesson: lesson,
+                selected: state.selectedLessonIds.contains(lesson.lessonId),
+                onTap: () => cubit.toggleLesson(lesson.lessonId),
+              ),
+            );
+        }
+      },
+    );
+  }
+}
+
+/// A flattened row in the grouped lesson list.
+sealed class _SetupRow {}
+
+class _BookHeaderRow extends _SetupRow {
+  final PracticeBookGroup group;
+  _BookHeaderRow(this.group);
+}
+
+class _SelectAllRow extends _SetupRow {
+  final PracticeBookGroup group;
+  _SelectAllRow(this.group);
+}
+
+class _LessonItemRow extends _SetupRow {
+  final PracticeEligibleLessonEntity lesson;
+  _LessonItemRow(this.lesson);
+}
+
+class _BookHeader extends StatelessWidget {
+  final PracticeBookGroup group;
+  final bool expanded;
+  final int selectedCount;
+  final VoidCallback onTap;
+
+  const _BookHeader({
+    required this.group,
+    required this.expanded,
+    required this.selectedCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SheikhyCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.s4),
+      child: Row(
+        children: [
+          Icon(
+            expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+            color: AppColors.inkMuted,
+          ),
+          const SizedBox(width: AppSpacing.s3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group.bookTitle,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.s1),
+                Text(
+                  group.lessonCount == 1
+                      ? 'محاضرة واحدة متاحة'
+                      : '${_ar(group.lessonCount)} محاضرات متاحة',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (selectedCount > 0) ...[
+            const SizedBox(width: AppSpacing.s2),
+            _SelectedBadge(count: selectedCount),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectedBadge extends StatelessWidget {
+  final int count;
+  const _SelectedBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.s2,
+        vertical: AppSpacing.s1,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.primaryTint,
+        borderRadius: AppRadii.rPill,
+      ),
+      child: Text(
+        count == 1 ? 'محاضرة واحدة محددة' : '${_ar(count)} محاضرات محددة',
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectAllToggle extends StatelessWidget {
+  final bool allSelected;
+  final VoidCallback onPressed;
+
+  const _SelectAllToggle({required this.allSelected, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: Icon(
+          allSelected ? Icons.remove_done_rounded : Icons.done_all_rounded,
+          size: 18,
+        ),
+        label: Text(allSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل'),
+      ),
+    );
+  }
 }
 
 class _LessonTile extends StatelessWidget {

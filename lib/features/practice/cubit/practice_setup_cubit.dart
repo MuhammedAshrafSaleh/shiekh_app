@@ -36,6 +36,7 @@ class PracticeSetupCubit extends Cubit<PracticeSetupState> {
         lessons: lessonsResult.getOrElse(() => const []),
         history: historyResult.getOrElse(() => const []),
         selectedLessonIds: const {},
+        expandedBooks: const {},
         questionCount: kMinPracticeQuestions,
         timerEnabled: false,
         timeLimitMinutes: kPracticeTimerDefault,
@@ -50,6 +51,36 @@ class PracticeSetupCubit extends Cubit<PracticeSetupState> {
     final selected = {...s.selectedLessonIds};
     if (!selected.remove(lessonId)) selected.add(lessonId);
 
+    emit(s.copyWith(selectedLessonIds: selected));
+    _clampCount();
+  }
+
+  /// Expand/collapse a book's accordion (UI state; selection stays global).
+  void toggleBookExpanded(String bookTitle) {
+    final s = state;
+    if (s is! PracticeSetupLoaded) return;
+
+    final expanded = {...s.expandedBooks};
+    if (!expanded.remove(bookTitle)) expanded.add(bookTitle);
+
+    emit(s.copyWith(expandedBooks: expanded));
+  }
+
+  /// Select every lesson in a book (adds to the global selection).
+  void selectAllInBook(Iterable<String> lessonIds) {
+    final s = state;
+    if (s is! PracticeSetupLoaded) return;
+
+    emit(s.copyWith(selectedLessonIds: {...s.selectedLessonIds, ...lessonIds}));
+    _clampCount();
+  }
+
+  /// Deselect every lesson in a book (removes from the global selection).
+  void clearBook(Iterable<String> lessonIds) {
+    final s = state;
+    if (s is! PracticeSetupLoaded) return;
+
+    final selected = {...s.selectedLessonIds}..removeAll(lessonIds);
     emit(s.copyWith(selectedLessonIds: selected));
     _clampCount();
   }
