@@ -11,6 +11,7 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart' as hs;
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/account_gate.dart';
 import '../../../core/widgets/mcq_option_card.dart';
 import '../../../core/widgets/sheikhy_button.dart';
@@ -194,7 +195,7 @@ class _IntroView extends StatelessWidget {
                 hs.AppSpacing.pageGutter,
                 hs.AppSpacing.s6,
                 hs.AppSpacing.pageGutter,
-                hs.AppSpacing.s6 + MediaQuery.viewPaddingOf(context).bottom,
+                hs.AppSpacing.s6 + context.safeBottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -501,6 +502,7 @@ class _PastAttemptsSheet extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               controller: scroll,
+              padding: EdgeInsetsDirectional.only(bottom: context.safeBottom),
               itemCount: attempts.length,
               separatorBuilder: (_, _) =>
                   const Divider(height: 1, color: AppColors.border),

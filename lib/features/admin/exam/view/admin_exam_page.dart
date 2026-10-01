@@ -376,18 +376,6 @@ class _QuestionsTab extends StatelessWidget {
 
   Future<void> _showBankImport(BuildContext context) async {
     final cubit = context.read<AdminExamCubit>();
-    final messenger = ScaffoldMessenger.of(context);
-    final bankQuestions = await cubit.getBankQuestions();
-    if (!context.mounted) return;
-    if (bankQuestions.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('لا توجد أسئلة في بنك دروس هذا الكتاب'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
     final alreadyAddedSourceIds = questions
         .where((q) => q.sourceQuizQuestionId != null)
         .map((q) => q.sourceQuizQuestionId!)
@@ -396,7 +384,7 @@ class _QuestionsTab extends StatelessWidget {
         .push<List<AdminQuizQuestionEntity>>(
           MaterialPageRoute(
             builder: (_) => BankImportPage(
-              bankQuestions: bankQuestions,
+              bookId: bookId,
               alreadyAddedSourceIds: alreadyAddedSourceIds,
             ),
           ),

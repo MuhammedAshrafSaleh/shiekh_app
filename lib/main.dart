@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +14,12 @@ final _log = Logger('main');
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // Draw behind the system bars on all Android versions so the transparent
+  // nav bar behaves the same pre-Android-15 as it does under the enforced
+  // edge-to-edge mode. Per-screen SafeArea / inset padding keeps content
+  // reachable. (Fullscreen video sets its own immersive mode.)
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((r) {

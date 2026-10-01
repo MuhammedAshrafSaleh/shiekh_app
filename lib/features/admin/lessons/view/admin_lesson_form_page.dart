@@ -996,24 +996,21 @@ class _QuizTab extends StatelessWidget {
 
   static Future<void> _showBankImport(BuildContext context) async {
     final cubit = context.read<AdminLessonFormCubit>();
-    final messenger = ScaffoldMessenger.of(context);
-    final bank = await cubit.getBankQuestions();
-    if (!context.mounted) return;
-    if (bank.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('لا توجد أسئلة في دروس هذا الكتاب الأخرى'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
+    final st = cubit.state;
+    if (st is! AdminLessonFormLoaded || st.lesson == null) return;
+    final lesson = st.lesson!;
+    // Source ids already imported into THIS lesson — marked "تمت الإضافة".
+    final alreadyAdded = st.quizQuestions
+        .map((q) => q.sourceQuestionId)
+        .whereType<String>()
+        .toSet();
     final selected = await Navigator.of(context)
         .push<List<AdminQuizQuestionEntity>>(
           MaterialPageRoute(
             builder: (_) => BankImportPage(
-              bankQuestions: bank,
-              alreadyAddedSourceIds: const {},
+              bookId: lesson.bookId,
+              excludeLessonId: lesson.id,
+              alreadyAddedSourceIds: alreadyAdded,
             ),
           ),
         );

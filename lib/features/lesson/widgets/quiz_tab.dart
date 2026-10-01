@@ -13,6 +13,7 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/mcq_option_card.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
@@ -600,11 +601,11 @@ class _QuizIntro extends StatelessWidget {
     final attemptsRemaining = 2 - attemptsUsed;
 
     return SingleChildScrollView(
-      padding: const EdgeInsetsDirectional.fromSTEB(
+      padding: EdgeInsetsDirectional.fromSTEB(
         AppSpacing.pageGutter,
         AppSpacing.s5,
         AppSpacing.pageGutter,
-        AppSpacing.s6,
+        AppSpacing.s6 + context.safeBottom,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -840,11 +841,11 @@ class _QuizResult extends StatelessWidget {
     final ringColor = passed ? AppColors.primary : AppColors.danger;
 
     return SingleChildScrollView(
-      padding: const EdgeInsetsDirectional.fromSTEB(
+      padding: EdgeInsetsDirectional.fromSTEB(
         AppSpacing.pageGutter,
         AppSpacing.s6,
         AppSpacing.pageGutter,
-        AppSpacing.s6,
+        AppSpacing.s6 + context.safeBottom,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1022,11 +1023,11 @@ class _QuizReview extends StatelessWidget {
         // Question list
         Expanded(
           child: ListView.separated(
-            padding: const EdgeInsetsDirectional.fromSTEB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               AppSpacing.pageGutter,
               AppSpacing.s4,
               AppSpacing.pageGutter,
-              AppSpacing.s6,
+              AppSpacing.s6 + context.safeBottom,
             ),
             itemCount: questions.length,
             separatorBuilder: (_, _) => const Padding(
