@@ -29,6 +29,7 @@ import '../features/notifications/cubit/connectivity_cubit.dart';
 import '../features/notifications/cubit_notifs/notifications_cubit.dart';
 import '../features/notifications/data/notifications_repository.dart';
 import '../features/onboarding/data/onboarding_repository.dart';
+import '../features/practice/data/practice_repository.dart';
 import '../features/profile/data/profile_repository.dart';
 import '../features/notes/data/notes_repository.dart';
 import '../features/notes/data/suggestion_notes_repository.dart';
@@ -84,6 +85,9 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<ExamRepository>(
                 create: (_) => ExamRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<PracticeRepository>(
+                create: (_) => PracticeRepository(supabase, connectivity),
               ),
               RepositoryProvider<CertificateRepository>(
                 create: (_) => CertificateRepository(supabase, connectivity),
