@@ -8,6 +8,7 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../cubit/qa_cubit.dart';
 import '../cubit/qa_state.dart';
@@ -66,9 +67,7 @@ class _AskQuestionSheetState extends State<AskQuestionSheet> {
         final isSubmitting = state is AskQuestionSubmitting;
 
         return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewInsetsOf(context).bottom,
-          ),
+          padding: EdgeInsets.only(bottom: context.sheetBottomInset),
           child: DraggableScrollableSheet(
             initialChildSize: 0.6,
             minChildSize: 0.4,

@@ -9,6 +9,7 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/girih_background.dart';
 import '../../../core/widgets/mihrab_arch.dart';
 import '../../../core/widgets/ornament_divider.dart';
@@ -479,11 +480,11 @@ class _BookDetailsViewState extends State<_BookDetailsView>
 
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               AppSpacing.pageGutter,
               AppSpacing.s4,
               AppSpacing.pageGutter,
-              AppSpacing.s7,
+              AppSpacing.s7 + context.safeBottom,
             ),
             child: _ActionButton(state: state, bookId: bookId),
           ),

@@ -15,17 +15,24 @@ class AdminExamCubit extends Cubit<AdminExamState> {
     _bookId = bookId;
     emit(AdminExamLoading());
     final settingsResult = await _repo.getSettings(bookId);
-    await settingsResult.fold(
-      (f) async => emit(AdminExamError(f.message)),
-      (settings) async {
-        final qResult = await _repo.getQuestions(bookId);
-        qResult.fold(
-          (f) => emit(AdminExamError(f.message)),
-          (questions) =>
-              emit(AdminExamLoaded(settings: settings, questions: questions)),
-        );
-      },
-    );
+    await settingsResult.fold((f) async => emit(AdminExamError(f.message)), (
+      settings,
+    ) async {
+      final (qResult, bankCountResult) = await (
+        _repo.getQuestions(bookId),
+        _repo.getBankQuestionsCount(bookId),
+      ).wait;
+      qResult.fold(
+        (f) => emit(AdminExamError(f.message)),
+        (questions) => emit(
+          AdminExamLoaded(
+            settings: settings,
+            questions: questions,
+            bankCount: bankCountResult.fold((_) => 0, (c) => c),
+          ),
+        ),
+      );
+    });
   }
 
   Future<void> saveSettings({
@@ -44,15 +51,12 @@ class AdminExamCubit extends Cubit<AdminExamState> {
       maxAttempts: maxAttempts,
       isPublished: isPublished,
     );
-    result.fold(
-      (f) {
-        emit(AdminExamError(f.message));
-        if (current is AdminExamLoaded) {
-          emit(current); // restore
-        }
-      },
-      (_) => load(_bookId!),
-    );
+    result.fold((f) {
+      emit(AdminExamError(f.message));
+      if (current is AdminExamLoaded) {
+        emit(current); // restore
+      }
+    }, (_) => load(_bookId!));
   }
 
   Future<void> addQuestion({
@@ -73,17 +77,18 @@ class AdminExamCubit extends Cubit<AdminExamState> {
       choiceD: choiceD,
       correctChoice: correctChoice,
     );
-    result.fold(
-      (f) => emit(AdminExamError(f.message)),
-      (q) {
-        final current = state;
-        if (current is AdminExamLoaded) {
-          emit(AdminExamLoaded(
-              settings: current.settings,
-              questions: [...current.questions, q]));
-        }
-      },
-    );
+    result.fold((f) => emit(AdminExamError(f.message)), (q) {
+      final current = state;
+      if (current is AdminExamLoaded) {
+        emit(
+          AdminExamLoaded(
+            settings: current.settings,
+            questions: [...current.questions, q],
+            bankCount: current.bankCount,
+          ),
+        );
+      }
+    });
   }
 
   Future<void> updateQuestion({
@@ -104,53 +109,47 @@ class AdminExamCubit extends Cubit<AdminExamState> {
       choiceD: choiceD,
       correctChoice: correctChoice,
     );
-    result.fold(
-      (f) => emit(AdminExamError(f.message)),
-      (updated) {
-        final current = state;
-        if (current is AdminExamLoaded) {
-          final qs = current.questions
-              .map((q) => q.id == updated.id ? updated : q)
-              .toList();
-          emit(AdminExamLoaded(settings: current.settings, questions: qs));
-        }
-      },
-    );
+    result.fold((f) => emit(AdminExamError(f.message)), (updated) {
+      final current = state;
+      if (current is AdminExamLoaded) {
+        final qs = current.questions
+            .map((q) => q.id == updated.id ? updated : q)
+            .toList();
+        emit(
+          AdminExamLoaded(
+            settings: current.settings,
+            questions: qs,
+            bankCount: current.bankCount,
+          ),
+        );
+      }
+    });
   }
 
   Future<void> deleteQuestion(String questionId) async {
     final result = await _repo.deleteQuestion(questionId);
-    result.fold(
-      (f) => emit(AdminExamError(f.message)),
-      (_) {
-        final current = state;
-        if (current is AdminExamLoaded) {
-          final qs = current.questions
-              .where((q) => q.id != questionId)
-              .toList();
-          emit(AdminExamLoaded(settings: current.settings, questions: qs));
-        }
-      },
-    );
+    result.fold((f) => emit(AdminExamError(f.message)), (_) {
+      final current = state;
+      if (current is AdminExamLoaded) {
+        final qs = current.questions.where((q) => q.id != questionId).toList();
+        emit(
+          AdminExamLoaded(
+            settings: current.settings,
+            questions: qs,
+            bankCount: current.bankCount,
+          ),
+        );
+      }
+    });
   }
 
-  Future<void> importFromBank(
-      List<AdminQuizQuestionEntity> selected) async {
+  Future<void> importFromBank(List<AdminQuizQuestionEntity> selected) async {
     if (_bookId == null) return;
     final result = await _repo.importBankQuestions(
       bookId: _bookId!,
       questions: selected,
     );
-    result.fold(
-      (f) => emit(AdminExamError(f.message)),
-      (_) => load(_bookId!),
-    );
-  }
-
-  Future<List<AdminQuizQuestionEntity>> getBankQuestions() async {
-    if (_bookId == null) return [];
-    final result = await _repo.getBankQuestions(_bookId!);
-    return result.fold((_) => [], (qs) => qs);
+    result.fold((f) => emit(AdminExamError(f.message)), (_) => load(_bookId!));
   }
 
   Future<void> reorderQuestions(List<String> questionIds) async {
@@ -164,19 +163,19 @@ class AdminExamCubit extends Cubit<AdminExamState> {
         .toList();
 
     final result = await _repo.reorderQuestions(updates);
-    result.fold(
-      (f) => emit(AdminExamError(f.message)),
-      (_) {
-        final reorderedQuestions = questionIds
-            .asMap()
-            .entries
-            .map((e) => current.questions.firstWhere((q) => q.id == e.value))
-            .toList();
-        emit(AdminExamLoaded(
+    result.fold((f) => emit(AdminExamError(f.message)), (_) {
+      final reorderedQuestions = questionIds
+          .asMap()
+          .entries
+          .map((e) => current.questions.firstWhere((q) => q.id == e.value))
+          .toList();
+      emit(
+        AdminExamLoaded(
           settings: current.settings,
           questions: reorderedQuestions,
-        ));
-      },
-    );
+          bankCount: current.bankCount,
+        ),
+      );
+    });
   }
 }

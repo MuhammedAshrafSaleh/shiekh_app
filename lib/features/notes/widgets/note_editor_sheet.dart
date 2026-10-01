@@ -8,6 +8,7 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../models/lesson_note_entity.dart';
 import '../cubit/note_editor_cubit.dart';
@@ -160,9 +161,7 @@ class _NoteEditorSheetState extends State<NoteEditorSheet> {
         final isSaving = state is NoteEditorSaving;
 
         return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewInsetsOf(context).bottom,
-          ),
+          padding: EdgeInsets.only(bottom: context.sheetBottomInset),
           child: SingleChildScrollView(
             padding: const EdgeInsetsDirectional.fromSTEB(
               AppSpacing.pageGutter,

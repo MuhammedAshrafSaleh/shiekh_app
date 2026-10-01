@@ -527,42 +527,9 @@ class AdminLessonRepository {
     }
   }
 
-  /// Quiz questions from the OTHER lessons of the same book — the bank for
-  /// "استيراد من البنك" on a lesson quiz. Excludes the current lesson and any
-  /// unreviewed AI-generated questions (approved only).
-  Future<Either<Failure, List<AdminQuizQuestionEntity>>> getQuizBankQuestions({
-    required String bookId,
-    required String excludeLessonId,
-  }) async {
-    final net = _checkNetwork<List<AdminQuizQuestionEntity>>();
-    if (net != null) return net;
-    try {
-      final data = await _client
-          .from('lesson_quiz_questions')
-          .select('*, lessons!inner(book_id)')
-          .eq('lessons.book_id', bookId)
-          .eq('ai_review_status', 'approved')
-          .neq('lesson_id', excludeLessonId)
-          .order('order_index', ascending: true)
-          .limit(200);
-      return Right(
-        (data as List)
-            .map(
-              (e) =>
-                  AdminQuizQuestionEntity.fromJson(e as Map<String, dynamic>),
-            )
-            .toList(),
-      );
-    } on PostgrestException catch (e) {
-      _log.warning('getQuizBankQuestions: ${e.message}');
-      return Left(ServerFailure(e.message));
-    } on SocketException {
-      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
-    }
-  }
-
-  /// Count of approved bank questions from the book's other lessons — a
-  /// lightweight head query used only for the import button label.
+  /// Count of importable bank questions from the book's other lessons — a
+  /// lightweight head query used only for the import button label. Shares the
+  /// drill-down's predicate (approved originals, current lesson excluded).
   Future<Either<Failure, int>> getQuizBankQuestionsCount({
     required String bookId,
     required String excludeLessonId,
@@ -575,6 +542,7 @@ class AdminLessonRepository {
           .select('id, lessons!inner(book_id)')
           .eq('lessons.book_id', bookId)
           .eq('ai_review_status', 'approved')
+          .isFilter('source_question_id', null) // originals only (excl. copies)
           .neq('lesson_id', excludeLessonId)
           .limit(1)
           .count(CountOption.exact);
@@ -620,6 +588,9 @@ class AdminLessonRepository {
               'choice_c': q.choiceC,
               'choice_d': q.choiceD,
               'correct_choice': q.correctChoice,
+              // Provenance link (migration 0019): marks this row as a copy so it
+              // is excluded from the bank and shown as "تمت الإضافة".
+              'source_question_id': q.id,
             },
           )
           .toList();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/insets.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../cubit/profile_cubit.dart';
 import '../cubit/profile_state.dart';
@@ -59,7 +60,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         builder: (context, state) {
           final isUpdating = state is ProfileUpdating;
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md + context.safeBottom,
+            ),
             child: Form(
               key: _formKey,
               child: Column(
