@@ -39,6 +39,9 @@ import '../features/notifications/view/notifications_page.dart';
 import '../features/onboarding/cubit/onboarding_cubit.dart';
 import '../features/onboarding/data/onboarding_repository.dart';
 import '../features/onboarding/view/onboarding_page.dart';
+import '../features/practice/cubit/practice_setup_cubit.dart';
+import '../features/practice/data/practice_repository.dart';
+import '../features/practice/view/practice_setup_page.dart';
 import '../features/profile/cubit/profile_cubit.dart';
 import '../features/profile/data/profile_repository.dart';
 import '../features/profile/view/change_password_page.dart';
@@ -236,6 +239,14 @@ GoRouter buildRouter(AuthCubit authCubit) {
             ),
           ),
           GoRoute(
+            path: '/practice',
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  PracticeSetupCubit(ctx.read<PracticeRepository>())..load(),
+              child: const PracticeSetupPage(),
+            ),
+          ),
+          GoRoute(
             path: '/achievements',
             builder: (context, _) => BlocProvider(
               create: (ctx) =>
@@ -275,14 +286,12 @@ GoRouter buildRouter(AuthCubit authCubit) {
           return MultiBlocProvider(
             providers: [
               BlocProvider(
-                create: (ctx) =>
-                    BookDetailsCubit(ctx.read<BookRepository>()),
+                create: (ctx) => BookDetailsCubit(ctx.read<BookRepository>()),
               ),
               BlocProvider(
-                create: (ctx) =>
-                    NotesCubit(
-                      BookNotesSource(ctx.read<NotesRepository>(), bookId: bookId),
-                    ),
+                create: (ctx) => NotesCubit(
+                  BookNotesSource(ctx.read<NotesRepository>(), bookId: bookId),
+                ),
               ),
             ],
             child: BookDetailsPage(bookId: bookId),
@@ -306,13 +315,13 @@ GoRouter buildRouter(AuthCubit authCubit) {
             builder: (context, state) {
               final bookId = state.pathParameters['id']!;
               final lessonId = state.pathParameters['lessonId']!;
-              final lessonTitle =
-                  state.extra is String ? state.extra as String : '';
+              final lessonTitle = state.extra is String
+                  ? state.extra as String
+                  : '';
               return BlocProvider(
-                create: (ctx) =>
-                    NotesCubit(
-                      BookNotesSource(ctx.read<NotesRepository>(), bookId: bookId),
-                    ),
+                create: (ctx) => NotesCubit(
+                  BookNotesSource(ctx.read<NotesRepository>(), bookId: bookId),
+                ),
                 child: LectureNotesPage(
                   bookId: bookId,
                   lessonId: lessonId,
@@ -589,8 +598,9 @@ GoRouter buildRouter(AuthCubit authCubit) {
         builder: (context, state) {
           final bookId = state.pathParameters['bookId']!;
           final bookTitle = state.uri.queryParameters['title'] ?? 'الكتاب';
-          final initialTab =
-              state.uri.queryParameters['tab'] == 'questions' ? 2 : 0;
+          final initialTab = state.uri.queryParameters['tab'] == 'questions'
+              ? 2
+              : 0;
           return BlocProvider(
             create: (ctx) =>
                 AdminStatsCubit(ctx.read<AdminStatsRepository>())..load(bookId),
@@ -705,9 +715,8 @@ GoRouter buildRouter(AuthCubit authCubit) {
             builder: (context, state) {
               final suggestion = state.extra as SuggestionEntity;
               return BlocProvider(
-                create: (ctx) => AdminSuggestionCubit(
-                  ctx.read<AdminSuggestionRepository>(),
-                ),
+                create: (ctx) =>
+                    AdminSuggestionCubit(ctx.read<AdminSuggestionRepository>()),
                 child: AdminSuggestionFormPage(existing: suggestion),
               );
             },
@@ -741,22 +750,40 @@ class _StudentShell extends StatelessWidget {
   int _selectedIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/path')) return 1;
-    if (loc.startsWith('/achievements')) return 2;
-    if (loc.startsWith('/profile')) return 3;
+    if (loc.startsWith('/practice')) return 2;
+    if (loc.startsWith('/achievements')) return 3;
+    if (loc.startsWith('/profile')) return 4;
     return 0;
   }
 
-  static const _routes = ['/home', '/path', '/achievements', '/profile'];
-  static const _labels = ['الرئيسية', 'مساري', 'إنجازاتي', 'حسابي'];
+  // RTL order (right→left): الرئيسية · مساري · اختبر نفسك · إنجازاتي · حسابي.
+  // Index 2 ("اختبر نفسك") is the raised center button.
+  static const _centerIndex = 2;
+  static const _routes = [
+    '/home',
+    '/path',
+    '/practice',
+    '/achievements',
+    '/profile',
+  ];
+  static const _labels = [
+    'الرئيسية',
+    'مساري',
+    'اختبر نفسك',
+    'إنجازاتي',
+    'حسابي',
+  ];
   static const _icons = [
     Icons.home_outlined,
     Icons.route_outlined,
+    Icons.quiz_outlined,
     Icons.star_border_rounded,
     Icons.person_outline_rounded,
   ];
   static const _activeIcons = [
     Icons.home_rounded,
     Icons.route_rounded,
+    Icons.quiz_rounded,
     Icons.star_rounded,
     Icons.person_rounded,
   ];
@@ -773,6 +800,7 @@ class _StudentShell extends StatelessWidget {
       ),
       bottomNavigationBar: _SheikhyBottomNav(
         selectedIndex: selected,
+        centerIndex: _centerIndex,
         labels: _labels,
         icons: _icons,
         activeIcons: _activeIcons,
@@ -786,6 +814,9 @@ class _StudentShell extends StatelessWidget {
 
 class _SheikhyBottomNav extends StatelessWidget {
   final int selectedIndex;
+
+  /// Index rendered as the raised circular center button.
+  final int centerIndex;
   final List<String> labels;
   final List<IconData> icons;
   final List<IconData> activeIcons;
@@ -793,6 +824,7 @@ class _SheikhyBottomNav extends StatelessWidget {
 
   const _SheikhyBottomNav({
     required this.selectedIndex,
+    required this.centerIndex,
     required this.labels,
     required this.icons,
     required this.activeIcons,
@@ -811,58 +843,116 @@ class _SheikhyBottomNav extends StatelessWidget {
         child: SizedBox(
           height: 68,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: List.generate(labels.length, (i) {
-              final isActive = i == selectedIndex;
-              return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(i),
-                  child: Center(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      padding: isActive
-                          ? const EdgeInsetsDirectional.symmetric(
-                              horizontal: AppSpacing.s4,
-                              vertical: AppSpacing.s2,
-                            )
-                          : EdgeInsets.zero,
-                      decoration: isActive
-                          ? BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: AppRadii.rLg,
-                            )
-                          : null,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isActive ? activeIcons[i] : icons[i],
-                            size: 24,
-                            color: isActive
-                                ? AppColors.inkInvert
-                                : AppColors.inkFaint,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            labels[i],
-                            style: AppTextStyles.caption.copyWith(
-                              color: isActive
-                                  ? AppColors.inkInvert
-                                  : AppColors.inkFaint,
-                              height: 1.1,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
+              if (i == centerIndex) {
+                return Expanded(child: _buildCenter(i));
+              }
+              return Expanded(child: _buildStandard(i));
             }),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStandard(int i) {
+    final isActive = i == selectedIndex;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTap(i),
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: isActive
+              ? const EdgeInsetsDirectional.symmetric(
+                  horizontal: AppSpacing.s4,
+                  vertical: AppSpacing.s2,
+                )
+              : EdgeInsets.zero,
+          decoration: isActive
+              ? BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: AppRadii.rLg,
+                )
+              : null,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isActive ? activeIcons[i] : icons[i],
+                size: 24,
+                color: isActive ? AppColors.inkInvert : AppColors.inkFaint,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                labels[i],
+                style: AppTextStyles.caption.copyWith(
+                  color: isActive ? AppColors.inkInvert : AppColors.inkFaint,
+                  height: 1.1,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The distinct middle action: a primary-filled circle that floats above the
+  /// bar (FAB-like) with a small label beneath. Clip.none lets it overflow
+  /// upward; both the circle and the box carry the tap target.
+  Widget _buildCenter(int i) {
+    final isActive = i == selectedIndex;
+    final circle = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTap(i),
+      child: Container(
+        width: 54,
+        height: 54,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primary,
+          border: Border.all(color: AppColors.surface, width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(
+          isActive ? activeIcons[i] : icons[i],
+          size: 28,
+          color: AppColors.inkInvert,
+        ),
+      ),
+    );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTap(i),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Positioned(top: -18, child: circle),
+          PositionedDirectional(
+            bottom: 6,
+            child: Text(
+              labels[i],
+              style: AppTextStyles.caption.copyWith(
+                color: isActive ? AppColors.primary : AppColors.inkFaint,
+                fontWeight: FontWeight.w700,
+                height: 1.1,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
