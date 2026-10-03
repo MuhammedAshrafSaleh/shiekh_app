@@ -520,8 +520,15 @@ class AdminLessonRepository {
       await _client.from('lesson_quiz_questions').delete().eq('id', questionId);
       return const Right(unit);
     } on PostgrestException catch (e) {
-      _log.warning('deleteQuizQuestion: ${e.message}');
-      return Left(ServerFailure(e.message));
+      _log.warning('deleteQuizQuestion: ${e.code} ${e.message}');
+      // 23503 = FK violation (question still referenced, e.g. imported into a
+      // final exam). Never surface the raw Postgres text.
+      if (e.code == '23503') {
+        return Left(
+          ServerFailure('لا يمكن حذف هذا السؤال لأنه مُستخدم في مكان آخر.'),
+        );
+      }
+      return Left(ServerFailure('تعذّر حذف السؤال، حاول مرة أخرى.'));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
     }
