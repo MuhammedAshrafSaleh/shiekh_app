@@ -98,6 +98,10 @@ import '../features/admin/notifications/cubit/admin_notifications_cubit.dart';
 import '../features/admin/notifications/data/admin_notifications_repository.dart';
 import '../features/admin/notifications/view/admin_notification_form_page.dart';
 import '../features/admin/notifications/view/admin_notifications_page.dart';
+import '../features/admin/loading_quotes/cubit/admin_loading_quotes_cubit.dart';
+import '../features/admin/loading_quotes/data/admin_loading_quotes_repository.dart';
+import '../features/admin/loading_quotes/view/admin_loading_quote_form_page.dart';
+import '../features/admin/loading_quotes/view/admin_loading_quotes_page.dart';
 import '../features/admin/onboarding/cubit/admin_onboarding_cubit.dart';
 import '../features/admin/onboarding/data/admin_onboarding_repository.dart';
 import '../features/admin/onboarding/view/admin_onboarding_page.dart';
@@ -111,6 +115,7 @@ import '../features/admin/stats/view/admin_book_dashboard_page.dart';
 import '../models/banner_entity.dart';
 import '../models/book_entity.dart';
 import '../models/certificate_entity.dart';
+import '../models/loading_quote_entity.dart';
 import '../models/section_entity.dart';
 import '../models/suggestion_entity.dart';
 
@@ -657,6 +662,46 @@ GoRouter buildRouter(AuthCubit authCubit) {
                 ..load(),
           child: const AdminOnboardingPage(),
         ),
+      ),
+
+      // --- Admin: Loading-screen quotes (Practice Exams) ---
+      GoRoute(
+        path: '/admin/loading-quotes',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminLoadingQuotesCubit(ctx.read<AdminLoadingQuotesRepository>())
+                ..load(),
+          child: const AdminLoadingQuotesPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, state) {
+              final nextSortOrder = state.extra is int ? state.extra as int : 1;
+              return BlocProvider(
+                create: (ctx) => AdminLoadingQuotesCubit(
+                  ctx.read<AdminLoadingQuotesRepository>(),
+                ),
+                child: AdminLoadingQuoteFormPage(nextSortOrder: nextSortOrder),
+              );
+            },
+          ),
+          GoRoute(
+            path: ':id/edit',
+            builder: (context, state) {
+              final quote = state.extra as LoadingQuoteEntity;
+              return BlocProvider(
+                create: (ctx) => AdminLoadingQuotesCubit(
+                  ctx.read<AdminLoadingQuotesRepository>(),
+                ),
+                child: AdminLoadingQuoteFormPage(
+                  existing: quote,
+                  nextSortOrder: quote.sortOrder,
+                ),
+              );
+            },
+          ),
+        ],
       ),
 
       // --- Admin: Q&A (Task 7.6) ---

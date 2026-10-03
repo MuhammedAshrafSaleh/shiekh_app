@@ -28,6 +28,16 @@ class LoadingQuoteEntity extends Equatable {
     );
   }
 
+  LoadingQuoteEntity copyWith({int? sortOrder, bool? isActive}) {
+    return LoadingQuoteEntity(
+      id: id,
+      text: text,
+      source: source,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   @override
   List<Object?> get props => [id, text, source, sortOrder, isActive];
 }
