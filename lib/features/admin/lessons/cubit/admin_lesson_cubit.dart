@@ -49,6 +49,28 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
 
   AdminLessonFormCubit(this._repo) : super(AdminLessonFormInitial());
 
+  /// Surfaces a MUTATION failure (delete/add/update/approve/import/pdf) without
+  /// blanking the screen: if we hold a loaded snapshot, re-emit it unchanged
+  /// carrying a one-shot [transientError] (the UI shows a SnackBar and keeps the
+  /// lists visible). Only a genuine load failure (no data to show) falls back to
+  /// the full-screen [AdminLessonFormError].
+  void _emitMutationError(AdminLessonFormState current, String message) {
+    if (current is AdminLessonFormLoaded) {
+      emit(
+        AdminLessonFormLoaded(
+          lesson: current.lesson,
+          quizQuestions: current.quizQuestions,
+          pdfs: current.pdfs,
+          bankCount: current.bankCount,
+          transientError: message,
+          errorNonce: current.errorNonce + 1,
+        ),
+      );
+    } else {
+      emit(AdminLessonFormError(message));
+    }
+  }
+
   Future<void> load({String? lessonId}) async {
     emit(AdminLessonFormLoading());
     if (lessonId == null) {
@@ -97,7 +119,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       questions: selected,
     );
     result.fold(
-      (f) => emit(AdminLessonFormError(f.message)),
+      (f) => _emitMutationError(current, f.message),
       (_) => load(lessonId: lessonId),
     );
   }
@@ -116,6 +138,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     int? videoDurationMinutes,
     int? audioDurationMinutes,
   }) async {
+    final current = state;
     emit(AdminLessonFormSaving());
     final result = lessonId == null
         ? await _repo.createLesson(
@@ -141,7 +164,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             audioDurationMinutes: audioDurationMinutes,
           );
     result.fold(
-      (f) => emit(AdminLessonFormError(f.message)),
+      (f) => _emitMutationError(current, f.message),
       (lesson) => emit(AdminLessonFormSaved(lesson)),
     );
   }
@@ -165,7 +188,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       choiceD: choiceD,
       correctChoice: correctChoice,
     );
-    result.fold((f) => emit(AdminLessonFormError(f.message)), (q) {
+    result.fold((f) => _emitMutationError(current, f.message), (q) {
       if (current is AdminLessonFormLoaded) {
         emit(
           AdminLessonFormLoaded(
@@ -200,7 +223,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       correctChoice: correctChoice,
       markReviewed: markReviewed,
     );
-    result.fold((f) => emit(AdminLessonFormError(f.message)), (updated) {
+    result.fold((f) => _emitMutationError(current, f.message), (updated) {
       if (current is AdminLessonFormLoaded) {
         final qs = current.quizQuestions
             .map((q) => q.id == updated.id ? updated : q)
@@ -221,7 +244,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
   Future<void> approveQuizQuestion(String questionId) async {
     final current = state;
     final result = await _repo.approveQuestion(questionId);
-    result.fold((f) => emit(AdminLessonFormError(f.message)), (updated) {
+    result.fold((f) => _emitMutationError(current, f.message), (updated) {
       if (current is AdminLessonFormLoaded) {
         final qs = current.quizQuestions
             .map((q) => q.id == updated.id ? updated : q)
@@ -245,7 +268,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     final lessonId = current.lesson!.id;
     final result = await _repo.approveAllForLesson(lessonId);
     result.fold(
-      (f) => emit(AdminLessonFormError(f.message)),
+      (f) => _emitMutationError(current, f.message),
       (_) => load(lessonId: lessonId),
     );
   }
@@ -253,7 +276,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
   Future<void> deleteQuizQuestion(String questionId) async {
     final current = state;
     final result = await _repo.deleteQuizQuestion(questionId);
-    result.fold((f) => emit(AdminLessonFormError(f.message)), (_) {
+    result.fold((f) => _emitMutationError(current, f.message), (_) {
       if (current is AdminLessonFormLoaded) {
         final qs = current.quizQuestions
             .where((q) => q.id != questionId)
@@ -264,6 +287,8 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             quizQuestions: qs,
             pdfs: current.pdfs,
             bankCount: current.bankCount,
+            transientSuccess: 'تم حذف السؤال',
+            successNonce: current.successNonce + 1,
           ),
         );
       }
@@ -300,7 +325,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
       title: title,
       url: url,
     );
-    result.fold((f) => emit(AdminLessonFormError(f.message)), (pdf) {
+    result.fold((f) => _emitMutationError(current, f.message), (pdf) {
       if (current is AdminLessonFormLoaded) {
         _emitPdfs(current, [...current.pdfs, pdf]);
       }
@@ -314,7 +339,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
   }) async {
     final current = state;
     final result = await _repo.updateLessonPdf(id: id, title: title, url: url);
-    result.fold((f) => emit(AdminLessonFormError(f.message)), (updated) {
+    result.fold((f) => _emitMutationError(current, f.message), (updated) {
       if (current is AdminLessonFormLoaded) {
         final pdfs = current.pdfs
             .map((p) => p.id == updated.id ? updated : p)
@@ -327,7 +352,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
   Future<void> deleteLessonPdf(String id) async {
     final current = state;
     final result = await _repo.deleteLessonPdf(id);
-    result.fold((f) => emit(AdminLessonFormError(f.message)), (_) {
+    result.fold((f) => _emitMutationError(current, f.message), (_) {
       if (current is AdminLessonFormLoaded) {
         _emitPdfs(current, current.pdfs.where((p) => p.id != id).toList());
       }

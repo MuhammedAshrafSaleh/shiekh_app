@@ -55,14 +55,40 @@ class AdminLessonFormLoaded extends AdminLessonFormState {
   /// (source for "استيراد من البنك" on the quiz tab).
   final int bankCount;
 
+  /// One-shot error from a failed MUTATION (delete/add/update/…), surfaced as a
+  /// SnackBar while the loaded lists stay visible. Null in the normal state.
+  final String? transientError;
+
+  /// Bumped on each mutation error so two identical messages still produce
+  /// distinct states (so the SnackBar listener fires every time).
+  final int errorNonce;
+
+  /// One-shot success message (e.g. after a delete), surfaced as a green
+  /// SnackBar. Null in the normal state. [successNonce] keeps repeats distinct.
+  final String? transientSuccess;
+  final int successNonce;
+
   const AdminLessonFormLoaded({
     this.lesson,
     required this.quizQuestions,
     this.pdfs = const [],
     this.bankCount = 0,
+    this.transientError,
+    this.errorNonce = 0,
+    this.transientSuccess,
+    this.successNonce = 0,
   });
   @override
-  List<Object?> get props => [lesson, quizQuestions, pdfs, bankCount];
+  List<Object?> get props => [
+    lesson,
+    quizQuestions,
+    pdfs,
+    bankCount,
+    transientError,
+    errorNonce,
+    transientSuccess,
+    successNonce,
+  ];
 }
 
 class AdminLessonFormSaving extends AdminLessonFormState {}

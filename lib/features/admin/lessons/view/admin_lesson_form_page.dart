@@ -238,6 +238,26 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
             ),
           );
         }
+        // Mutation failure: list stays visible; surface the error as a SnackBar.
+        if (state is AdminLessonFormLoaded && state.transientError != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.transientError!),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        // One-shot success (e.g. after a delete).
+        if (state is AdminLessonFormLoaded && state.transientSuccess != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.transientSuccess!),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       },
       builder: (context, state) {
         final isSaving = state is AdminLessonFormSaving;
