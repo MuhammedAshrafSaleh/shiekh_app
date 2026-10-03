@@ -122,14 +122,19 @@ class _PracticeLoadingPageState extends State<PracticeLoadingPage>
     }
   }
 
-  void _navigate() {
+  Future<void> _navigate() async {
     if (_navigated || !mounted) return;
-    _navigated = true;
+    setState(() => _navigated = true);
     final prebuilt = _prepResult?.fold((_) => null, (qs) => qs);
-    context.pushReplacement(
+    // Push (not replace) so the exam sits above this splash; when the exam
+    // flow pops, pop this splash too so control returns to the setup tab
+    // (which then reloads history). Back from the result therefore lands on
+    // the اختبر نفسك tab, never on this splash or the exam.
+    await context.push(
       '/practice/exam',
       extra: PracticeExamLaunch(widget.config, prebuilt),
     );
+    if (mounted) context.pop();
   }
 
   @override
@@ -140,6 +145,16 @@ class _PracticeLoadingPageState extends State<PracticeLoadingPage>
 
   @override
   Widget build(BuildContext context) {
+    // Once handed off to the exam, this splash is covered; if it's briefly
+    // revealed while popping back to setup, show a plain branded frame rather
+    // than flashing the quotes again.
+    if (_navigated) {
+      return ColoredBox(
+        color: AppColors.primary,
+        child: const SizedBox.expand(),
+      );
+    }
+
     final quote = _quotes[_index];
     return Scaffold(
       backgroundColor: AppColors.primary,

@@ -476,14 +476,18 @@ class _Controls extends StatelessWidget {
     );
   }
 
-  void _onStart(BuildContext context) {
+  Future<void> _onStart(BuildContext context) async {
     final config = PracticeExamConfig(
       lessonIds: state.selectedLessonIds.toList(),
       questionCount: state.questionCount,
       timerEnabled: state.timerEnabled,
       timeLimitMinutes: state.timeLimitMinutes,
     );
-    context.push('/practice/loading', extra: config);
+    // Await the whole practice flow (loading → exam → result). When it pops
+    // back here, reload so a just-submitted attempt appears in history without
+    // a manual pull-to-refresh.
+    await context.push('/practice/loading', extra: config);
+    if (context.mounted) context.read<PracticeSetupCubit>().load();
   }
 }
 
@@ -619,13 +623,7 @@ class _HistoryCard extends StatelessWidget {
   }
 
   void _onTap(BuildContext context) {
-    // TODO(phase-6): open the attempt review via getAttemptReview. Wired in
-    // Phase 6.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('ستتوفر مراجعة الامتحانات السابقة في المرحلة التالية'),
-      ),
-    );
+    context.push('/practice/attempt/${attempt.id}');
   }
 }
 

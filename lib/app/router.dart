@@ -44,6 +44,7 @@ import '../features/practice/bloc/practice_exam_event.dart';
 import '../features/practice/cubit/practice_setup_cubit.dart';
 import '../features/practice/data/practice_repository.dart';
 import '../features/practice/logic/practice_exam_config.dart';
+import '../features/practice/view/practice_attempt_review_page.dart';
 import '../features/practice/view/practice_exam_page.dart';
 import '../features/practice/view/practice_loading_page.dart';
 import '../features/practice/view/practice_setup_page.dart';
@@ -276,6 +277,13 @@ GoRouter buildRouter(AuthCubit authCubit) {
         builder: (context, state) {
           final config = state.extra as PracticeExamConfig;
           return PracticeLoadingPage(config: config);
+        },
+      ),
+      GoRoute(
+        path: '/practice/attempt/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return PracticeAttemptReviewPage(attemptId: id);
         },
       ),
       GoRoute(

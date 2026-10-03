@@ -17,8 +17,8 @@ import '../../exam/widgets/timer_display.dart';
 import '../bloc/practice_exam_bloc.dart';
 import '../bloc/practice_exam_event.dart';
 import '../bloc/practice_exam_state.dart';
-import '../data/practice_repository.dart';
 import '../widgets/practice_navigator_grid.dart';
+import 'practice_result_page.dart';
 
 String _ar(int n) {
   const w = '0123456789';
@@ -59,8 +59,12 @@ class PracticeExamPage extends StatelessWidget {
           PracticeExamLoading() => const _LoadingScaffold(),
           PracticeExamError(:final message) => _ErrorScaffold(message: message),
           PracticeExamInProgress() => _InProgressView(state: state),
-          PracticeExamCompleted(:final result) => _CompletedScaffold(
-            result: result,
+          PracticeExamCompleted(:final result) => PracticeResultPage(
+            score: result.score,
+            correct: result.correct,
+            total: result.total,
+            breakdown: result.breakdown,
+            review: result.review,
           ),
           _ => const SizedBox.shrink(),
         };
@@ -435,80 +439,6 @@ class _QuestionBar extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Completed (Phase 5 minimal result; full result + review is Phase 6) ─────
-
-class _CompletedScaffold extends StatelessWidget {
-  final PracticeSubmitResult result;
-  const _CompletedScaffold({required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    final passed = result.score >= 60;
-    final color = passed ? AppColors.success : AppColors.gold;
-
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) context.pop();
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.paper,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SheikhyPageHeader(title: 'نتيجة الاختبار'),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.pageGutter),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 96,
-                        height: 96,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: color.withValues(alpha: 0.12),
-                          border: Border.all(color: color, width: 3),
-                        ),
-                        child: Text(
-                          '${_ar(result.score)}٪',
-                          style: AppTextStyles.h2.copyWith(color: color),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.s4),
-                      Text('تم تسليم الاختبار', style: AppTextStyles.h3),
-                      const SizedBox(height: AppSpacing.s2),
-                      Text(
-                        'أجبت على ${_ar(result.correct)} من '
-                        '${_ar(result.total)} إجابة صحيحة',
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.inkMuted,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSpacing.s6),
-                      // TODO(phase-6): replace with full result + per-lecture
-                      // breakdown + review screen.
-                      SheikhyButton.primary(
-                        fullWidth: true,
-                        label: 'العودة',
-                        onPressed: () => context.pop(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
