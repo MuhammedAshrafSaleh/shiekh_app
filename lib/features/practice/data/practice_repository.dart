@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/failures.dart';
 import '../../../models/practice_attempt_summary_entity.dart';
+import '../../../models/loading_quote_entity.dart';
 import '../../../models/practice_eligible_lesson_entity.dart';
 import '../../../models/practice_lecture_breakdown.dart';
 import '../../../models/practice_review_question.dart';
@@ -252,6 +253,32 @@ class PracticeRepository {
       );
     } on PostgrestException catch (e) {
       _log.warning('getAttemptReview: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Active motivational quotes for the loading screen, ordered by sort_order.
+  /// The caller falls back to seeded defaults on failure or empty.
+  Future<Either<Failure, List<LoadingQuoteEntity>>> getLoadingQuotes() async {
+    final networkError = _checkNetwork<List<LoadingQuoteEntity>>();
+    if (networkError != null) return networkError;
+
+    try {
+      final response = await _client
+          .from('loading_quotes')
+          .select()
+          .eq('is_active', true)
+          .order('sort_order', ascending: true)
+          .limit(50);
+
+      final quotes = (response as List)
+          .map((e) => LoadingQuoteEntity.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return Right(quotes);
+    } on PostgrestException catch (e) {
+      _log.warning('getLoadingQuotes: ${e.message}');
       return Left(ServerFailure(e.message));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));

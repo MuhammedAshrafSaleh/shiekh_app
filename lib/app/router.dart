@@ -39,8 +39,13 @@ import '../features/notifications/view/notifications_page.dart';
 import '../features/onboarding/cubit/onboarding_cubit.dart';
 import '../features/onboarding/data/onboarding_repository.dart';
 import '../features/onboarding/view/onboarding_page.dart';
+import '../features/practice/bloc/practice_exam_bloc.dart';
+import '../features/practice/bloc/practice_exam_event.dart';
 import '../features/practice/cubit/practice_setup_cubit.dart';
 import '../features/practice/data/practice_repository.dart';
+import '../features/practice/logic/practice_exam_config.dart';
+import '../features/practice/view/practice_exam_page.dart';
+import '../features/practice/view/practice_loading_page.dart';
 import '../features/practice/view/practice_setup_page.dart';
 import '../features/profile/cubit/profile_cubit.dart';
 import '../features/profile/data/profile_repository.dart';
@@ -265,6 +270,28 @@ GoRouter buildRouter(AuthCubit authCubit) {
       ),
 
       // --- Full-page routes (not in shell) ---
+      // Practice exam: loading splash → immersive runner (no bottom nav).
+      GoRoute(
+        path: '/practice/loading',
+        builder: (context, state) {
+          final config = state.extra as PracticeExamConfig;
+          return PracticeLoadingPage(config: config);
+        },
+      ),
+      GoRoute(
+        path: '/practice/exam',
+        builder: (context, state) {
+          final launch = state.extra as PracticeExamLaunch;
+          return BlocProvider(
+            create: (ctx) => PracticeExamBloc(
+              ctx.read<PracticeRepository>(),
+              launch.config,
+              prebuiltQuestions: launch.prebuiltQuestions,
+            )..add(const PracticeExamStarted()),
+            child: const PracticeExamPage(),
+          );
+        },
+      ),
       GoRoute(
         path: '/sections/:id',
         builder: (context, state) {

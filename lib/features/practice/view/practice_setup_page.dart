@@ -1,6 +1,7 @@
 // lib/features/practice/view/practice_setup_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radii.dart';
@@ -18,6 +19,7 @@ import '../cubit/practice_setup_cubit.dart';
 import '../cubit/practice_setup_state.dart';
 import '../logic/practice_book_grouping.dart';
 import '../logic/practice_distribution.dart';
+import '../logic/practice_exam_config.dart';
 
 /// Convert Western digits to Arabic-Indic for display consistency.
 String _ar(Object n) {
@@ -475,11 +477,13 @@ class _Controls extends StatelessWidget {
   }
 
   void _onStart(BuildContext context) {
-    // TODO(phase-5): navigate to the loading screen → exam runner with the
-    // selected lessons / count / timer. Wired in Phase 5.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('ستتوفر بداية الاختبار في المرحلة التالية')),
+    final config = PracticeExamConfig(
+      lessonIds: state.selectedLessonIds.toList(),
+      questionCount: state.questionCount,
+      timerEnabled: state.timerEnabled,
+      timeLimitMinutes: state.timeLimitMinutes,
     );
+    context.push('/practice/loading', extra: config);
   }
 }
 
