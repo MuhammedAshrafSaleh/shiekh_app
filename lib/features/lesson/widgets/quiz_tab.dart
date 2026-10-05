@@ -15,6 +15,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/insets.dart';
 import '../../../core/widgets/mcq_option_card.dart';
+import '../../../core/widgets/quiz_review_list.dart';
 import '../../../core/widgets/sheikhy_button.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/show_exam_start_dialog.dart';
@@ -252,8 +253,8 @@ class _QuizTabState extends State<QuizTab> with AutomaticKeepAliveClientMixin {
     }
 
     if (_phase == _QuizPhase.review) {
-      return _QuizReview(
-        questions: _reviewQuestions,
+      return QuizReviewList(
+        items: [for (final q in _reviewQuestions) _toReviewItem(q)],
         onBack: () => _gotoPhase(
           _reviewOrigin == _ReviewOrigin.result
               ? _QuizPhase.submitted
@@ -961,173 +962,16 @@ class _QuizResult extends StatelessWidget {
 }
 
 // ─── Review phase ─────────────────────────────────────────────────────────────
+// Rendered by the shared [QuizReviewList]; map the repository DTO onto its
+// neutral item model (lectureTitle/isDeleted stay off for the lesson quiz).
 
-class _QuizReview extends StatelessWidget {
-  final List<QuizReviewQuestion> questions;
-  final VoidCallback onBack;
-
-  const _QuizReview({required this.questions, required this.onBack});
-
-  static String _ar(int n) {
-    const w = '0123456789';
-    const a = '٠١٢٣٤٥٦٧٨٩';
-    return n.toString().split('').map((c) {
-      final i = w.indexOf(c);
-      return i >= 0 ? a[i] : c;
-    }).join();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Back header
-        Container(
-          color: AppColors.surface,
-          child: SafeArea(
-            bottom: false,
-            child: SizedBox(
-              height: 56,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.symmetric(
-                  horizontal: AppSpacing.s2,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: onBack,
-                      icon: const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 18,
-                        color: AppColors.ink,
-                      ),
-                      tooltip: 'رجوع',
-                    ),
-                    const SizedBox(width: AppSpacing.s2),
-                    Text(
-                      'مراجعة الإجابات',
-                      style: AppTextStyles.small.copyWith(
-                        color: AppColors.ink,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const Divider(height: 1, color: AppColors.border),
-
-        // Question list
-        Expanded(
-          child: ListView.separated(
-            padding: EdgeInsetsDirectional.fromSTEB(
-              AppSpacing.pageGutter,
-              AppSpacing.s4,
-              AppSpacing.pageGutter,
-              AppSpacing.s6 + context.safeBottom,
-            ),
-            itemCount: questions.length,
-            separatorBuilder: (_, _) => const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.s3),
-              child: Divider(height: 1, color: AppColors.border),
-            ),
-            itemBuilder: (context, index) => _ReviewQuestionCard(
-              index: index,
-              question: questions[index],
-              ar: _ar,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ReviewQuestionCard extends StatelessWidget {
-  final int index;
-  final QuizReviewQuestion question;
-  final String Function(int) ar;
-
-  const _ReviewQuestionCard({
-    required this.index,
-    required this.question,
-    required this.ar,
-  });
-
-  McqOptionState _stateFor(String choice) {
-    final isCorrect = choice == question.correctChoice;
-    final isUserAnswer = choice == question.userAnswer;
-    if (isCorrect) return McqOptionState.correct;
-    if (isUserAnswer && !question.isCorrect) return McqOptionState.incorrect;
-    return McqOptionState.idle;
-  }
-
-  String _choiceLabel(String key) => switch (key) {
-    'a' => 'أ',
-    'b' => 'ب',
-    'c' => 'ج',
-    'd' => 'د',
-    _ => key,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.paperSunk,
-                border: Border.all(
-                  color: AppColors.border,
-                  width: AppBorders.hairline,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                ar(index + 1),
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.inkMuted,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s3),
-            Expanded(
-              child: Text(
-                question.questionText,
-                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        if (question.userAnswer == null) ...[
-          const SizedBox(height: AppSpacing.s2),
-          Text(
-            'لم تتم الإجابة على هذا السؤال',
-            style: AppTextStyles.caption.copyWith(color: AppColors.inkFaint),
-          ),
-        ],
-        const SizedBox(height: AppSpacing.s3),
-        for (final choice in ['a', 'b', 'c', 'd'])
-          McqOptionCard(
-            label: _choiceLabel(choice),
-            text: question.choiceText(choice),
-            optionState: _stateFor(choice),
-            onTap: null,
-          ),
-      ],
-    );
-  }
-}
+QuizReviewItem _toReviewItem(QuizReviewQuestion q) => QuizReviewItem(
+  questionText: q.questionText,
+  choiceA: q.choiceA,
+  choiceB: q.choiceB,
+  choiceC: q.choiceC,
+  choiceD: q.choiceD,
+  correctChoice: q.correctChoice,
+  userAnswer: q.userAnswer,
+  isCorrect: q.isCorrect,
+);

@@ -506,28 +506,44 @@ class _SavedTranscriptNotice extends StatelessWidget {
       color: theme.colorScheme.secondaryContainer,
       child: Padding(
         padding: const EdgeInsetsDirectional.all(AppSpacing.md),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              Icons.description_outlined,
-              color: theme.colorScheme.onSecondaryContainer,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                'يوجد تفريغ محفوظ لهذه المحاضرة',
-                style: theme.textTheme.bodyMedium?.copyWith(
+            Row(
+              children: [
+                Icon(
+                  Icons.description_outlined,
                   color: theme.colorScheme.onSecondaryContainer,
                 ),
-              ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'يوجد تفريغ محفوظ لهذه المحاضرة',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.sm),
-            OutlinedButton(
-              onPressed: () => _viewTranscript(context),
-              child: const Text('رؤية'),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _viewTranscript(context),
+                    child: const Text('رؤية'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: onUse,
+                    child: const Text('استخدامه'),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.sm),
-            FilledButton.tonal(onPressed: onUse, child: const Text('استخدامه')),
           ],
         ),
       ),
