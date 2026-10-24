@@ -42,7 +42,16 @@ class GenerateQuestionsError extends GenerateQuestionsState {
   /// one-tap "generate only" retry without re-transcribing.
   final String? savedTranscript;
 
-  const GenerateQuestionsError(this.message, {this.savedTranscript});
+  /// True when the failure is caused by AI service overload or a deadline
+  /// (AiOverloadFailure) — allows the UI to show a midnight-retry hint without
+  /// string-matching the message.
+  final bool isOverload;
+
+  const GenerateQuestionsError(
+    this.message, {
+    this.savedTranscript,
+    this.isOverload = false,
+  });
   @override
-  List<Object?> get props => [message, savedTranscript];
+  List<Object?> get props => [message, savedTranscript, isOverload];
 }

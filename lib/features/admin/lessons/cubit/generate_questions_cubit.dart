@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/errors/failures.dart';
 import '../data/admin_lesson_repository.dart';
 import 'generate_questions_state.dart';
 
@@ -67,7 +68,11 @@ class GenerateQuestionsCubit extends Cubit<GenerateQuestionsState> {
     _stopProgressTimer();
     result.fold(
       (f) => emit(
-        GenerateQuestionsError(f.message, savedTranscript: savedTranscript),
+        GenerateQuestionsError(
+          f.message,
+          savedTranscript: savedTranscript,
+          isOverload: f is AiOverloadFailure,
+        ),
       ),
       (r) => emit(GenerateQuestionsSuccess(r.insertedCount)),
     );
@@ -93,7 +98,9 @@ class GenerateQuestionsCubit extends Cubit<GenerateQuestionsState> {
     _stopProgressTimer();
     await transcribed.fold(
       // Phase one failed → stop; do NOT attempt generation. Inputs are kept.
-      (f) async => emit(GenerateQuestionsError(f.message)),
+      (f) async => emit(
+        GenerateQuestionsError(f.message, isOverload: f is AiOverloadFailure),
+      ),
       (t) async {
         emit(const GenerateQuestionsGenerating());
         _startProgressTimer(isTranscribing: false);
@@ -111,6 +118,7 @@ class GenerateQuestionsCubit extends Cubit<GenerateQuestionsState> {
             GenerateQuestionsError(
               '${f.message}\nالتفريغ محفوظ — يمكنك إعادة التوليد دون إعادة التفريغ',
               savedTranscript: t.transcriptText,
+              isOverload: f is AiOverloadFailure,
             ),
           ),
           (r) => emit(GenerateQuestionsSuccess(r.insertedCount)),

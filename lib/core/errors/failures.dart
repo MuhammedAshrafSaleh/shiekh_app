@@ -57,3 +57,10 @@ class DeleteRestrictedFailure extends Failure {
     super.message = 'لا يمكن الحذف لوجود بيانات مرتبطة',
   ]);
 }
+
+/// AI service is overloaded or hit a deadline (HTTP 503, client timeout,
+/// RESOURCE_EXHAUSTED). Distinct from [ServerFailure] so callers can show
+/// a retry-later hint without string-matching the message.
+class AiOverloadFailure extends Failure {
+  const AiOverloadFailure(super.message);
+}

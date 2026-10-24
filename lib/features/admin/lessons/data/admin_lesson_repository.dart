@@ -655,13 +655,23 @@ class AdminLessonRepository {
         _log.warning('generateQuestions: AI key missing');
         return Left(ValidationFailure(_kAiKeyMissingMessage));
       }
+      // 503 or RESOURCE_EXHAUSTED/OVERLOADED signal the AI service is saturated.
+      if (e.status == 503 ||
+          code == 'RESOURCE_EXHAUSTED' ||
+          code == 'OVERLOADED') {
+        final msg = code ?? 'تعذّر توليد الأسئلة، الخدمة مشغولة حالياً';
+        _log.warning('generateQuestions overload http ${e.status}: $msg');
+        return Left(AiOverloadFailure(msg));
+      }
       final msg = code ?? 'تعذّر توليد الأسئلة، يرجى المحاولة مرة أخرى';
       _log.warning('generateQuestions http ${e.status}: $msg');
       return Left(ServerFailure(msg));
     } on TimeoutException {
       _log.warning('generateQuestions: client deadline exceeded');
       return Left(
-        ServerFailure('استغرق التوليد وقتًا أطول من المتوقع، حاول مرة أخرى'),
+        AiOverloadFailure(
+          'استغرق التوليد وقتًا أطول من المتوقع، حاول مرة أخرى',
+        ),
       );
     } on ClientException catch (e) {
       _log.warning('generateQuestions transport: $e');
@@ -704,13 +714,22 @@ class AdminLessonRepository {
         _log.warning('transcribeLesson: AI key missing');
         return Left(ValidationFailure(_kAiKeyMissingMessage));
       }
+      if (e.status == 503 ||
+          code == 'RESOURCE_EXHAUSTED' ||
+          code == 'OVERLOADED') {
+        final msg = code ?? 'تعذّر تفريغ المحاضرة، الخدمة مشغولة حالياً';
+        _log.warning('transcribeLesson overload http ${e.status}: $msg');
+        return Left(AiOverloadFailure(msg));
+      }
       final msg = code ?? 'تعذّر تفريغ المحاضرة، يرجى المحاولة مرة أخرى';
       _log.warning('transcribeLesson http ${e.status}: $msg');
       return Left(ServerFailure(msg));
     } on TimeoutException {
       _log.warning('transcribeLesson: client deadline exceeded');
       return Left(
-        ServerFailure('استغرق التفريغ وقتًا أطول من المتوقع، حاول مرة أخرى'),
+        AiOverloadFailure(
+          'استغرق التفريغ وقتًا أطول من المتوقع، حاول مرة أخرى',
+        ),
       );
     } on ClientException catch (e) {
       _log.warning('transcribeLesson transport: $e');
