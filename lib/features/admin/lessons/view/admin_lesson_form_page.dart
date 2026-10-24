@@ -1010,6 +1010,7 @@ class _QuizTab extends StatelessWidget {
     final ok = await showConfirmDialog(
       context,
       title: 'الموافقة على كل الأسئلة المعلّقة؟',
+      confirmLabel: 'نعم',
     );
     if (ok) cubit.approveAllPending();
   }
