@@ -43,6 +43,11 @@ class SoundService with WidgetsBindingObserver {
   bool _muted = false;
   bool _initialized = false;
 
+  /// The in-flight (or completed) preload future. Held so [play] can await it
+  /// when a sound is triggered before preload finishes — see [play]. Set once
+  /// by [init]; `??=` makes repeat [init] calls idempotent.
+  Future<void>? _initFuture;
+
   bool get isMuted => _muted;
 
   /// SFX audio context — see the class doc for why these values are used.
@@ -69,11 +74,14 @@ class SoundService with WidgetsBindingObserver {
   );
 
   /// Preloads every sound and registers the lifecycle observer.
-  /// Safe to call once, before `runApp`.
-  Future<void> init() async {
-    if (_initialized) return;
-    _initialized = true;
+  ///
+  /// Kicked off (not necessarily awaited) once at startup. [play] awaits the
+  /// returned future when a sound is triggered before preload finishes, so an
+  /// early SFX — e.g. the splash chime fired on the first frame — still plays
+  /// rather than being silently dropped. Repeat calls return the same future.
+  Future<void> init() => _initFuture ??= _init();
 
+  Future<void> _init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _muted = prefs.getBool(_mutedPrefKey) ?? false;
@@ -96,11 +104,21 @@ class SoundService with WidgetsBindingObserver {
     }
 
     WidgetsBinding.instance.addObserver(this);
+    _initialized = true;
   }
 
   /// Plays [sound] once. No-op when muted or when the sound failed to preload.
+  ///
+  /// If preload is still in flight (a sound fired before [init] completed),
+  /// this awaits it first so the sound is played once ready instead of dropped.
   Future<void> play(AppSound sound) async {
     if (_muted) return;
+    // Wait out an in-flight preload so early plays (e.g. the splash chime on
+    // the first frame) aren't lost to a not-yet-populated player map.
+    if (!_initialized && _initFuture != null) {
+      await _initFuture;
+    }
+    if (_muted) return; // mute may have been set while awaiting preload
     final player = _players[sound];
     if (player == null) return;
     try {
@@ -155,6 +173,7 @@ class SoundService with WidgetsBindingObserver {
     }
     _players.clear();
     _initialized = false;
+    _initFuture = null;
   }
 
   void _logDebug(String message) {

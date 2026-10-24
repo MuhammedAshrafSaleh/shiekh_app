@@ -16,6 +16,11 @@ dependencies:
   # Backend
   supabase_flutter: ^2.8.4
 
+  # HTTP client — used to wrap Supabase's REST/auth/storage calls with a
+  # per-request timeout (see core/supabase/timeout_http_client.dart). Already
+  # present transitively via supabase; pinned here as a direct dependency.
+  http: ^1.6.0
+
   # State management
   flutter_bloc: ^9.1.1
   bloc: ^9.0.0

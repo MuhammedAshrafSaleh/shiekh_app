@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:printing/printing.dart';
 
@@ -19,11 +20,16 @@ class PdfTab extends StatefulWidget {
 }
 
 class _PdfTabState extends State<PdfTab> {
+  static final _log = Logger('PdfTab');
+
   PdfControllerPinch? _controller;
   Uint8List? _pdfBytes;
   bool _hasError = false;
   bool _isLoading = true;
   bool _isSharing = false;
+  // Null → show the default "check the link" hint; set for a network/timeout
+  // failure so we don't wrongly blame the link.
+  String? _errorHint;
 
   @override
   void initState() {
@@ -32,17 +38,30 @@ class _PdfTabState extends State<PdfTab> {
   }
 
   Future<void> _loadPdf() async {
-    if (mounted) setState(() { _hasError = false; _isLoading = true; });
+    if (mounted) {
+      setState(() {
+        _hasError = false;
+        _isLoading = true;
+        _errorHint = null;
+      });
+    }
     try {
       final downloadUrl = toDirectDownloadUrl(widget.pdfUrl);
-      final response = await Dio().get<List<int>>(
+      final response = await Dio(
+        BaseOptions(
+          // Guard against a stalled connection hanging the load forever.
+          connectTimeout: const Duration(seconds: 20),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      ).get<List<int>>(
         downloadUrl,
         options: Options(responseType: ResponseType.bytes),
       );
 
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
-        if (mounted) setState(() { _hasError = true; _isLoading = false; });
+        _log.warning('PDF download returned no bytes: ${widget.pdfUrl}');
+        _fail();
         return;
       }
 
@@ -61,8 +80,27 @@ class _PdfTabState extends State<PdfTab> {
       } else {
         controller.dispose();
       }
-    } catch (_) {
-      if (mounted) setState(() { _hasError = true; _isLoading = false; });
+    } on DioException catch (e) {
+      // Network/timeout failure — log specifics and show a connectivity hint
+      // rather than wrongly blaming the link.
+      _log.warning('PDF download failed (${e.type}) for ${widget.pdfUrl}: ${e.message}');
+      final isNetwork = e.type != DioExceptionType.badResponse;
+      _fail(hint: isNetwork ? 'تعذّر الاتصال، تحقّق من الإنترنت وأعد المحاولة' : null);
+    } catch (e, st) {
+      // Broad by design: PdfDocument.openData throws assorted non-Dio errors on
+      // a corrupt/non-PDF payload; a bad file must never crash the lesson screen.
+      _log.warning('PDF load failed for ${widget.pdfUrl}: $e', e, st);
+      _fail();
+    }
+  }
+
+  void _fail({String? hint}) {
+    if (mounted) {
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+        _errorHint = hint;
+      });
     }
   }
 
@@ -96,7 +134,7 @@ class _PdfTabState extends State<PdfTab> {
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_hasError || _controller == null) {
-      return _PdfError(onRetry: _loadPdf);
+      return _PdfError(onRetry: _loadPdf, hint: _errorHint);
     }
 
     return Stack(
@@ -133,7 +171,8 @@ class _PdfTabState extends State<PdfTab> {
 
 class _PdfError extends StatelessWidget {
   final VoidCallback onRetry;
-  const _PdfError({required this.onRetry});
+  final String? hint;
+  const _PdfError({required this.onRetry, this.hint});
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +193,7 @@ class _PdfError extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'يرجى التواصل مع الإدارة لمراجعة الرابط',
+            hint ?? 'يرجى التواصل مع الإدارة لمراجعة الرابط',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context)

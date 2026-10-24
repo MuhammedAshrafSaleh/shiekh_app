@@ -1,0 +1,11 @@
+# Template for android/key.properties — COPY this to `key.properties` and fill in
+# your real values. The real key.properties and the .jks keystore are git-ignored
+# and MUST NEVER be committed.
+#
+# storeFile: ABSOLUTE path to your upload keystore, stored OUTSIDE this repo
+#   (e.g. ~/keys/sheikhy-upload.jks). Keep it in a password manager / secure backup —
+#   if you lose this keystore you can never ship an update to the published app again.
+storePassword=your-store-password
+keyPassword=your-key-password
+keyAlias=upload
+storeFile=/absolute/path/outside/repo/sheikhy-upload.jks

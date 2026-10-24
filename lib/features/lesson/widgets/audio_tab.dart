@@ -81,7 +81,16 @@ class _AudioTabState extends State<AudioTab>
           widget.bookId != null);
 
   final _player = AudioPlayer();
-  final _dio = Dio();
+  // Timeouts guard against a stalled connection hanging the download forever.
+  // receiveTimeout is an inactivity gap (time between data chunks), not a total
+  // cap, so a slow-but-progressing large file is not cut off.
+  final _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 20),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 20),
+    ),
+  );
   CancelToken? _cancelToken;
   String? _localPath;
   _AudioStatus _status = _AudioStatus.checking;

@@ -1,13 +1,18 @@
 // lib/main.dart
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/bloc_providers.dart';
 import 'core/audio/sound_service.dart';
 import 'core/config/app_config.dart';
+import 'core/supabase/timeout_http_client.dart';
 
 final _log = Logger('main');
 
@@ -21,7 +26,10 @@ Future<void> main() async {
   // reachable. (Fullscreen video sets its own immersive mode.)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  Logger.root.level = Level.INFO;
+  // Keep INFO (and above) in debug for diagnostics; in release, only WARNING+
+  // so routine logs aren't piped to logcat via debugPrint (which is not
+  // stripped in release builds).
+  Logger.root.level = kReleaseMode ? Level.WARNING : Level.INFO;
   Logger.root.onRecord.listen((r) {
     // ignore: avoid_print
     debugPrint('[${r.level.name}] ${r.loggerName}: ${r.message}');
@@ -36,14 +44,21 @@ Future<void> main() async {
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
     debug: false,
+    // Wrap all REST/Auth/Storage calls with a per-request timeout so a stalled
+    // server can't hang a repository forever. Edge Functions are exempted
+    // internally (they run long). See TimeoutHttpClient.
+    httpClient: TimeoutHttpClient(http.Client()),
   );
 
-  await _smokeTestConnection();
+  // Diagnostic only — its result is logged, never consumed. Kept off the
+  // startup critical path so a slow network can't delay first paint.
+  unawaited(_smokeTestConnection());
 
-  // Preload UI sound effects before the first frame. Failures here are
-  // swallowed inside the service and must never block startup.
+  // Kick off SFX preload without blocking first paint. SoundService.play()
+  // awaits this in-flight preload, so an early sound (e.g. the splash chime on
+  // the first frame) still plays once ready instead of being dropped.
   final soundService = SoundService();
-  await soundService.init();
+  unawaited(soundService.init());
 
   FlutterNativeSplash.remove();
 

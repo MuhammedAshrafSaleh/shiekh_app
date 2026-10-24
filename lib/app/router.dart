@@ -1120,7 +1120,7 @@ class _AuthNotifier extends ChangeNotifier {
   // Recorded at router-build time (≈ app startup). Used to enforce a minimum
   // Flutter-splash display duration regardless of how fast auth resolves.
   final DateTime _createdAt = DateTime.now();
-  static const int _minSplashMs = 2500;
+  static const int _minSplashMs = 1500;
 
   _AuthNotifier(this._cubit) {
     _cubit.stream.listen(_onState);
