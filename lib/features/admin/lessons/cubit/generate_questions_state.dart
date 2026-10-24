@@ -11,11 +11,21 @@ class GenerateQuestionsInitial extends GenerateQuestionsState {}
 
 /// Phase one of the link-based flow: transcribing the lesson's video/audio
 /// (~65–100 s). Drives the "جاري تفريغ المحاضرة..." loading UI.
-class GenerateQuestionsTranscribing extends GenerateQuestionsState {}
+class GenerateQuestionsTranscribing extends GenerateQuestionsState {
+  final double progress;
+  const GenerateQuestionsTranscribing({this.progress = 0.0});
+  @override
+  List<Object?> get props => [progress];
+}
 
 /// Long-running generation in progress (30–130+ s). Drives the "جاري توليد
 /// الأسئلة..." loading UI. Also phase two of the link-based flow.
-class GenerateQuestionsGenerating extends GenerateQuestionsState {}
+class GenerateQuestionsGenerating extends GenerateQuestionsState {
+  final double progress;
+  const GenerateQuestionsGenerating({this.progress = 0.0});
+  @override
+  List<Object?> get props => [progress];
+}
 
 class GenerateQuestionsSuccess extends GenerateQuestionsState {
   final int insertedCount;

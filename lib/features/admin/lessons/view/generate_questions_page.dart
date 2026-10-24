@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/widgets/sheikhy_progress_bar.dart';
 import '../../../../models/lesson_entity.dart';
 import '../cubit/generate_questions_cubit.dart';
 import '../cubit/generate_questions_state.dart';
@@ -35,11 +36,9 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
 
   _SourceMode _mode = _SourceMode.pasteText;
 
-  // Captured so we can show/clear SnackBars safely (they outlive this page).
+  // Captured so we can show SnackBars safely after navigation (they outlive
+  // this page). Only ever read while the page is live — never in dispose().
   late ScaffoldMessengerState _messenger;
-  // True once we've queued the success SnackBar + popped — so dispose doesn't
-  // clear that message on the way out.
-  bool _showedSuccess = false;
   // Tracks the transcribe→generate transition to fire the "phase 1 done" toast.
   bool _wasTranscribing = false;
 
@@ -76,9 +75,10 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
 
   @override
   void dispose() {
-    // Dismiss any pending (e.g. error) SnackBars whose actions would target this
-    // now-unmounted page; keep the success message so the admin still sees it.
-    if (!_showedSuccess) _messenger.clearSnackBars();
+    // NOTE: never touch ScaffoldMessenger here — clearing/hiding a SnackBar in
+    // dispose() calls markNeedsBuild() while the tree is locked and throws.
+    // Lingering error SnackBars are dismissed in the listener before we pop, and
+    // the retry action self-guards with `mounted`.
     _transcriptCtrl.dispose();
     _youtubeCtrl.dispose();
     _driveCtrl.dispose();
@@ -181,8 +181,16 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     );
   }
 
+  /// Show a SnackBar, replacing whatever is currently visible so an older error
+  /// banner never lingers behind a new message (e.g. fix input → retry).
+  void _showSnack(SnackBar bar) {
+    _messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(bar);
+  }
+
   void _showWarning(String message) {
-    _messenger.showSnackBar(
+    _showSnack(
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.orange,
@@ -202,7 +210,7 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
           // generation spinner.
           if (_wasTranscribing) {
             _wasTranscribing = false;
-            _messenger.showSnackBar(
+            _showSnack(
               const SnackBar(
                 content: Text(
                   'تم تفريغ المحاضرة بنجاح، جاري الآن توليد الأسئلة...',
@@ -214,8 +222,9 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
           }
         } else if (state is GenerateQuestionsSuccess) {
           _wasTranscribing = false;
-          _showedSuccess = true;
-          _messenger.showSnackBar(
+          // Replaces any lingering error banner, then the success toast rides the
+          // root messenger so it stays visible after we pop.
+          _showSnack(
             SnackBar(
               content: Text(
                 'تم توليد ${state.insertedCount} سؤال، بانتظار المراجعة',
@@ -231,7 +240,7 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
           // transcript is already saved, the retry action reuses it (no
           // re-transcribe); otherwise it re-runs the current source.
           final saved = state.savedTranscript;
-          _messenger.showSnackBar(
+          _showSnack(
             SnackBar(
               content: Text(state.message),
               backgroundColor: Colors.red,
@@ -253,11 +262,16 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
         final isTranscribing = state is GenerateQuestionsTranscribing;
         final isGenerating = state is GenerateQuestionsGenerating;
         final isBusy = isTranscribing || isGenerating;
+        final busyProgress = state is GenerateQuestionsTranscribing
+            ? state.progress
+            : state is GenerateQuestionsGenerating
+                ? state.progress
+                : 0.0;
         return Scaffold(
           resizeToAvoidBottomInset: true,
           appBar: AppBar(title: const Text('توليد أسئلة بالذكاء الاصطناعي')),
           body: isBusy
-              ? _BusyView(isTranscribing: isTranscribing)
+              ? _BusyView(isTranscribing: isTranscribing, progress: busyProgress)
               : _buildForm(context, state),
           bottomNavigationBar: SafeArea(
             child: Padding(
@@ -573,19 +587,21 @@ class _BusyView extends StatelessWidget {
   /// True during phase one (transcription); false during question generation.
   final bool isTranscribing;
 
-  const _BusyView({required this.isTranscribing});
+  /// Estimated progress 0.0–1.0, animated by the cubit timer.
+  final double progress;
+
+  const _BusyView({required this.isTranscribing, required this.progress});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final pct = (progress * 100).round();
     return Center(
       child: Padding(
         padding: const EdgeInsetsDirectional.all(AppSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: AppSpacing.lg),
             Text(
               isTranscribing
                   ? 'جاري تفريغ المحاضرة...'
@@ -593,10 +609,18 @@ class _BusyView extends StatelessWidget {
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            SheikhyProgressBar(value: progress),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'قد تستغرق هذه العملية دقيقة أو أكثر، يرجى الانتظار وعدم إغلاق الصفحة',
+              '$pct٪',
               style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'قد تستغرق هذه العملية دقيقة أو أكثر، يرجى الانتظار وعدم إغلاق الصفحة',
+              style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
           ],

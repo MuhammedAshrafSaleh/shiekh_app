@@ -52,7 +52,11 @@ Future<void> main() async {
 
 Future<void> _smokeTestConnection() async {
   try {
-    await Supabase.instance.client.from('books').select('id').limit(1);
+    await Supabase.instance.client
+        .from('books')
+        .select('id')
+        .limit(1)
+        .timeout(const Duration(seconds: 5));
     _log.info('Supabase connection OK');
   } catch (e) {
     _log.warning('Supabase smoke test failed: $e');

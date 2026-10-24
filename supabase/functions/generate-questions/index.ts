@@ -2,7 +2,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ── Static config (NOT the caller-controlled generation params) ──────────────
-const MODEL_FALLBACK = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.8-flash"];
+// Fallback order per validated testing: gemini-flash-latest is LEAST reliable
+// (most 503s) despite the name, so it is tried last. Must match transcribe-lesson —
+// front-loading gemini-flash-latest burns the wall-clock budget on retries and
+// trips the overall deadline. Do NOT "correct" this back to name order.
+const MODEL_FALLBACK = ["gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest"];
 const RETRY_BACKOFF_MS = [10_000, 20_000, 30_000]; // per-model, on HTTP 503 only
 const NUM_CHUNKS = 1; // single full-transcript call — coverage is handled by the prompt, not chunking
 const OVERALL_DEADLINE_MS = 100_000; // wall-clock cap for Gemini phase (~50s margin under the 150s platform limit)
@@ -129,6 +133,9 @@ async function generateForChunk(
     },
   };
 
+  // Track the most recent failure reason so a total model failure surfaces a real
+  // error (mirrors transcribe-lesson) instead of a silent empty result.
+  let lastError = "لم ينتج النموذج أي أسئلة";
   for (const model of MODEL_FALLBACK) {
     for (let attempt = 0; attempt < RETRY_BACKOFF_MS.length; attempt++) {
       if (Date.now() > deadlineAt) throw new Error("deadline_exceeded");
@@ -140,31 +147,45 @@ async function generateForChunk(
           body: JSON.stringify(body),
         });
       } catch (_e) {
+        lastError = "انقطع الاتصال بخدمة توليد الأسئلة";
         break; // network error → next model immediately
       }
 
       if (res.status === 503) {
         const wait = RETRY_BACKOFF_MS[attempt];
+        lastError = "خدمة التوليد مشغولة مؤقتًا (503)";
         if (attempt === RETRY_BACKOFF_MS.length - 1) break; // retries exhausted → next model
         if (Date.now() + wait > deadlineAt) throw new Error("deadline_exceeded");
         await sleep(wait);
         continue;
       }
 
-      if (!res.ok) break; // non-503 error → next model immediately
+      if (!res.ok) {
+        lastError = `خطأ من خدمة التوليد (${res.status})`;
+        break; // non-503 error → next model immediately
+      }
 
       const data = await res.json();
       const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!raw) return [];
+      if (!raw) {
+        lastError = "أعاد النموذج استجابة فارغة";
+        break; // empty response → next model
+      }
       try {
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed?.questions) ? parsed.questions : [];
+        const questions = Array.isArray(parsed?.questions) ? parsed.questions : [];
+        if (questions.length > 0) return questions;
+        lastError = "أعاد النموذج استجابة بلا أسئلة";
+        break; // valid JSON but no questions → next model
       } catch (_e) {
-        return [];
+        lastError = "تعذّر تحليل استجابة النموذج";
+        break; // unparseable JSON → next model
       }
     }
   }
-  return []; // all models/retries failed for this chunk — skip it, keep the rest
+  // All models/retries exhausted — surface the real reason (NUM_CHUNKS=1, so this
+  // is a hard failure for the whole request, not a skippable chunk).
+  throw new Error(lastError);
 }
 
 Deno.serve(async (req) => {
@@ -294,15 +315,16 @@ Deno.serve(async (req) => {
         };
       });
 
-    let inserted: any[] = [];
-    if (rows.length > 0) {
-      const { data: ins, error: insErr } = await admin
-        .from("lesson_quiz_questions")
-        .insert(rows)
-        .select();
-      if (insErr) throw new Error(`insert failed: ${insErr.message}`);
-      inserted = ins ?? [];
-    }
+    // The model produced output but every item failed validation (wrong choice
+    // count / out-of-range answer). Surface it rather than reporting a silent 0.
+    if (rows.length === 0) throw new Error("أعاد النموذج أسئلة غير صالحة الصياغة");
+
+    const { data: ins, error: insErr } = await admin
+      .from("lesson_quiz_questions")
+      .insert(rows)
+      .select();
+    if (insErr) throw new Error(`insert failed: ${insErr.message}`);
+    const inserted = ins ?? [];
 
     await admin
       .from("generation_jobs")
