@@ -195,8 +195,6 @@ Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY not configured" }, 500);
 
   // ── Auth: verify the caller is an admin via their JWT ──────────────────────
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -234,6 +232,15 @@ Deno.serve(async (req) => {
 
   // ── Service-role client for all writes ─────────────────────────────────────
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+  // ── Gemini key: read from app_secrets (admin-managed). No env fallback. ─────
+  const { data: secret } = await admin
+    .from("app_secrets")
+    .select("value")
+    .eq("key", "gemini_api_key")
+    .maybeSingle();
+  const GEMINI_API_KEY = secret?.value as string | undefined;
+  if (!GEMINI_API_KEY) return json({ error: "AI_KEY_MISSING" }, 400);
 
   // ── Create the job row (running) ───────────────────────────────────────────
   const { data: job, error: jobErr } = await admin

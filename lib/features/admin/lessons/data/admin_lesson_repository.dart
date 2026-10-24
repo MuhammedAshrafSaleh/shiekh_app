@@ -19,6 +19,11 @@ import '../../../../models/lesson_entity.dart';
 import '../../../../models/lesson_pdf_entity.dart';
 import '../../../../models/transcription_result_entity.dart';
 
+/// Shown when the Edge Functions report no AI key is configured
+/// (`AI_KEY_MISSING`). The admin sets it in الإعدادات ← مفتاح الذكاء الاصطناعي.
+const String _kAiKeyMissingMessage =
+    'لم يتم ضبط مفتاح الذكاء الاصطناعي. أضِفه من الإعدادات أولاً.';
+
 class AdminLessonRepository {
   final SupabaseClient _client;
   final ConnectivityCubit _connectivity;
@@ -645,9 +650,12 @@ class AdminLessonRepository {
       // Non-2xx from the function (400/401/403/500). `details` is the decoded
       // response body, typically { error: '...' }.
       final details = e.details;
-      final msg = (details is Map && details['error'] != null)
-          ? details['error'].toString()
-          : 'تعذّر توليد الأسئلة، يرجى المحاولة مرة أخرى';
+      final code = (details is Map) ? details['error']?.toString() : null;
+      if (code == 'AI_KEY_MISSING') {
+        _log.warning('generateQuestions: AI key missing');
+        return Left(ValidationFailure(_kAiKeyMissingMessage));
+      }
+      final msg = code ?? 'تعذّر توليد الأسئلة، يرجى المحاولة مرة أخرى';
       _log.warning('generateQuestions http ${e.status}: $msg');
       return Left(ServerFailure(msg));
     } on TimeoutException {
@@ -691,9 +699,12 @@ class AdminLessonRepository {
       return Right(TranscriptionResultEntity.fromJson(data));
     } on FunctionException catch (e) {
       final details = e.details;
-      final msg = (details is Map && details['error'] != null)
-          ? details['error'].toString()
-          : 'تعذّر تفريغ المحاضرة، يرجى المحاولة مرة أخرى';
+      final code = (details is Map) ? details['error']?.toString() : null;
+      if (code == 'AI_KEY_MISSING') {
+        _log.warning('transcribeLesson: AI key missing');
+        return Left(ValidationFailure(_kAiKeyMissingMessage));
+      }
+      final msg = code ?? 'تعذّر تفريغ المحاضرة، يرجى المحاولة مرة أخرى';
       _log.warning('transcribeLesson http ${e.status}: $msg');
       return Left(ServerFailure(msg));
     } on TimeoutException {

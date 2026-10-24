@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/widgets/sheikhy_progress_bar.dart';
 import '../../../../models/lesson_entity.dart';
+import '../../ai_settings/data/admin_ai_settings_repository.dart';
 import '../cubit/generate_questions_cubit.dart';
 import '../cubit/generate_questions_state.dart';
 
@@ -36,6 +37,12 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
 
   _SourceMode _mode = _SourceMode.pasteText;
 
+  // AI key pre-check: generation needs a key configured (no env fallback). Until
+  // checked, we keep the button enabled based on inputs; once checked and found
+  // missing, we disable it and show a banner pointing to الإعدادات.
+  bool _keyChecked = false;
+  bool _keyIsSet = false;
+
   // Captured so we can show SnackBars safely after navigation (they outlive
   // this page). Only ever read while the page is live — never in dispose().
   late ScaffoldMessengerState _messenger;
@@ -65,6 +72,17 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     _easyCtrl.addListener(_onInputChanged);
     _mediumCtrl.addListener(_onInputChanged);
     _hardCtrl.addListener(_onInputChanged);
+    _checkAiKey();
+  }
+
+  Future<void> _checkAiKey() async {
+    final result =
+        await context.read<AdminAiSettingsRepository>().getGeminiKeyStatus();
+    if (!mounted) return;
+    setState(() {
+      _keyChecked = true;
+      _keyIsSet = result.fold((_) => false, (status) => status.isSet);
+    });
   }
 
   @override
@@ -100,6 +118,8 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
       (int.tryParse(_hardCtrl.text.trim()) ?? 0);
 
   bool get _canSubmit {
+    // No AI key configured → generation would fail server-side (AI_KEY_MISSING).
+    if (_keyChecked && !_keyIsSet) return false;
     final count = _requestedCount;
     if (count == null || count <= 0) return false;
     switch (_mode) {
@@ -285,6 +305,30 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // AI key not configured → point the admin to الإعدادات.
+                  if (!isBusy && _keyChecked && !_keyIsSet) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.vpn_key_off_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            'لم يتم ضبط مفتاح الذكاء الاصطناعي. أضِفه من '
+                            'الإعدادات ← مفتاح الذكاء الاصطناعي أولاً.',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
                   // Persistent inline error so it stays readable after the
                   // SnackBar auto-dismisses.
                   if (!isBusy && state is GenerateQuestionsError) ...[

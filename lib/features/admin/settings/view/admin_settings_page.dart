@@ -50,6 +50,14 @@ class AdminSettingsPage extends StatelessWidget {
             onTap: () => context.push('/admin/qa'),
           ),
           const SizedBox(height: AppSpacing.md),
+          _SectionHeader('الذكاء الاصطناعي'),
+          _SettingsTile(
+            icon: Icons.vpn_key_outlined,
+            title: 'مفتاح الذكاء الاصطناعي',
+            subtitle: 'تحديث مفتاح توليد الأسئلة',
+            onTap: () => context.push('/admin/ai-key'),
+          ),
+          const SizedBox(height: AppSpacing.md),
           _SectionHeader('تفضيلات التطبيق'),
           BlocBuilder<ThemeCubit, ThemeMode>(
             builder: (context, themeState) {
