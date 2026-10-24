@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -25,7 +26,10 @@ Future<void> main() async {
   // reachable. (Fullscreen video sets its own immersive mode.)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  Logger.root.level = Level.INFO;
+  // Keep INFO (and above) in debug for diagnostics; in release, only WARNING+
+  // so routine logs aren't piped to logcat via debugPrint (which is not
+  // stripped in release builds).
+  Logger.root.level = kReleaseMode ? Level.WARNING : Level.INFO;
   Logger.root.onRecord.listen((r) {
     // ignore: avoid_print
     debugPrint('[${r.level.name}] ${r.loggerName}: ${r.message}');

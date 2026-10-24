@@ -338,6 +338,10 @@ class _EnrollmentChart extends StatelessWidget {
   final List<EnrollmentPoint> trend;
   const _EnrollmentChart({required this.trend});
 
+  // Hoisted out of the axis-label callback: DateFormat construction is costly
+  // and getTitlesWidget is invoked repeatedly during chart layout.
+  static final DateFormat _dayMonth = DateFormat('d/M');
+
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
@@ -369,7 +373,7 @@ class _EnrollmentChart extends StatelessWidget {
                   return const SizedBox.shrink();
                 }
                 return Text(
-                  DateFormat('d/M').format(trend[idx].date),
+                  _dayMonth.format(trend[idx].date),
                   style: Theme.of(context).textTheme.labelSmall,
                 );
               },
