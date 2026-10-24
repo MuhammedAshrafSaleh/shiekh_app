@@ -1160,7 +1160,33 @@ class _QuestionTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (isPending) ...[
+                if (!isPending) ...[
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    onPressed: () => _QuizTab._showQuestionDialog(
+                      context,
+                      lessonId: lessonId,
+                      existing: question,
+                    ),
+                    tooltip: 'تعديل',
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                    onPressed: () => _confirmDelete(context),
+                    tooltip: 'حذف',
+                  ),
+                ],
+              ],
+            ),
+            if (isPending) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
                   // Primary, affirmative action — the normal path for a good
                   // question. Kept visually dominant so it doesn't read as one
                   // half of an approve/reject binary.
@@ -1206,28 +1232,9 @@ class _QuestionTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                ] else ...[
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    onPressed: () => _QuizTab._showQuestionDialog(
-                      context,
-                      lessonId: lessonId,
-                      existing: question,
-                    ),
-                    tooltip: 'تعديل',
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.red,
-                      size: 18,
-                    ),
-                    onPressed: () => _confirmDelete(context),
-                    tooltip: 'حذف',
-                  ),
                 ],
-              ],
-            ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             ...choices.map((key) {
               final label = question.choiceLabel(key);
