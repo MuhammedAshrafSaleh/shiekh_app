@@ -9,7 +9,6 @@ import '../../../core/theme/app_decorations.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/insets.dart';
 import '../../../core/widgets/girih_background.dart';
 import '../../../core/widgets/mihrab_arch.dart';
 import '../../../core/widgets/ornament_divider.dart';
@@ -192,6 +191,17 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
               ),
               _ => const SizedBox.shrink(),
             };
+          },
+        ),
+        // Sticky enrollment CTA — only shown when not yet enrolled. Rendered
+        // outside the scroll area so it is always visible without scrolling.
+        bottomNavigationBar: BlocBuilder<BookDetailsCubit, BookDetailsState>(
+          buildWhen: (p, c) => c is BookDetailsLoaded,
+          builder: (context, state) {
+            if (state is! BookDetailsLoaded || state.isEnrolled) {
+              return const SizedBox.shrink();
+            }
+            return _EnrollCtaBar(state: state, bookId: widget.bookId);
           },
         ),
       ),
@@ -484,7 +494,7 @@ class _BookDetailsViewState extends State<_BookDetailsView>
               AppSpacing.pageGutter,
               AppSpacing.s4,
               AppSpacing.pageGutter,
-              AppSpacing.s7 + context.safeBottom,
+              AppSpacing.s7,
             ),
             child: _ActionButton(state: state, bookId: bookId),
           ),
@@ -869,7 +879,7 @@ class _BookMeta extends StatelessWidget {
   }
 }
 
-// ── Bottom action button ──────────────────────────────────────────────────────
+// ── Bottom action button (enrolled users only) ────────────────────────────────
 
 class _ActionButton extends StatelessWidget {
   final BookDetailsLoaded state;
@@ -879,50 +889,68 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state.isEnrolled) {
-      final nextLesson = state.lessons.where((l) => !l.isCompleted).firstOrNull;
-      if (nextLesson == null) return const SizedBox.shrink();
-      return SheikhyButton.primary(
-        label: 'استمرار المذاكرة',
-        icon: const Icon(Icons.play_arrow),
-        fullWidth: true,
-        onPressed: () =>
-            context.push('/lessons/${nextLesson.lesson.id}?bookId=$bookId'),
-      );
-    }
+    if (!state.isEnrolled) return const SizedBox.shrink();
+    final nextLesson = state.lessons.where((l) => !l.isCompleted).firstOrNull;
+    if (nextLesson == null) return const SizedBox.shrink();
+    return SheikhyButton.primary(
+      label: 'استمرار المذاكرة',
+      icon: const Icon(Icons.play_arrow),
+      fullWidth: true,
+      onPressed: () =>
+          context.push('/lessons/${nextLesson.lesson.id}?bookId=$bookId'),
+    );
+  }
+}
 
-    return BlocBuilder<BookDetailsCubit, BookDetailsState>(
-      buildWhen: (p, c) => c is BookDetailsLoaded,
-      builder: (context, s) {
-        final loaded = s is BookDetailsLoaded ? s : state;
-        final guest = _isGuest(context);
-        return SheikhyButton.primary(
-          label: guest ? 'أنشئ حساباً للتسجيل' : 'التسجيل في الكتاب',
-          icon: Icon(
-            guest ? Icons.person_add_alt_1_outlined : Icons.how_to_reg_outlined,
-          ),
-          fullWidth: true,
-          isLoading: loaded.isEnrolling,
-          onPressed: loaded.isEnrolling ? null : () => _onPressed(context),
-        );
-      },
+// ── Sticky enrollment CTA bar (unenrolled users + guests) ─────────────────────
+
+class _EnrollCtaBar extends StatelessWidget {
+  final BookDetailsLoaded state;
+  final String bookId;
+
+  const _EnrollCtaBar({required this.state, required this.bookId});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.pageGutter,
+          AppSpacing.s3,
+          AppSpacing.pageGutter,
+          AppSpacing.s3,
+        ),
+        child: BlocBuilder<BookDetailsCubit, BookDetailsState>(
+          buildWhen: (p, c) => c is BookDetailsLoaded,
+          builder: (context, s) {
+            final loaded = s is BookDetailsLoaded ? s : state;
+            final guest = _isGuest(context);
+            return SheikhyButton.primary(
+              label: guest ? 'أنشئ حساباً للتسجيل' : 'التسجيل في الكتاب',
+              icon: Icon(
+                guest
+                    ? Icons.person_add_alt_1_outlined
+                    : Icons.how_to_reg_outlined,
+              ),
+              fullWidth: true,
+              isLoading: loaded.isEnrolling,
+              onPressed: loaded.isEnrolling ? null : () => _onEnrollPressed(context),
+            );
+          },
+        ),
+      ),
     );
   }
 
-  void _onPressed(BuildContext context) {
+  void _onEnrollPressed(BuildContext context) {
     if (_isGuest(context)) {
-      // Guest can't enroll; convert first, then return here auto-enrolled.
       _showGuestSignupGate(context, returnTo: '/books/$bookId', bookId: bookId);
     } else {
-      _showEnrollDialog(context);
+      _showEnrollConfirmDialog(
+        context: context,
+        bookTitle: state.book.title,
+        onConfirm: () => context.read<BookDetailsCubit>().enroll(bookId),
+      );
     }
-  }
-
-  void _showEnrollDialog(BuildContext context) {
-    _showEnrollConfirmDialog(
-      context: context,
-      bookTitle: state.book.title,
-      onConfirm: () => context.read<BookDetailsCubit>().enroll(bookId),
-    );
   }
 }
