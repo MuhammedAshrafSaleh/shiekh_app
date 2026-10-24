@@ -4,12 +4,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/bloc_providers.dart';
 import 'core/audio/sound_service.dart';
 import 'core/config/app_config.dart';
+import 'core/supabase/timeout_http_client.dart';
 
 final _log = Logger('main');
 
@@ -38,6 +40,10 @@ Future<void> main() async {
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
     debug: false,
+    // Wrap all REST/Auth/Storage calls with a per-request timeout so a stalled
+    // server can't hang a repository forever. Edge Functions are exempted
+    // internally (they run long). See TimeoutHttpClient.
+    httpClient: TimeoutHttpClient(http.Client()),
   );
 
   // Diagnostic only — its result is logged, never consumed. Kept off the
