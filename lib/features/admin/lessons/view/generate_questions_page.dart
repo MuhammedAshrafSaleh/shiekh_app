@@ -338,6 +338,15 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
+                    if (state.isOverload) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'الخدمة مشغولة حالياً. جرّب مرة أخرى بعد منتصف الليل عندما يقل الضغط على الخدمة.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.sm),
                   ],
                   FilledButton.icon(
