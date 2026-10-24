@@ -98,6 +98,9 @@ import '../features/admin/notifications/cubit/admin_notifications_cubit.dart';
 import '../features/admin/notifications/data/admin_notifications_repository.dart';
 import '../features/admin/notifications/view/admin_notification_form_page.dart';
 import '../features/admin/notifications/view/admin_notifications_page.dart';
+import '../features/admin/ai_settings/cubit/admin_ai_key_cubit.dart';
+import '../features/admin/ai_settings/data/admin_ai_settings_repository.dart';
+import '../features/admin/ai_settings/view/admin_ai_key_page.dart';
 import '../features/admin/loading_quotes/cubit/admin_loading_quotes_cubit.dart';
 import '../features/admin/loading_quotes/data/admin_loading_quotes_repository.dart';
 import '../features/admin/loading_quotes/view/admin_loading_quote_form_page.dart';
@@ -661,6 +664,16 @@ GoRouter buildRouter(AuthCubit authCubit) {
               AdminOnboardingCubit(ctx.read<AdminOnboardingRepository>())
                 ..load(),
           child: const AdminOnboardingPage(),
+        ),
+      ),
+
+      // --- Admin: AI (Gemini) API key ---
+      GoRoute(
+        path: '/admin/ai-key',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminAiKeyCubit(ctx.read<AdminAiSettingsRepository>()),
+          child: const AdminAiKeyPage(),
         ),
       ),
 

@@ -178,6 +178,15 @@ profile row), see `docs/admin_recovery.sql`.
 
 ---
 
+## Step 11 — Set the AI (Gemini) API key
+
+After deploying the `generate-questions` / `transcribe-lesson` Edge Functions,
+open the app as admin → **الإعدادات ← مفتاح الذكاء الاصطناعي** and paste the
+Gemini API key — otherwise AI question generation won't work (there is no env-var
+fallback; the key is stored in the DB via `app_secrets`).
+
+---
+
 ## Checklist
 
 - [ ] `schema.sql` + all numbered migrations (0001 → 0018) run without errors
@@ -188,5 +197,6 @@ profile row), see `docs/admin_recovery.sql`.
 - [ ] Brand assets replaced
 - [ ] App ID / bundle identifier updated
 - [ ] First admin promoted via SQL
+- [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
 - [ ] Auth email-confirm redirect URL set in Supabase Dashboard
 - [ ] Smoke test: sign up → confirm email → log in → see home screen
