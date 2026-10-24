@@ -1,4 +1,6 @@
 // lib/main.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -38,12 +40,15 @@ Future<void> main() async {
     debug: false,
   );
 
-  await _smokeTestConnection();
+  // Diagnostic only — its result is logged, never consumed. Kept off the
+  // startup critical path so a slow network can't delay first paint.
+  unawaited(_smokeTestConnection());
 
-  // Preload UI sound effects before the first frame. Failures here are
-  // swallowed inside the service and must never block startup.
+  // Kick off SFX preload without blocking first paint. SoundService.play()
+  // awaits this in-flight preload, so an early sound (e.g. the splash chime on
+  // the first frame) still plays once ready instead of being dropped.
   final soundService = SoundService();
-  await soundService.init();
+  unawaited(soundService.init());
 
   FlutterNativeSplash.remove();
 
