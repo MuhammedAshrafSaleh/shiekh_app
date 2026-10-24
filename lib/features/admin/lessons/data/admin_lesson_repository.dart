@@ -655,10 +655,12 @@ class AdminLessonRepository {
         _log.warning('generateQuestions: AI key missing');
         return Left(ValidationFailure(_kAiKeyMissingMessage));
       }
-      // 503 or RESOURCE_EXHAUSTED/OVERLOADED signal the AI service is saturated.
+      // 503, RESOURCE_EXHAUSTED, OVERLOADED, or deadline_exceeded all indicate
+      // AI service saturation — not a logic error in the request.
       if (e.status == 503 ||
           code == 'RESOURCE_EXHAUSTED' ||
-          code == 'OVERLOADED') {
+          code == 'OVERLOADED' ||
+          (code != null && code.contains('deadline_exceeded'))) {
         final msg = code ?? 'تعذّر توليد الأسئلة، الخدمة مشغولة حالياً';
         _log.warning('generateQuestions overload http ${e.status}: $msg');
         return Left(AiOverloadFailure(msg));
@@ -716,7 +718,8 @@ class AdminLessonRepository {
       }
       if (e.status == 503 ||
           code == 'RESOURCE_EXHAUSTED' ||
-          code == 'OVERLOADED') {
+          code == 'OVERLOADED' ||
+          (code != null && code.contains('deadline_exceeded'))) {
         final msg = code ?? 'تعذّر تفريغ المحاضرة، الخدمة مشغولة حالياً';
         _log.warning('transcribeLesson overload http ${e.status}: $msg');
         return Left(AiOverloadFailure(msg));
