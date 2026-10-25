@@ -1,0 +1,7 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "clients/medhat/icon.png"
+  adaptive_icon_background: "#3B2141"
+  adaptive_icon_foreground: "clients/medhat/icon.png"
+  min_sdk_android: 21
