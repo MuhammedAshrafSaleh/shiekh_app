@@ -61,6 +61,21 @@ android {
                 signingConfigs.getByName("debug")
         }
     }
+
+    // White-label clients. One flavor per sheikh. Each sets its own applicationId,
+    // launcher name (resValue app_name → referenced as @string/app_name in the
+    // manifest) and deep-link scheme (manifestPlaceholder consumed by the VIEW
+    // intent-filter). `ahmed` is the live client — its values MUST stay identical
+    // to the pre-flavor build so existing installs update in place.
+    flavorDimensions += "client"
+    productFlavors {
+        create("ahmed") {
+            dimension = "client"
+            applicationId = "io.sheikhy.app"
+            resValue("string", "app_name", "الشيخ أحمد بن عبد التواب")
+            manifestPlaceholders["deepLinkScheme"] = "io.sheikhy.app"
+        }
+    }
 }
 
 kotlin {
