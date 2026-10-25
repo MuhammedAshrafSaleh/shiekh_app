@@ -6,7 +6,7 @@
     <!-- Required by connectivity_plus to read the current network state. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <application
-        android:label="الشيخ أحمد بن عبد التواب"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -30,12 +30,13 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Supabase deep link: io.sheikhy.app://reset-callback -->
+            <!-- Supabase deep link: <scheme>://reset-callback. The scheme is set
+                 per white-label flavor via manifestPlaceholders (ahmed = io.sheikhy.app). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="io.sheikhy.app"/>
+                <data android:scheme="${deepLinkScheme}"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

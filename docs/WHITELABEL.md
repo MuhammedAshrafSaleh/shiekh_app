@@ -84,57 +84,76 @@ In Supabase Dashboard → **Storage**:
 
 ---
 
-## Step 5 — Configure `dart_define.json`
+## Step 5 — Configure the client folder
 
-Copy the example file and fill in your values:
+Each sheikh is a **Flutter flavor** with its own folder under `clients/<name>/`.
+See `docs/FLAVORS_PLAN.md` for the full flavor architecture. Create the folder:
 
-```bash
-cp dart_define.example.json dart_define.json
+`clients/<name>/client.json` (**committed** — non-secret):
+```json
+{
+  "SHEIKH_NAME": "الشيخ فلان الفلاني",
+  "PRIMARY_COLOR": "0xFF1B5E20",
+  "DEEP_LINK_SCHEME": "io.sheikhy.<name>"
+}
 ```
 
+`clients/<name>/secrets.json` (**git-ignored** — never commit; template at
+`clients/secrets.example.json`):
 ```json
 {
   "SUPABASE_URL": "https://<your-project-ref>.supabase.co",
-  "SUPABASE_ANON_KEY": "<your-anon-key>",
-  "SHEIKH_NAME": "الشيخ فلان الفلاني",
-  "PRIMARY_COLOR": "0xFF1B5E20"
+  "SUPABASE_ANON_KEY": "<your-anon-key>"
 }
 ```
 
 `PRIMARY_COLOR` is an ARGB hex integer. Dark green = `0xFF1B5E20`.
-`dart_define.json` is gitignored — never commit it.
+`DEEP_LINK_SCHEME` must match the flavor's Android `deepLinkScheme`
+manifestPlaceholder. The live client **ahmed** keeps `io.sheikhy.app`.
 
 ---
 
-## Step 6 — Swap brand assets
+## Step 6 — Add brand assets
+
+Place the client's assets in its folder (the single source of truth):
 
 | Asset | Path | Notes |
 |---|---|---|
-| App icon | `assets/images/logo.png` | 1024×1024 px, no alpha for iOS |
-| Splash logo | `assets/images/splash_logo.png` | Used on the splash screen |
-| Fonts | `assets/fonts/` | Cairo is bundled; replace if desired |
+| Launcher icon | `clients/<name>/icon.png` | 1024×1024 px, no alpha for iOS |
+| Splash photo | `clients/<name>/sheikh.png` | sheikh photo shown on the runtime splash |
 
-Run icon generation after replacing:
+Stage them into the Flutter bundle (git-ignored generated copies), then
+regenerate launcher icons:
 
 ```bash
+tool/prepare_client.sh <name>
 dart run flutter_launcher_icons
 ```
 
 ---
 
-## Step 7 — App ID & bundle identifier
+## Step 7 — Android flavor (App ID, label, scheme)
 
-Update the package name in three places:
+Add a `productFlavors` entry in `android/app/build.gradle.kts` (the shared
+`namespace` stays `io.sheikhy.app`):
 
-| File | Key |
-|---|---|
-| `android/app/build.gradle` | `applicationId` |
-| `android/app/src/main/AndroidManifest.xml` | `package` |
-| `ios/Runner.xcodeproj/project.pbxproj` | `PRODUCT_BUNDLE_IDENTIFIER` |
+```kotlin
+create("<name>") {
+    dimension = "client"
+    applicationId = "io.sheikhy.<name>"
+    resValue("string", "app_name", "الشيخ فلان الفلاني")
+    manifestPlaceholders["deepLinkScheme"] = "io.sheikhy.<name>"
+}
+```
 
-The deep-link scheme `io.sheikhy.app://` is referenced in
-`android/app/src/main/AndroidManifest.xml` and `ios/Runner/Info.plist` —
-update both if you change the scheme.
+The label (`@string/app_name`) and deep-link scheme (`${deepLinkScheme}`) are
+read from the flavor — no manual manifest edits per client. The Dart-side
+reset-password redirect comes from `DEEP_LINK_SCHEME` in `client.json`
+(`AppConfig.deepLinkScheme`). iOS flavor/scheme setup is a later phase
+(see `docs/FLAVORS_PLAN.md`).
+
+> The live client **ahmed** keeps `io.sheikhy.app` everywhere so existing
+> installs update in place — never change it.
 
 ---
 
@@ -152,16 +171,24 @@ update both if you change the scheme.
 
 ## Step 9 — Build & run
 
+Always name the flavor and pass both config files; stage brand assets first.
+
 ```bash
+tool/prepare_client.sh <name>
+
 # Debug
-flutter run --dart-define-from-file=dart_define.json
+flutter run --flavor <name> \
+  --dart-define-from-file=clients/<name>/client.json \
+  --dart-define-from-file=clients/<name>/secrets.json
 
 # Release APK
-flutter build apk --release --dart-define-from-file=dart_define.json
-
-# Release IPA (requires Xcode signing configured)
-flutter build ipa --release --dart-define-from-file=dart_define.json
+flutter build apk --release --flavor <name> \
+  --dart-define-from-file=clients/<name>/client.json \
+  --dart-define-from-file=clients/<name>/secrets.json
 ```
+
+> There is no default flavor — plain `flutter run` (no `--flavor`) fails by
+> design. iOS build commands come with the iOS phase.
 
 ---
 
@@ -196,9 +223,9 @@ fallback; the key is stored in the DB via `app_secrets`).
 - [ ] Three student-safe views exist (`lesson_quiz_questions_student`, etc.)
 - [ ] `on_auth_user_created` trigger present (created by `0000_baseline.sql`)
 - [ ] `media` Storage bucket created and public
-- [ ] `dart_define.json` filled in and not committed
-- [ ] Brand assets replaced
-- [ ] App ID / bundle identifier updated
+- [ ] `clients/<name>/client.json` committed and `secrets.json` filled in (not committed)
+- [ ] Brand assets added to `clients/<name>/` and staged via `tool/prepare_client.sh <name>`
+- [ ] Android flavor added in `build.gradle.kts` (applicationId, app_name, deepLinkScheme)
 - [ ] First admin promoted via SQL: `update public.users set role = 'admin' where email = 'sheikh@example.com';`
 - [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
 - [ ] Auth email-confirm redirect URL set in Supabase Dashboard
