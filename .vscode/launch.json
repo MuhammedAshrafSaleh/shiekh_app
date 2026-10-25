@@ -25,6 +25,31 @@
         "--dart-define-from-file=clients/ahmed/client.json",
         "--dart-define-from-file=clients/ahmed/secrets.json"
       ]
+    },
+    {
+      "name": "medhat (debug)",
+      "request": "launch",
+      "type": "dart",
+      "preLaunchTask": "prepare-medhat",
+      "args": [
+        "--flavor",
+        "medhat",
+        "--dart-define-from-file=clients/medhat/client.json",
+        "--dart-define-from-file=clients/medhat/secrets.json"
+      ]
+    },
+    {
+      "name": "medhat (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "preLaunchTask": "prepare-medhat",
+      "args": [
+        "--flavor",
+        "medhat",
+        "--dart-define-from-file=clients/medhat/client.json",
+        "--dart-define-from-file=clients/medhat/secrets.json"
+      ]
     }
   ]
 }
