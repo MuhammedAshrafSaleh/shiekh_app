@@ -24,18 +24,21 @@ instance of Sheikhy for a different sheikh / organisation.
 
 ## Step 2 — Run the database schema
 
-Open the Supabase **SQL Editor** and run each file in order:
+Use the Supabase CLI (`supabase db push`) **or** open the SQL Editor and
+run each migration file in ascending numeric order:
 
 ```
-docs/schema.sql                        # base 15-table schema + RLS policies
+supabase/migrations/0000_baseline.sql      # enums, base tables, auth trigger, base RLS
 supabase/migrations/0001_app_support.sql   # student-safe views + exam/quiz RPCs
 supabase/migrations/0002_hardening.sql     # reorder_lessons RPC + featured-cap trigger
-# …then run every remaining numbered migration in order (0003 → 0018), including:
-supabase/migrations/0017_suggestions.sql        # مقترحات home slider (suggestions table + RLS)
-supabase/migrations/0018_suggestion_notes.sql   # timestamped notes on suggestion videos + audio
+# …continue in order through the highest numbered file:
+supabase/migrations/0023_revoke_public_exec.sql
 ```
 
-Verify after running `0001_app_support.sql`:
+`docs/schema.sql` is **superseded** by `0000_baseline.sql` and retained
+for reference only — do not run it on a fresh project.
+
+Verify after running all migrations:
 
 ```sql
 -- Should return exactly three rows
@@ -47,7 +50,7 @@ where schemaname = 'public'
     'student_questions_public'
   );
 
--- Trigger must exist (created by schema.sql)
+-- Trigger must exist (created by 0000_baseline.sql)
 select trigger_name from information_schema.triggers
 where trigger_name = 'on_auth_user_created';
 ```
@@ -169,7 +172,7 @@ After the sheikh signs up through the app:
 ```sql
 -- Run in Supabase SQL Editor (service-role context)
 update public.users
-set    is_admin = true
+set    role = 'admin'
 where  email = 'sheikh@example.com';
 ```
 
@@ -189,14 +192,84 @@ fallback; the key is stored in the DB via `app_secrets`).
 
 ## Checklist
 
-- [ ] `schema.sql` + all numbered migrations (0001 → 0018) run without errors
+- [ ] All migrations `0000_baseline.sql` → `0023_revoke_public_exec.sql` run without errors
 - [ ] Three student-safe views exist (`lesson_quiz_questions_student`, etc.)
-- [ ] `on_auth_user_created` trigger present (not duplicated)
+- [ ] `on_auth_user_created` trigger present (created by `0000_baseline.sql`)
 - [ ] `media` Storage bucket created and public
 - [ ] `dart_define.json` filled in and not committed
 - [ ] Brand assets replaced
 - [ ] App ID / bundle identifier updated
-- [ ] First admin promoted via SQL
+- [ ] First admin promoted via SQL: `update public.users set role = 'admin' where email = 'sheikh@example.com';`
 - [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
 - [ ] Auth email-confirm redirect URL set in Supabase Dashboard
 - [ ] Smoke test: sign up → confirm email → log in → see home screen
+
+---
+
+## Schema Verification
+
+Run these queries in the Supabase SQL Editor after applying all migrations.
+They are a quick sanity-check that every object was created successfully.
+
+```sql
+-- ── Tables (expect 25) ──────────────────────────────────────────────────────
+select count(*) as table_count
+from information_schema.tables
+where table_schema = 'public'
+  and table_type = 'BASE TABLE';
+
+-- ── Views (expect 4) ────────────────────────────────────────────────────────
+select count(*) as view_count
+from information_schema.views
+where table_schema = 'public';
+
+-- ── Functions in public schema (expect 25) ──────────────────────────────────
+select count(*) as function_count
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public';
+
+-- ── Triggers on public tables + auth schema (expect 11) ─────────────────────
+--    9 on public tables + on_auth_user_created + on_auth_user_converted
+select count(*) as trigger_count
+from information_schema.triggers
+where event_object_schema in ('public', 'auth');
+
+-- ── RLS policies on public tables (expect ~55) ──────────────────────────────
+select count(*) as policy_count
+from pg_policies
+where schemaname = 'public';
+
+-- ── Indexes on public tables (expect ~35) ───────────────────────────────────
+select count(*) as index_count
+from pg_indexes
+where schemaname = 'public';
+
+-- ── Alphabetical table list (expect 25 rows) ────────────────────────────────
+select tablename
+from pg_tables
+where schemaname = 'public'
+order by tablename;
+-- Expected tables:
+-- app_secrets, books, certificates, enrollments, final_exam_attempts,
+-- final_exam_questions, final_exam_settings, generation_jobs, home_banners,
+-- lesson_notes, lesson_pdfs, lesson_progress, lesson_quiz_attempts,
+-- lesson_quiz_questions, lessons, loading_quotes, notification_reads,
+-- notifications, onboarding_slides, practice_attempts, sections,
+-- student_questions, suggestion_notes, suggestions, users
+
+-- ── Confirm is_admin() is SECURITY DEFINER (expect 1 row, prosecdef = true) ─
+select proname, prosecdef as security_definer
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname = 'is_admin';
+
+-- ── Confirm on_auth_user_created trigger exists on auth.users ───────────────
+select trigger_name, event_object_schema, event_object_table,
+       action_timing, event_manipulation
+from information_schema.triggers
+where trigger_name = 'on_auth_user_created';
+-- Expected: 1 row, event_object_schema = auth, event_object_table = users,
+--           action_timing = AFTER, event_manipulation = INSERT
+```
