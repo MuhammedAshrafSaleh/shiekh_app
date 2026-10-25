@@ -203,3 +203,73 @@ fallback; the key is stored in the DB via `app_secrets`).
 - [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
 - [ ] Auth email-confirm redirect URL set in Supabase Dashboard
 - [ ] Smoke test: sign up → confirm email → log in → see home screen
+
+---
+
+## Schema Verification
+
+Run these queries in the Supabase SQL Editor after applying all migrations.
+They are a quick sanity-check that every object was created successfully.
+
+```sql
+-- ── Tables (expect 25) ──────────────────────────────────────────────────────
+select count(*) as table_count
+from information_schema.tables
+where table_schema = 'public'
+  and table_type = 'BASE TABLE';
+
+-- ── Views (expect 4) ────────────────────────────────────────────────────────
+select count(*) as view_count
+from information_schema.views
+where table_schema = 'public';
+
+-- ── Functions in public schema (expect 25) ──────────────────────────────────
+select count(*) as function_count
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public';
+
+-- ── Triggers on public tables + auth schema (expect 11) ─────────────────────
+--    9 on public tables + on_auth_user_created + on_auth_user_converted
+select count(*) as trigger_count
+from information_schema.triggers
+where event_object_schema in ('public', 'auth');
+
+-- ── RLS policies on public tables (expect ~55) ──────────────────────────────
+select count(*) as policy_count
+from pg_policies
+where schemaname = 'public';
+
+-- ── Indexes on public tables (expect ~35) ───────────────────────────────────
+select count(*) as index_count
+from pg_indexes
+where schemaname = 'public';
+
+-- ── Alphabetical table list (expect 25 rows) ────────────────────────────────
+select tablename
+from pg_tables
+where schemaname = 'public'
+order by tablename;
+-- Expected tables:
+-- app_secrets, books, certificates, enrollments, final_exam_attempts,
+-- final_exam_questions, final_exam_settings, generation_jobs, home_banners,
+-- lesson_notes, lesson_pdfs, lesson_progress, lesson_quiz_attempts,
+-- lesson_quiz_questions, lessons, loading_quotes, notification_reads,
+-- notifications, onboarding_slides, practice_attempts, sections,
+-- student_questions, suggestion_notes, suggestions, users
+
+-- ── Confirm is_admin() is SECURITY DEFINER (expect 1 row, prosecdef = true) ─
+select proname, prosecdef as security_definer
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname = 'is_admin';
+
+-- ── Confirm on_auth_user_created trigger exists on auth.users ───────────────
+select trigger_name, event_object_schema, event_object_table,
+       action_timing, event_manipulation
+from information_schema.triggers
+where trigger_name = 'on_auth_user_created';
+-- Expected: 1 row, event_object_schema = auth, event_object_table = users,
+--           action_timing = AFTER, event_manipulation = INSERT
+```
