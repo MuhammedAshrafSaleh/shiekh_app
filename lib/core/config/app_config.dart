@@ -24,6 +24,15 @@ abstract final class AppConfig {
 
   static const Color primaryColor = Color(_primaryColorValue);
 
+  // White-label deep-link / custom URL scheme. Must match the Android
+  // manifestPlaceholder `deepLinkScheme` (and, later, the iOS URL type) for the
+  // flavor. Used to build the password-reset redirect. Default preserves the
+  // original live client (Sheikh Ahmed) behaviour.
+  static const String deepLinkScheme = String.fromEnvironment(
+    'DEEP_LINK_SCHEME',
+    defaultValue: 'io.sheikhy.app',
+  );
+
   // White-label UI sounds: each sheikh can ship his own voice recordings for
   // the splash and success cues. Defaults point at the shared bundled assets.
   // The remaining SFX (tap/select/tick/tick_urgent/timeout/retry) are shared

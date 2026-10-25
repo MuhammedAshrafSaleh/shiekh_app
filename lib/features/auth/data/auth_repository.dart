@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/errors/failures.dart';
 
 class AuthRepository {
@@ -141,7 +142,7 @@ class AuthRepository {
     try {
       await _client.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'io.sheikhy.app://reset-callback',
+        redirectTo: '${AppConfig.deepLinkScheme}://reset-callback',
       );
       return const Right(null);
     } on AuthException catch (e) {
