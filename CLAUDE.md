@@ -22,11 +22,19 @@ Source of truth documents live in `docs/`: `PRD.md` (primary reference — featu
 ## Common Commands
 
 ```bash
-# Run app (debug) — always pass config via dart-define
-flutter run --dart-define-from-file=dart_define.json
+# Multi-client: each sheikh is a Flutter flavor (see docs/FLAVORS_PLAN.md).
+# Stage the client's brand assets first (git-ignored generated copies):
+tool/prepare_client.sh ahmed
+
+# Run app (debug) — always name the flavor + pass both config files
+flutter run --flavor ahmed \
+  --dart-define-from-file=clients/ahmed/client.json \
+  --dart-define-from-file=clients/ahmed/secrets.json
 
 # Build release APK
-flutter build apk --release --dart-define-from-file=dart_define.json
+flutter build apk --release --flavor ahmed \
+  --dart-define-from-file=clients/ahmed/client.json \
+  --dart-define-from-file=clients/ahmed/secrets.json
 
 # Analyze code
 flutter analyze
