@@ -62,6 +62,10 @@ android {
         }
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
     // White-label clients. One flavor per sheikh. Each sets its own applicationId,
     // launcher name (resValue app_name → referenced as @string/app_name in the
     // manifest) and deep-link scheme (manifestPlaceholder consumed by the VIEW
