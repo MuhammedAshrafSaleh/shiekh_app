@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ahmed (debug)",
+      "request": "launch",
+      "type": "dart",
+      "preLaunchTask": "prepare-ahmed",
+      "args": [
+        "--flavor",
+        "ahmed",
+        "--dart-define-from-file=clients/ahmed/client.json",
+        "--dart-define-from-file=clients/ahmed/secrets.json"
+      ]
+    },
+    {
+      "name": "ahmed (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "preLaunchTask": "prepare-ahmed",
+      "args": [
+        "--flavor",
+        "ahmed",
+        "--dart-define-from-file=clients/ahmed/client.json",
+        "--dart-define-from-file=clients/ahmed/secrets.json"
+      ]
+    }
+  ]
+}
