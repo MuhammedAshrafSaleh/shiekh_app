@@ -34,6 +34,13 @@ const json = (body: unknown, status = 200) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Strip ?key=… / &key=… from any string so a Deno network-error message that
+// embeds the request URL can never carry the Gemini API key to the caller or
+// persist it in generation_jobs.error_message.
+function sanitize(msg: string): string {
+  return msg.replace(/[?&]key=[^&\s"']*/g, "");
+}
+
 // Extract a Drive FILE_ID from whatever share-link shape the admin pasted:
 //   /d/<id>/... | ?id=<id> | uc?export=download&id=<id>
 function driveFileId(url: string): string | null {
@@ -64,17 +71,22 @@ async function uploadDriveAudioToGemini(
   const mimeType = dl.headers.get("Content-Type")?.split(";")[0].trim() || "audio/mp4";
 
   // Step 1 — start a resumable upload session.
-  const startRes = await fetch(`${GEMINI_UPLOAD_BASE}?key=${apiKey}`, {
-    method: "POST",
-    headers: {
-      "X-Goog-Upload-Protocol": "resumable",
-      "X-Goog-Upload-Command": "start",
-      "X-Goog-Upload-Header-Content-Length": String(bytes.byteLength),
-      "X-Goog-Upload-Header-Content-Type": mimeType,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ file: { display_name: displayName } }),
-  });
+  let startRes: Response;
+  try {
+    startRes = await fetch(`${GEMINI_UPLOAD_BASE}?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": String(bytes.byteLength),
+        "X-Goog-Upload-Header-Content-Type": mimeType,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ file: { display_name: displayName } }),
+    });
+  } catch (_e) {
+    throw new Error("انقطع الاتصال بخدمة رفع الملفات إلى Gemini");
+  }
   if (!startRes.ok) {
     throw new Error(`فشل بدء رفع الملف إلى Gemini (${startRes.status})`);
   }
@@ -101,7 +113,12 @@ async function uploadDriveAudioToGemini(
     if (file.state === "FAILED") throw new Error("فشلت معالجة ملف الصوت في Gemini");
     if (Date.now() + FILE_ACTIVE_POLL_MS > deadlineAt) throw new Error("deadline_exceeded");
     await sleep(FILE_ACTIVE_POLL_MS);
-    const pollRes = await fetch(`${GEMINI_FILES_BASE}/${file.name.replace(/^files\//, "")}?key=${apiKey}`);
+    let pollRes: Response;
+    try {
+      pollRes = await fetch(`${GEMINI_FILES_BASE}/${file.name.replace(/^files\//, "")}?key=${apiKey}`);
+    } catch (_e) {
+      throw new Error("انقطع الاتصال بخدمة Gemini أثناء انتظار المعالجة");
+    }
     if (!pollRes.ok) throw new Error(`فشل الاستعلام عن حالة الملف (${pollRes.status})`);
     file = await pollRes.json();
   }
@@ -271,7 +288,7 @@ Deno.serve(async (req) => {
 
     return json({ job_id: jobId, transcript_text: transcript });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = sanitize(err instanceof Error ? err.message : String(err));
     await admin
       .from("lessons")
       .update({ transcript_status: "failed", transcript_error: message })

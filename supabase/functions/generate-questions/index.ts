@@ -80,6 +80,13 @@ const json = (body: unknown, status = 200) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Strip ?key=… / &key=… from any string so a Deno network-error message that
+// embeds the request URL can never carry the Gemini API key to the caller or
+// persist it in generation_jobs.error_message.
+function sanitize(msg: string): string {
+  return msg.replace(/[?&]key=[^&\s"']*/g, "");
+}
+
 // Split on whitespace into NUM_CHUNKS roughly equal word-count chunks; never cut mid-word.
 function chunkTranscript(text: string, numChunks: number): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
@@ -340,7 +347,7 @@ Deno.serve(async (req) => {
 
     return json({ job_id: jobId, inserted_count: inserted.length, questions: inserted });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = sanitize(err instanceof Error ? err.message : String(err));
     // Always mark the job failed — whatever was inserted before the error is kept.
     await admin
       .from("generation_jobs")
