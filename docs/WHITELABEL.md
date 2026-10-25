@@ -24,18 +24,21 @@ instance of Sheikhy for a different sheikh / organisation.
 
 ## Step 2 — Run the database schema
 
-Open the Supabase **SQL Editor** and run each file in order:
+Use the Supabase CLI (`supabase db push`) **or** open the SQL Editor and
+run each migration file in ascending numeric order:
 
 ```
-docs/schema.sql                        # base 15-table schema + RLS policies
+supabase/migrations/0000_baseline.sql      # enums, base tables, auth trigger, base RLS
 supabase/migrations/0001_app_support.sql   # student-safe views + exam/quiz RPCs
 supabase/migrations/0002_hardening.sql     # reorder_lessons RPC + featured-cap trigger
-# …then run every remaining numbered migration in order (0003 → 0018), including:
-supabase/migrations/0017_suggestions.sql        # مقترحات home slider (suggestions table + RLS)
-supabase/migrations/0018_suggestion_notes.sql   # timestamped notes on suggestion videos + audio
+# …continue in order through the highest numbered file:
+supabase/migrations/0023_revoke_public_exec.sql
 ```
 
-Verify after running `0001_app_support.sql`:
+`docs/schema.sql` is **superseded** by `0000_baseline.sql` and retained
+for reference only — do not run it on a fresh project.
+
+Verify after running all migrations:
 
 ```sql
 -- Should return exactly three rows
@@ -47,7 +50,7 @@ where schemaname = 'public'
     'student_questions_public'
   );
 
--- Trigger must exist (created by schema.sql)
+-- Trigger must exist (created by 0000_baseline.sql)
 select trigger_name from information_schema.triggers
 where trigger_name = 'on_auth_user_created';
 ```
@@ -169,7 +172,7 @@ After the sheikh signs up through the app:
 ```sql
 -- Run in Supabase SQL Editor (service-role context)
 update public.users
-set    is_admin = true
+set    role = 'admin'
 where  email = 'sheikh@example.com';
 ```
 
@@ -189,14 +192,14 @@ fallback; the key is stored in the DB via `app_secrets`).
 
 ## Checklist
 
-- [ ] `schema.sql` + all numbered migrations (0001 → 0018) run without errors
+- [ ] All migrations `0000_baseline.sql` → `0023_revoke_public_exec.sql` run without errors
 - [ ] Three student-safe views exist (`lesson_quiz_questions_student`, etc.)
-- [ ] `on_auth_user_created` trigger present (not duplicated)
+- [ ] `on_auth_user_created` trigger present (created by `0000_baseline.sql`)
 - [ ] `media` Storage bucket created and public
 - [ ] `dart_define.json` filled in and not committed
 - [ ] Brand assets replaced
 - [ ] App ID / bundle identifier updated
-- [ ] First admin promoted via SQL
+- [ ] First admin promoted via SQL: `update public.users set role = 'admin' where email = 'sheikh@example.com';`
 - [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
 - [ ] Auth email-confirm redirect URL set in Supabase Dashboard
 - [ ] Smoke test: sign up → confirm email → log in → see home screen
