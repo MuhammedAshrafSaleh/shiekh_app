@@ -8,7 +8,7 @@
 -- [!] Elevated-privilege statements (postgres role; fine in the
 --     Supabase SQL Editor):
 --       • (none in this part)
--- Generated: 2026-10-25
+-- Generated: 2026-10-26
 -- ============================================================
 
 -- ============================================================

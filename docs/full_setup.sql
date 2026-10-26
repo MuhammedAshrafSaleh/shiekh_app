@@ -34,11 +34,11 @@
 --   docs/full_setup_part1.sql  — 0000–0004 (STARTS WITH THE BASELINE)
 --   docs/full_setup_part2.sql  — 0005–0008
 --   docs/full_setup_part3.sql  — 0009–0016
---   docs/full_setup_part4.sql  — 0017–0023
+--   docs/full_setup_part4.sql  — 0017–0024
 -- Part boundaries are marked below with
 --   -- ===== END OF PART N / START OF PART M =====
 --
--- Generated: 2026-10-25
+-- Generated: 2026-10-26
 -- ============================================================
 
 -- ============================================================
@@ -49,7 +49,7 @@
 --
 -- PURPOSE: Establish the state that existed BEFORE 0001_app_support.sql
 -- was applied.  Running this file on a brand-new Supabase project followed
--- by migrations 0001 → 0023 (ascending) reproduces the live schema exactly.
+-- by migrations 0001 → 0024 (ascending) reproduces the live schema exactly.
 --
 -- OBJECT ORDER (important):
 --   1. ENUMs
@@ -810,8 +810,37 @@ create policy "banners_admin_write" on public.home_banners
   using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================
+-- EXPLICIT SCHEMA GRANTS
+-- Required when "Automatically expose new tables" is OFF at project
+-- creation, or after DROP SCHEMA public CASCADE resets privileges.
+-- RLS is the real access-control layer; these grants only allow
+-- roles to reach the schema.  Without them PostgREST returns
+-- "42501: permission denied for schema public" on every table.
+--
+-- The four GRANT … ON ALL … lines cover objects that already exist
+-- at this point in the file.  The three ALTER DEFAULT PRIVILEGES
+-- lines cover every table/sequence/routine created by migrations
+-- 0001–0024 and beyond.
+--
+-- 0023_revoke_public_exec.sql runs after this and overrides the
+-- routine grant for the app_secrets RPCs — correct behaviour.
+-- ============================================================
+
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables     in schema public to anon, authenticated, service_role;
+grant all on all sequences  in schema public to anon, authenticated, service_role;
+grant all on all routines   in schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public
+  grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on routines  to anon, authenticated, service_role;
+
+-- ============================================================
 -- RECONCILIATION NOTES — Differences between
--- "baseline + 0001–0023" and the live pg_dump that cannot be
+-- "baseline + 0001–0024" and the live pg_dump that cannot be
 -- fully resolved from the available files:
 --
 -- [R1] rls_auto_enable() EVENT TRIGGER:
@@ -4877,4 +4906,91 @@ grant  execute on function public.get_secret_status(text) to authenticated;
 --    handle_new_user, handle_anon_conversion, prune_practice_attempts) are
 --    invoked by PostgreSQL triggers only, not via PostgREST RPC, so grant/
 --    revoke on them has no client-facing effect.
+
+-- ===== END OF PART 4 =====
+
+-- ============================================================
+-- SOURCE: supabase/migrations/0024_storage.sql
+-- ============================================================
+-- ============================================================
+-- Sheikhy — Migration 0024_storage.sql
+-- Creates the `media` storage bucket and its admin-only write
+-- policies idempotently.
+--
+-- Why this is needed:
+--   Storage lives outside the PostgreSQL public schema and was
+--   never part of the migration stack.  Every new client deployment
+--   required a manual Supabase Dashboard step that was easy to miss,
+--   leaving admin image upload broken with "new row violates
+--   row-level security policy" on storage.objects.
+--
+--   Live (ahmed) has exactly three storage policies:
+--     "Admins can upload media"  — INSERT
+--     "Admins can update media"  — UPDATE
+--     "Admins can delete media"  — DELETE
+--   This migration reproduces them on every fresh project.
+--
+-- Public reads: The bucket is created as public=true, so any
+--   client (anon or authenticated) can read objects by URL without
+--   an RLS SELECT policy on storage.objects.  Only writes need
+--   protecting.
+--
+-- Bucket used by the app: `media` only.
+--   Verified by grepping storage.from() across lib/ — three files,
+--   all using 'media':
+--     lib/features/admin/banners/data/admin_banner_repository.dart
+--     lib/features/admin/books/data/admin_book_repository.dart
+--     lib/features/admin/suggestions/data/admin_suggestion_repository.dart
+--
+-- Idempotency: bucket INSERT uses ON CONFLICT DO NOTHING;
+--   policies use DROP … IF EXISTS before CREATE.
+--
+-- Note on public.is_admin(): storage policies run in the storage
+--   schema context, so the helper must be schema-qualified.
+--
+-- Additive only — runs on top of 0000_baseline.sql → 0023.
+-- Run once in Supabase SQL Editor.
+-- ============================================================
+
+-- ── Create the bucket ────────────────────────────────────────
+insert into storage.buckets (id, name, public)
+values ('media', 'media', true)
+on conflict (id) do nothing;
+
+-- ── Remove existing policies if present (idempotency) ────────
+drop policy if exists "Admins can upload media"  on storage.objects;
+drop policy if exists "Admins can update media"  on storage.objects;
+drop policy if exists "Admins can delete media"  on storage.objects;
+
+-- ── Admin-only write policies ─────────────────────────────────
+
+-- INSERT (upload new objects)
+create policy "Admins can upload media"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (
+    bucket_id = 'media'
+    and public.is_admin()
+  );
+
+-- UPDATE (overwrite or rename existing objects)
+create policy "Admins can update media"
+  on storage.objects
+  for update
+  to authenticated
+  using (
+    bucket_id = 'media'
+    and public.is_admin()
+  );
+
+-- DELETE (remove objects)
+create policy "Admins can delete media"
+  on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'media'
+    and public.is_admin()
+  );
 

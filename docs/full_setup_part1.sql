@@ -9,7 +9,7 @@
 -- [!] Elevated-privilege statements (postgres role; fine in the
 --     Supabase SQL Editor):
 --       • CREATE TRIGGER on_auth_user_created ON auth.users
--- Generated: 2026-10-25
+-- Generated: 2026-10-26
 -- ============================================================
 
 -- ============================================================
@@ -779,6 +779,35 @@ create policy "banners_select_active_or_admin" on public.home_banners
 
 create policy "banners_admin_write" on public.home_banners
   using (public.is_admin()) with check (public.is_admin());
+
+-- ============================================================
+-- EXPLICIT SCHEMA GRANTS
+-- Required when "Automatically expose new tables" is OFF at project
+-- creation, or after DROP SCHEMA public CASCADE resets privileges.
+-- RLS is the real access-control layer; these grants only allow
+-- roles to reach the schema.  Without them PostgREST returns
+-- "42501: permission denied for schema public" on every table.
+--
+-- The four GRANT … ON ALL … lines cover objects that already exist
+-- at this point in the file.  The three ALTER DEFAULT PRIVILEGES
+-- lines cover every table/sequence/routine created by migrations
+-- 0001–0024 and beyond.
+--
+-- 0023_revoke_public_exec.sql runs after this and overrides the
+-- routine grant for the app_secrets RPCs — correct behaviour.
+-- ============================================================
+
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables     in schema public to anon, authenticated, service_role;
+grant all on all sequences  in schema public to anon, authenticated, service_role;
+grant all on all routines   in schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public
+  grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on routines  to anon, authenticated, service_role;
 
 -- ============================================================
 -- RECONCILIATION NOTES — Differences between
