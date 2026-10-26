@@ -32,7 +32,7 @@ supabase/migrations/0000_baseline.sql      # enums, base tables, auth trigger, b
 supabase/migrations/0001_app_support.sql   # student-safe views + exam/quiz RPCs
 supabase/migrations/0002_hardening.sql     # reorder_lessons RPC + featured-cap trigger
 # …continue in order through the highest numbered file:
-supabase/migrations/0023_revoke_public_exec.sql
+supabase/migrations/0024_storage.sql
 ```
 
 `docs/schema.sql` is **superseded** by `0000_baseline.sql` and retained
@@ -63,24 +63,39 @@ In the Supabase Dashboard → **Authentication → Settings**:
 
 | Setting | Value |
 |---|---|
-| Email confirmations | **On** (recommended) |
+| Email confirmations | **Off** |
 | Minimum password length | 8 |
-| Site URL | `io.sheikhy.app://` (or your custom scheme) |
-| Redirect URLs | `io.sheikhy.app://reset-callback` |
+| Site URL | `<DEEP_LINK_SCHEME>://`  e.g. `io.sheikhy.medhat://` |
+| Redirect URLs | `<DEEP_LINK_SCHEME>://reset-callback` |
+
+> **Why "Confirm email: Off"?**  When email confirmation is enabled, the
+> confirmation link redirects to the Supabase project's **Site URL**.  If
+> Site URL is still the Supabase default (`http://localhost:3000`), the link
+> goes to localhost and breaks signup for every new user.  Disabling
+> confirmation eliminates this failure mode.  `<DEEP_LINK_SCHEME>` is the
+> value from `client.json` (e.g. `io.sheikhy.medhat`) — use the **current
+> client's own scheme**, never another client's.
 
 ---
 
 ## Step 4 — Storage bucket
 
-In Supabase Dashboard → **Storage**:
+The `media` bucket and its three admin-only RLS policies (INSERT / UPDATE /
+DELETE) are **created automatically by `0024_storage.sql`**, which is included
+in `full_setup.sql`.  No manual Supabase Dashboard steps are needed.
 
-1. Create a bucket named `media`.
-2. Set it to **Public** (anonymous reads).
-3. Add an RLS INSERT policy restricted to `is_admin()` (see `docs/schema.sql`
-   for the helper function).
-4. Banner and suggestion images both live in this same `media` bucket —
-   under the `banners/` and `suggestions/` prefixes respectively. No extra
-   bucket or per-prefix policy is needed.
+Banner and cover images live in the `media` bucket under `banners/` and
+`books/` prefixes respectively; suggestion images use `suggestions/`.  All
+write via the same three policies.  Verify after running migrations:
+
+```sql
+-- Expect 1 row: id='media', public=true
+select id, name, public from storage.buckets;
+
+-- Expect 3 rows (INSERT, UPDATE, DELETE)
+select policyname, cmd from pg_policies
+where schemaname = 'storage' and tablename = 'objects';
+```
 
 ---
 
@@ -217,19 +232,45 @@ fallback; the key is stored in the DB via `app_secrets`).
 
 ---
 
+## Known Pitfalls
+
+Silent failure modes that have caused issues on real deployments.
+
+1. **"Automatically expose new tables" must be ON at project creation.**
+   If this Supabase setting is OFF, PostgREST returns `42501: permission denied
+   for schema public` on every table.  The grants block in `0000_baseline.sql`
+   also covers this case, but leaving the setting ON avoids it entirely.
+
+2. **Never use `DROP SCHEMA public CASCADE` to reset a project.**
+   This destroys Supabase's internal default privileges and cannot be fully
+   restored by migrations.  To start fresh, create a new Supabase project instead.
+
+3. **Turn off "Confirm email" in Auth Settings.**
+   If email confirmation is ON and the project's Site URL is still the Supabase
+   default (`http://localhost:3000`), confirmation links go to localhost and every
+   new signup breaks.  See Step 3.
+
+4. **Never re-run individual migration files after running `full_setup.sql`.**
+   `full_setup.sql` is a concatenation of every migration in order.  Re-running
+   `0001_app_support.sql` (or any earlier file) after `full_setup.sql` downgrades
+   functions to their pre-0005 versions.  If something went wrong mid-run, resume
+   from the file that failed — do not re-run earlier ones from scratch.
+
+---
+
 ## Checklist
 
-- [ ] All migrations `0000_baseline.sql` → `0023_revoke_public_exec.sql` run without errors
+- [ ] All migrations `0000_baseline.sql` → `0024_storage.sql` run without errors
 - [ ] Three student-safe views exist (`lesson_quiz_questions_student`, etc.)
 - [ ] `on_auth_user_created` trigger present (created by `0000_baseline.sql`)
-- [ ] `media` Storage bucket created and public
+- [ ] `media` Storage bucket + 3 policies created by migration `0024_storage.sql` (verify: 1 bucket, 3 storage policies)
 - [ ] `clients/<name>/client.json` committed and `secrets.json` filled in (not committed)
 - [ ] Brand assets added to `clients/<name>/` and staged via `tool/prepare_client.sh <name>`
 - [ ] Android flavor added in `build.gradle.kts` (applicationId, app_name, deepLinkScheme)
 - [ ] First admin promoted via SQL: `update public.users set role = 'admin' where email = 'sheikh@example.com';`
 - [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
-- [ ] Auth email-confirm redirect URL set in Supabase Dashboard
-- [ ] Smoke test: sign up → confirm email → log in → see home screen
+- [ ] Auth settings: "Confirm email" = **Off**, Site URL = `<DEEP_LINK_SCHEME>://`, Redirect URL = `<DEEP_LINK_SCHEME>://reset-callback`
+- [ ] Smoke test: sign up → log in → see home screen
 
 ---
 
@@ -299,4 +340,39 @@ from information_schema.triggers
 where trigger_name = 'on_auth_user_created';
 -- Expected: 1 row, event_object_schema = auth, event_object_table = users,
 --           action_timing = AFTER, event_manipulation = INSERT
+
+-- ── Storage buckets (expect 1) ──────────────────────────────────────────────
+select id, name, public
+from storage.buckets;
+-- Expected: 1 row — id='media', name='media', public=true
+
+-- ── Storage RLS policies on storage.objects (expect 3) ─────────────────────
+select policyname, cmd
+from pg_policies
+where schemaname = 'storage'
+  and tablename  = 'objects';
+-- Expected: 3 rows:
+--   'Admins can upload media'  INSERT
+--   'Admins can update media'  UPDATE
+--   'Admins can delete media'  DELETE
+
+-- ── Schema grant sanity check (expect anon, authenticated, service_role) ────
+select grantee, privilege_type
+from information_schema.role_usage_grants
+where object_schema = 'public'
+order by grantee;
+-- Expected: at least 3 rows — anon, authenticated, service_role — all USAGE
 ```
+
+**Expected counts summary (fresh install after all 24 migrations):**
+
+| Object | Count |
+|---|---|
+| Public tables | 25 |
+| Public views | 4 |
+| Public functions | 25 |
+| Triggers (public + auth schema) | 11 |
+| Public RLS policies | ~53 |
+| Public indexes | ~35 |
+| Storage buckets | 1 (`media`) |
+| Storage RLS policies | 3 |
