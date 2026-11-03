@@ -56,35 +56,32 @@ class _Body extends StatelessWidget {
         return switch (state) {
           MyQuestionsInitial() || MyQuestionsLoading() => const _LoadingView(),
           MyQuestionsError(:final message) => SheikhyErrorState(
-              heading: 'تعذّر تحميل الأسئلة',
-              message: message,
-              onRetry: () =>
-                  context.read<MyQuestionsCubit>().loadMyQuestions(),
-            ),
+            heading: 'تعذّر تحميل الأسئلة',
+            message: message,
+            onRetry: () => context.read<MyQuestionsCubit>().loadMyQuestions(),
+          ),
           MyQuestionsEmpty() => const SheikhyEmptyState(
-              icon: Icons.question_answer_outlined,
-              heading: 'لا توجد أسئلة بعد',
-              subtitle: 'يمكنك طرح سؤالك من صفحة الكتاب.',
-            ),
+            icon: Icons.question_answer_outlined,
+            heading: 'لا توجد أسئلة بعد',
+            subtitle: 'يمكنك طرح سؤالك من صفحة الكتاب.',
+          ),
           MyQuestionsLoaded(:final questions) => RefreshIndicator(
-              color: AppColors.primary,
-              backgroundColor: AppColors.surface,
-              onRefresh: () =>
-                  context.read<MyQuestionsCubit>().loadMyQuestions(),
-              child: ListView.separated(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.pageGutter,
-                  AppSpacing.s3,
-                  AppSpacing.pageGutter,
-                  AppSpacing.s7 + context.safeBottom,
-                ),
-                itemCount: questions.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: AppSpacing.s3),
-                itemBuilder: (_, index) =>
-                    QuestionCard(question: questions[index]),
+            color: AppColors.primary,
+            backgroundColor: AppColors.surface,
+            onRefresh: () => context.read<MyQuestionsCubit>().loadMyQuestions(),
+            child: ListView.separated(
+              padding: EdgeInsetsDirectional.fromSTEB(
+                AppSpacing.pageGutter,
+                AppSpacing.s3,
+                AppSpacing.pageGutter,
+                AppSpacing.s7 + context.safeBottom,
               ),
+              itemCount: questions.length,
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s3),
+              itemBuilder: (_, index) =>
+                  QuestionCard(question: questions[index]),
             ),
+          ),
           _ => const SizedBox.shrink(),
         };
       },

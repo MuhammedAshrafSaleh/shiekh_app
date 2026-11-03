@@ -18,10 +18,12 @@ class BankImportCubit extends Cubit<BankImportState> {
 
   /// Step 1: load the book's lessons that have importable questions.
   Future<void> loadLessons() async {
-    emit(state.copyWith(
-      lessonsStatus: BankLessonsStatus.loading,
-      clearLessonsError: true,
-    ));
+    emit(
+      state.copyWith(
+        lessonsStatus: BankLessonsStatus.loading,
+        clearLessonsError: true,
+      ),
+    );
     final result = await _repo.getBankLessonSummaries(_bookId);
     result.fold(
       (f) => emit(

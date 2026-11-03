@@ -65,13 +65,16 @@ class BankImportState extends Equatable {
     return BankImportState(
       lessonsStatus: lessonsStatus ?? this.lessonsStatus,
       lessons: lessons ?? this.lessons,
-      lessonsError: clearLessonsError ? null : (lessonsError ?? this.lessonsError),
+      lessonsError: clearLessonsError
+          ? null
+          : (lessonsError ?? this.lessonsError),
       currentLessonId: resetCurrentLesson
           ? null
           : (currentLessonId ?? this.currentLessonId),
       questionsStatus: questionsStatus ?? this.questionsStatus,
-      questionsError:
-          clearQuestionsError ? null : (questionsError ?? this.questionsError),
+      questionsError: clearQuestionsError
+          ? null
+          : (questionsError ?? this.questionsError),
       questionsCache: questionsCache ?? this.questionsCache,
       selected: selected ?? this.selected,
     );

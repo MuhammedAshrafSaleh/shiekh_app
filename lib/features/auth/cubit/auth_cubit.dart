@@ -185,10 +185,7 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     emit(AuthLoading());
     final result = await _repo.signIn(email: email, password: password);
     result.fold(
@@ -208,15 +205,14 @@ class AuthCubit extends Cubit<AuthState> {
       password: password,
       fullName: fullName,
     );
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (confirmationRequired) {
-        if (confirmationRequired) {
-          emit(AuthEmailConfirmationRequired());
-        }
-        // else: authStateChanges stream fires and emits AuthAuthenticated
-      },
-    );
+    result.fold((failure) => emit(AuthError(failure.message)), (
+      confirmationRequired,
+    ) {
+      if (confirmationRequired) {
+        emit(AuthEmailConfirmationRequired());
+      }
+      // else: authStateChanges stream fires and emits AuthAuthenticated
+    });
   }
 
   Future<void> resetPassword(String email) async {

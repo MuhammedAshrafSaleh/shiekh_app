@@ -16,13 +16,10 @@ class GeminiKeyStatus extends Equatable {
   final String? last4;
   final DateTime? updatedAt;
 
-  const GeminiKeyStatus({
-    required this.isSet,
-    this.last4,
-    this.updatedAt,
-  });
+  const GeminiKeyStatus({required this.isSet, this.last4, this.updatedAt});
 
-  factory GeminiKeyStatus.fromJson(Map<String, dynamic> json) => GeminiKeyStatus(
+  factory GeminiKeyStatus.fromJson(Map<String, dynamic> json) =>
+      GeminiKeyStatus(
         isSet: json['is_set'] == true,
         last4: json['last4'] as String?,
         updatedAt: json['updated_at'] == null
@@ -61,9 +58,9 @@ class AdminAiSettingsRepository {
         'get_secret_status',
         params: {'p_key': _geminiKey},
       );
-      return Right(GeminiKeyStatus.fromJson(
-        Map<String, dynamic>.from(data as Map),
-      ));
+      return Right(
+        GeminiKeyStatus.fromJson(Map<String, dynamic>.from(data as Map)),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getGeminiKeyStatus: ${e.message}');
       return Left(ServerFailure('تعذّر تحميل حالة المفتاح، حاول مرة أخرى.'));

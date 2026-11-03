@@ -68,25 +68,49 @@ class _MihrabArchPainter extends CustomPainter {
     // Outer arch: M56 4 C86 26 108 42 108 66 V124 H4 V66 C4 42 26 26 56 4 Z
     final outerPath = Path()
       ..moveTo(p(56, 4).dx, p(56, 4).dy)
-      ..cubicTo(p(86, 26).dx, p(86, 26).dy, p(108, 42).dx, p(108, 42).dy,
-          p(108, 66).dx, p(108, 66).dy)
+      ..cubicTo(
+        p(86, 26).dx,
+        p(86, 26).dy,
+        p(108, 42).dx,
+        p(108, 42).dy,
+        p(108, 66).dx,
+        p(108, 66).dy,
+      )
       ..lineTo(p(108, 124).dx, p(108, 124).dy)
       ..lineTo(p(4, 124).dx, p(4, 124).dy)
       ..lineTo(p(4, 66).dx, p(4, 66).dy)
-      ..cubicTo(p(4, 42).dx, p(4, 42).dy, p(26, 26).dx, p(26, 26).dy,
-          p(56, 4).dx, p(56, 4).dy)
+      ..cubicTo(
+        p(4, 42).dx,
+        p(4, 42).dy,
+        p(26, 26).dx,
+        p(26, 26).dy,
+        p(56, 4).dx,
+        p(56, 4).dy,
+      )
       ..close();
 
     // Inner arch: M56 26 C76 42 92 52 92 70 V124 H20 V70 C20 52 36 42 56 26 Z
     final innerPath = Path()
       ..moveTo(p(56, 26).dx, p(56, 26).dy)
-      ..cubicTo(p(76, 42).dx, p(76, 42).dy, p(92, 52).dx, p(92, 52).dy,
-          p(92, 70).dx, p(92, 70).dy)
+      ..cubicTo(
+        p(76, 42).dx,
+        p(76, 42).dy,
+        p(92, 52).dx,
+        p(92, 52).dy,
+        p(92, 70).dx,
+        p(92, 70).dy,
+      )
       ..lineTo(p(92, 124).dx, p(92, 124).dy)
       ..lineTo(p(20, 124).dx, p(20, 124).dy)
       ..lineTo(p(20, 70).dx, p(20, 70).dy)
-      ..cubicTo(p(20, 52).dx, p(20, 52).dy, p(36, 42).dx, p(36, 42).dy,
-          p(56, 26).dx, p(56, 26).dy)
+      ..cubicTo(
+        p(20, 52).dx,
+        p(20, 52).dy,
+        p(36, 42).dx,
+        p(36, 42).dy,
+        p(56, 26).dx,
+        p(56, 26).dy,
+      )
       ..close();
 
     final outerPaint = Paint()
@@ -104,5 +128,7 @@ class _MihrabArchPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MihrabArchPainter old) =>
-      old.outer != outer || old.inner != inner || old.strokeWidth != strokeWidth;
+      old.outer != outer ||
+      old.inner != inner ||
+      old.strokeWidth != strokeWidth;
 }

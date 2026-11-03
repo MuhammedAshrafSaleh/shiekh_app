@@ -361,10 +361,7 @@ class _VerticalDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: AppBorders.hairline,
-      color: AppColors.border,
-    );
+    return Container(width: AppBorders.hairline, color: AppColors.border);
   }
 }
 

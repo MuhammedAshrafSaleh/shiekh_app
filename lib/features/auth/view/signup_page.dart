@@ -150,16 +150,16 @@ class _SignupPageState extends State<SignupPage> {
 
     if (isGuest) {
       context.read<AuthCubit>().convertGuest(
-            email: email,
-            password: password,
-            fullName: name,
-          );
+        email: email,
+        password: password,
+        fullName: name,
+      );
     } else {
       context.read<AuthCubit>().signUp(
-            email: email,
-            password: password,
-            fullName: name,
-          );
+        email: email,
+        password: password,
+        fullName: name,
+      );
     }
   }
 
@@ -330,9 +330,7 @@ class _SignupPageState extends State<SignupPage> {
                     ),
                     const SizedBox(height: AppSpacing.s6),
                     _LoginFooter(onTap: () => context.pop()),
-                    SizedBox(
-                      height: MediaQuery.viewInsetsOf(context).bottom,
-                    ),
+                    SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
                   ],
                 ),
               ),

@@ -86,40 +86,38 @@ class _Body extends StatelessWidget {
       builder: (context, state) {
         return switch (state) {
           NotificationsInitial() ||
-          NotificationsLoading() =>
-            const _LoadingView(),
+          NotificationsLoading() => const _LoadingView(),
           NotificationsError(:final message) => SheikhyErrorState(
-              heading: 'تعذّر تحميل الإشعارات',
-              message: message,
-              onRetry: () =>
-                  context.read<NotificationsCubit>().loadNotifications(),
-            ),
+            heading: 'تعذّر تحميل الإشعارات',
+            message: message,
+            onRetry: () =>
+                context.read<NotificationsCubit>().loadNotifications(),
+          ),
           NotificationsEmpty() => const SheikhyEmptyState(
-              icon: Icons.notifications_none_outlined,
-              heading: 'لا توجد إشعارات بعد',
-              subtitle: 'ستُخطَر هنا بالدروس والمتون والشهادات.',
-            ),
+            icon: Icons.notifications_none_outlined,
+            heading: 'لا توجد إشعارات بعد',
+            subtitle: 'ستُخطَر هنا بالدروس والمتون والشهادات.',
+          ),
           NotificationsLoaded(:final notifications) => RefreshIndicator(
-              color: AppColors.primary,
-              backgroundColor: AppColors.surface,
-              onRefresh: () =>
-                  context.read<NotificationsCubit>().loadNotifications(),
-              child: ListView.separated(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.pageGutter,
-                  AppSpacing.s3,
-                  AppSpacing.pageGutter,
-                  AppSpacing.s7 + context.safeBottom,
-                ),
-                itemCount: notifications.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: AppSpacing.s3),
-                itemBuilder: (context, index) => _NotificationCard(
-                  notification: notifications[index],
-                  onTap: () => _handleTap(context, notifications[index]),
-                ),
+            color: AppColors.primary,
+            backgroundColor: AppColors.surface,
+            onRefresh: () =>
+                context.read<NotificationsCubit>().loadNotifications(),
+            child: ListView.separated(
+              padding: EdgeInsetsDirectional.fromSTEB(
+                AppSpacing.pageGutter,
+                AppSpacing.s3,
+                AppSpacing.pageGutter,
+                AppSpacing.s7 + context.safeBottom,
+              ),
+              itemCount: notifications.length,
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s3),
+              itemBuilder: (context, index) => _NotificationCard(
+                notification: notifications[index],
+                onTap: () => _handleTap(context, notifications[index]),
               ),
             ),
+          ),
           _ => const SizedBox.shrink(),
         };
       },
@@ -167,10 +165,7 @@ class _LoadingView extends StatelessWidget {
 // ── Notification card ─────────────────────────────────────────────────────────
 
 class _NotificationCard extends StatelessWidget {
-  const _NotificationCard({
-    required this.notification,
-    required this.onTap,
-  });
+  const _NotificationCard({required this.notification, required this.onTap});
 
   final NotificationEntity notification;
   final VoidCallback onTap;
@@ -302,20 +297,20 @@ class _NotifIcon extends StatelessWidget {
   final String type;
 
   static Color colorFor(String type) => switch (type) {
-        'live_stream' => AppColors.danger,
-        'new_lesson' => AppColors.primary,
-        'reminder' => AppColors.warning,
-        'achievement' => AppColors.goldDeep,
-        _ => AppColors.primary,
-      };
+    'live_stream' => AppColors.danger,
+    'new_lesson' => AppColors.primary,
+    'reminder' => AppColors.warning,
+    'achievement' => AppColors.goldDeep,
+    _ => AppColors.primary,
+  };
 
   static IconData iconFor(String type) => switch (type) {
-        'live_stream' => Icons.live_tv_outlined,
-        'new_lesson' => Icons.play_circle_outline,
-        'reminder' => Icons.alarm_outlined,
-        'achievement' => Icons.emoji_events_outlined,
-        _ => Icons.notifications_outlined,
-      };
+    'live_stream' => Icons.live_tv_outlined,
+    'new_lesson' => Icons.play_circle_outline,
+    'reminder' => Icons.alarm_outlined,
+    'achievement' => Icons.emoji_events_outlined,
+    _ => Icons.notifications_outlined,
+  };
 
   @override
   Widget build(BuildContext context) {

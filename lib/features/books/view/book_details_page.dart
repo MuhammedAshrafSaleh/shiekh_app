@@ -13,6 +13,7 @@ import '../../../core/widgets/girih_background.dart';
 import '../../../core/widgets/mihrab_arch.dart';
 import '../../../core/widgets/ornament_divider.dart';
 import '../../../core/widgets/sheikhy_button.dart';
+import '../../../core/widgets/sheikhy_card.dart';
 import '../../../core/widgets/sheikhy_empty_state.dart';
 import '../../../core/widgets/sheikhy_error_state.dart';
 import '../../../core/widgets/sheikhy_progress_bar.dart';
@@ -191,17 +192,6 @@ class _BookDetailsPageState extends State<BookDetailsPage> {
               ),
               _ => const SizedBox.shrink(),
             };
-          },
-        ),
-        // Sticky enrollment CTA — only shown when not yet enrolled. Rendered
-        // outside the scroll area so it is always visible without scrolling.
-        bottomNavigationBar: BlocBuilder<BookDetailsCubit, BookDetailsState>(
-          buildWhen: (p, c) => c is BookDetailsLoaded,
-          builder: (context, state) {
-            if (state is! BookDetailsLoaded || state.isEnrolled) {
-              return const SizedBox.shrink();
-            }
-            return _EnrollCtaBar(state: state, bookId: widget.bookId);
           },
         ),
       ),
@@ -406,6 +396,21 @@ class _BookDetailsViewState extends State<_BookDetailsView>
             child: OrnamentDivider(),
           ),
         ),
+        // Enrollment notice — first thing in the scroll body for a non-enrolled
+        // student (visible without scrolling), above the tab bar. The lesson
+        // list below stays visible (locked) so the book contents can be previewed.
+        if (!state.isEnrolled)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                AppSpacing.pageGutter,
+                0,
+                AppSpacing.pageGutter,
+                AppSpacing.s4,
+              ),
+              child: _EnrollNoticeCard(state: state, bookId: bookId),
+            ),
+          ),
         SliverPersistentHeader(
           pinned: true,
           delegate: _BookTabBarDelegate(_tabController),
@@ -902,42 +907,63 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-// ── Sticky enrollment CTA bar (unenrolled users + guests) ─────────────────────
+// ── In-body enrollment notice card (unenrolled users + guests) ────────────────
 
-class _EnrollCtaBar extends StatelessWidget {
+// Sits directly below the header/progress block and above the الدروس tab bar,
+// so a non-enrolled student sees the enrolment requirement without scrolling.
+// The locked lesson list below still surfaces the same enroll action on tap.
+class _EnrollNoticeCard extends StatelessWidget {
   final BookDetailsLoaded state;
   final String bookId;
 
-  const _EnrollCtaBar({required this.state, required this.bookId});
+  const _EnrollNoticeCard({required this.state, required this.bookId});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(
-          AppSpacing.pageGutter,
-          AppSpacing.s3,
-          AppSpacing.pageGutter,
-          AppSpacing.s3,
-        ),
-        child: BlocBuilder<BookDetailsCubit, BookDetailsState>(
-          buildWhen: (p, c) => c is BookDetailsLoaded,
-          builder: (context, s) {
-            final loaded = s is BookDetailsLoaded ? s : state;
-            final guest = _isGuest(context);
-            return SheikhyButton.primary(
-              label: guest ? 'أنشئ حساباً للتسجيل' : 'التسجيل في الكتاب',
-              icon: Icon(
-                guest
-                    ? Icons.person_add_alt_1_outlined
-                    : Icons.how_to_reg_outlined,
+    final guest = _isGuest(context);
+    return SheikhyCard(
+      raised: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.lock_outline, size: 20, color: AppColors.gold),
+              const SizedBox(width: AppSpacing.s2 + 2),
+              Expanded(
+                child: Text(
+                  'لم تسجّل في هذا الكتاب بعد',
+                  style: AppTextStyles.h3.copyWith(fontSize: 18),
+                ),
               ),
-              fullWidth: true,
-              isLoading: loaded.isEnrolling,
-              onPressed: loaded.isEnrolling ? null : () => _onEnrollPressed(context),
-            );
-          },
-        ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s2),
+          Text(
+            'سجّل في الكتاب لفتح جميع الدروس والاختبارات والحصول على الشهادة.',
+            style: AppTextStyles.small.copyWith(color: AppColors.inkMuted),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          BlocBuilder<BookDetailsCubit, BookDetailsState>(
+            buildWhen: (p, c) => c is BookDetailsLoaded,
+            builder: (context, s) {
+              final loaded = s is BookDetailsLoaded ? s : state;
+              return SheikhyButton.primary(
+                label: guest ? 'أنشئ حساباً للتسجيل' : 'التسجيل في الكتاب',
+                icon: Icon(
+                  guest
+                      ? Icons.person_add_alt_1_outlined
+                      : Icons.how_to_reg_outlined,
+                ),
+                fullWidth: true,
+                isLoading: loaded.isEnrolling,
+                onPressed: loaded.isEnrolling
+                    ? null
+                    : () => _onEnrollPressed(context),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

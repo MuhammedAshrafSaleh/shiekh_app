@@ -60,12 +60,16 @@ class FinalExamCard extends StatelessWidget {
                 child: Row(
                   children: [
                     _ExamIcon(
-                        isUnlocked: _isUnlocked,
-                        passed: bestAttempt?.passed),
+                      isUnlocked: _isUnlocked,
+                      passed: bestAttempt?.passed,
+                    ),
                     const SizedBox(width: AppSpacing.s4),
                     Expanded(
-                        child: _ExamLabel(
-                            isUnlocked: _isUnlocked, subtitle: _subtitle)),
+                      child: _ExamLabel(
+                        isUnlocked: _isUnlocked,
+                        subtitle: _subtitle,
+                      ),
+                    ),
                     if (_isUnlocked || bestAttempt != null)
                       const Icon(
                         Icons.chevron_left,
@@ -124,8 +128,8 @@ class _ExamIcon extends StatelessWidget {
         hasPassed
             ? Icons.emoji_events_outlined
             : isUnlocked
-                ? Icons.school_outlined
-                : Icons.lock_outline,
+            ? Icons.school_outlined
+            : Icons.lock_outline,
         color: active ? AppColors.goldDeep : AppColors.inkFaint,
         size: 20,
       ),

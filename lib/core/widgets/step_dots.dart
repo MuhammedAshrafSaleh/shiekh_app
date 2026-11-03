@@ -10,8 +10,8 @@ import '../theme/app_spacing.dart';
 
 class StepDots extends StatelessWidget {
   const StepDots({super.key, required this.total, required this.current})
-      : assert(total > 0),
-        assert(current >= 1);
+    : assert(total > 0),
+      assert(current >= 1);
 
   final int total;
 

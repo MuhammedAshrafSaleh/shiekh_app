@@ -30,10 +30,11 @@ class AdminNotificationsRepository {
           .select('id, type, title, body, link_url, send_at, created_at')
           .order('created_at', ascending: false)
           .limit(100);
-      return Right((data as List)
-          .map((e) =>
-              NotificationEntity.fromJson(e as Map<String, dynamic>))
-          .toList());
+      return Right(
+        (data as List)
+            .map((e) => NotificationEntity.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getNotifications: ${e.message}');
       return Left(ServerFailure(e.message));
@@ -73,14 +74,12 @@ class AdminNotificationsRepository {
   }
 
   Future<Either<Failure, Unit>> deleteNotification(
-      String notificationId) async {
+    String notificationId,
+  ) async {
     final net = _checkNetwork<Unit>();
     if (net != null) return net;
     try {
-      await _client
-          .from('notifications')
-          .delete()
-          .eq('id', notificationId);
+      await _client.from('notifications').delete().eq('id', notificationId);
       return const Right(unit);
     } on PostgrestException catch (e) {
       _log.warning('deleteNotification: ${e.message}');

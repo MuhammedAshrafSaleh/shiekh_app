@@ -39,7 +39,9 @@ class _SheikhyAppState extends State<SheikhyApp> {
       // Preload notifications so the home badge reflects the unread count
       // as soon as a student signs in (or the session is restored).
       listenWhen: (prev, curr) =>
-          curr is AuthAuthenticated && !curr.isAdmin && prev is! AuthAuthenticated,
+          curr is AuthAuthenticated &&
+          !curr.isAdmin &&
+          prev is! AuthAuthenticated,
       listener: (context, state) =>
           context.read<NotificationsCubit>().loadNotifications(),
       child: BlocBuilder<ThemeCubit, ThemeMode>(

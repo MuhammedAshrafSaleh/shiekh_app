@@ -34,11 +34,7 @@ class SheikhyCard extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: decoration,
-        child: InkWell(
-          borderRadius: AppRadii.rLg,
-          onTap: onTap,
-          child: inner,
-        ),
+        child: InkWell(borderRadius: AppRadii.rLg, onTap: onTap, child: inner),
       ),
     );
   }

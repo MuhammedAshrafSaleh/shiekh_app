@@ -34,8 +34,7 @@ class OnboardingRepository {
           .limit(50);
 
       final slides = (raw as List)
-          .map((e) =>
-              OnboardingSlideEntity.fromJson(e as Map<String, dynamic>))
+          .map((e) => OnboardingSlideEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(slides);

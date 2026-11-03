@@ -29,6 +29,12 @@ class LessonWithProgressEntity extends Equatable {
   int get lastPositionSeconds => progress?.lastPositionSeconds ?? 0;
 
   @override
-  List<Object?> get props =>
-      [lesson, progress, hasQuizQuestions, hasVideo, hasAudio, hasPdf];
+  List<Object?> get props => [
+    lesson,
+    progress,
+    hasQuizQuestions,
+    hasVideo,
+    hasAudio,
+    hasPdf,
+  ];
 }

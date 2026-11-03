@@ -24,10 +24,7 @@ class NotesCubit extends Cubit<NotesState> {
 
   Future<void> delete(String noteId) async {
     final result = await _source.delete(noteId);
-    result.fold(
-      (failure) => emit(NotesError(failure.message)),
-      (_) => load(),
-    );
+    result.fold((failure) => emit(NotesError(failure.message)), (_) => load());
   }
 
   Future<void> refreshAfterEdit() async {

@@ -28,10 +28,7 @@ class PendingConversion {
 
   /// Persists the intent just before a conversion / collision sign-in starts.
   /// No-op when there is nothing to carry.
-  static Future<void> save({
-    String? returnTo,
-    String? autoEnrollBookId,
-  }) async {
+  static Future<void> save({String? returnTo, String? autoEnrollBookId}) async {
     if (PendingConversion(
       returnTo: returnTo,
       autoEnrollBookId: autoEnrollBookId,

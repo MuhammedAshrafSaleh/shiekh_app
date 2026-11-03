@@ -37,13 +37,13 @@ class BannerEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        description,
-        imageUrl,
-        linkedBookId,
-        externalLink,
-        orderIndex,
-        isActive,
-      ];
+    id,
+    title,
+    description,
+    imageUrl,
+    linkedBookId,
+    externalLink,
+    orderIndex,
+    isActive,
+  ];
 }

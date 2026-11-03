@@ -137,13 +137,12 @@ class _LoadedView extends StatelessWidget {
     }
   }
 
-  void _handleSuggestionTap(
-    BuildContext context,
-    SuggestionEntity suggestion,
-  ) {
+  void _handleSuggestionTap(BuildContext context, SuggestionEntity suggestion) {
     // Routes registered in Tasks 4 (video) & 5 (audio); the suggestion is
     // passed via `extra`.
-    final route = suggestion.isVideo ? '/suggestions/video' : '/suggestions/audio';
+    final route = suggestion.isVideo
+        ? '/suggestions/video'
+        : '/suggestions/audio';
     context.push(route, extra: suggestion);
   }
 
@@ -153,9 +152,9 @@ class _LoadedView extends StatelessWidget {
       color: AppColors.primary,
       backgroundColor: AppColors.surface,
       onRefresh: () => Future.wait([
-            context.read<HomeCubit>().loadHome(),
-            context.read<NotificationsCubit>().loadNotifications(),
-          ]),
+        context.read<HomeCubit>().loadHome(),
+        context.read<NotificationsCubit>().loadNotifications(),
+      ]),
       child: CustomScrollView(
         slivers: [
           if (state.data.banners.isNotEmpty)

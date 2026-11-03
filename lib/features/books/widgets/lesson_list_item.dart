@@ -230,9 +230,15 @@ class _DurationTag extends StatelessWidget {
       runSpacing: AppSpacing.s1,
       children: [
         if (videoMinutes != null)
-          _DurationChip(icon: Icons.play_circle_outline, minutes: videoMinutes!),
+          _DurationChip(
+            icon: Icons.play_circle_outline,
+            minutes: videoMinutes!,
+          ),
         if (audioMinutes != null)
-          _DurationChip(icon: Icons.headphones_outlined, minutes: audioMinutes!),
+          _DurationChip(
+            icon: Icons.headphones_outlined,
+            minutes: audioMinutes!,
+          ),
       ],
     );
   }

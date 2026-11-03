@@ -63,13 +63,14 @@ class _LectureNotesPageState extends State<LectureNotesPage> {
                     onRetry: () => context.read<NotesCubit>().load(),
                   ),
                   NotesLoaded(:final notes) => _NotesList(
-                    notes: notes
-                        .where((n) => n.lessonId == widget.lessonId)
-                        .toList()
-                        ..sort(
-                          (a, b) =>
-                              a.positionSeconds.compareTo(b.positionSeconds),
-                        ),
+                    notes:
+                        notes
+                            .where((n) => n.lessonId == widget.lessonId)
+                            .toList()
+                          ..sort(
+                            (a, b) =>
+                                a.positionSeconds.compareTo(b.positionSeconds),
+                          ),
                     bookId: widget.bookId,
                     onRetry: () => context.read<NotesCubit>().load(),
                   ),
@@ -111,10 +112,8 @@ class _NotesList extends StatelessWidget {
         bottom: AppSpacing.s3 + context.safeBottom,
       ),
       itemCount: notes.length,
-      itemBuilder: (context, index) => NoteCard(
-        note: notes[index],
-        bookId: bookId,
-      ),
+      itemBuilder: (context, index) =>
+          NoteCard(note: notes[index], bookId: bookId),
     );
   }
 }

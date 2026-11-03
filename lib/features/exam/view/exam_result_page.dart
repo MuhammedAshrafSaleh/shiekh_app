@@ -46,9 +46,9 @@ class _ExamResultPageState extends State<ExamResultPage> {
     });
 
     final result = await context.read<ExamRepository>().getExamReview(
-          widget.examCompleted.bookId,
-          widget.examCompleted.result.attemptId,
-        );
+      widget.examCompleted.bookId,
+      widget.examCompleted.result.attemptId,
+    );
 
     if (!mounted) return;
 
@@ -83,10 +83,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SheikhyPageHeader(
-            title: 'نتائج الاختبار',
-            showBack: false,
-          ),
+          SheikhyPageHeader(title: 'نتائج الاختبار', showBack: false),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsetsDirectional.fromSTEB(
@@ -99,7 +96,9 @@ class _ExamResultPageState extends State<ExamResultPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // ── Score ring ─────────────────────────────────────────
-                  Center(child: _ScoreRing(score: result.score, passed: passed)),
+                  Center(
+                    child: _ScoreRing(score: result.score, passed: passed),
+                  ),
                   const SizedBox(height: AppSpacing.s5),
 
                   // ── Pass / Fail heading ────────────────────────────────
@@ -118,7 +117,9 @@ class _ExamResultPageState extends State<ExamResultPage> {
                     passed
                         ? 'لقد أتممت الاختبار بنجاح وتفوّق.'
                         : 'لم تبلغ النسبة المطلوبة. يمكنك المحاولة مرة أخرى.',
-                    style: AppTextStyles.body.copyWith(color: AppColors.inkMuted),
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.inkMuted,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.s4),
@@ -153,7 +154,9 @@ class _ExamResultPageState extends State<ExamResultPage> {
                                 ? Icons.check_circle_outline_rounded
                                 : Icons.highlight_off_rounded,
                             size: 18,
-                            color: passed ? AppColors.success : AppColors.danger,
+                            color: passed
+                                ? AppColors.success
+                                : AppColors.danger,
                           ),
                         ],
                       ),
@@ -217,8 +220,9 @@ class _ExamResultPageState extends State<ExamResultPage> {
 
                   if (_reviewLoading)
                     Center(
-                      child:
-                          CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     )
                   else if (_reviewFailed)
                     Center(
@@ -367,11 +371,7 @@ class _CertPreviewCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _CertMeta(label: 'التقدير', value: result.gradeLabel),
-              _CertMeta(
-                label: 'التاريخ',
-                value: dateStr,
-                align: TextAlign.end,
-              ),
+              _CertMeta(label: 'التاريخ', value: dateStr, align: TextAlign.end),
             ],
           ),
         ],

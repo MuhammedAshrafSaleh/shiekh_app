@@ -77,7 +77,8 @@ class HomeRepository {
     }
   }
 
-  Future<Either<Failure, List<BookWithProgressEntity>>> getFeaturedBooks() async {
+  Future<Either<Failure, List<BookWithProgressEntity>>>
+  getFeaturedBooks() async {
     final networkError = _checkNetwork<List<BookWithProgressEntity>>();
     if (networkError != null) return networkError;
 

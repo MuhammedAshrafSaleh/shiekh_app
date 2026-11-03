@@ -41,21 +41,21 @@ class StudentQuestionEntity extends Equatable {
           ? DateTime.parse(json['answered_at'] as String)
           : null,
       createdAt: DateTime.parse(json['created_at'] as String),
-      askerName: (json['users'] as Map<String, dynamic>?)?['full_name']
-          as String?,
+      askerName:
+          (json['users'] as Map<String, dynamic>?)?['full_name'] as String?,
     );
   }
 
   @override
   List<Object?> get props => [
-        id,
-        bookId,
-        lessonId,
-        questionText,
-        answerText,
-        status,
-        answeredAt,
-        createdAt,
-        askerName,
-      ];
+    id,
+    bookId,
+    lessonId,
+    questionText,
+    answerText,
+    status,
+    answeredAt,
+    createdAt,
+    askerName,
+  ];
 }

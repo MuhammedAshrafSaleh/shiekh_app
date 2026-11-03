@@ -31,7 +31,11 @@ class ExamReviewList extends StatelessWidget {
 class ExamReviewItem extends StatelessWidget {
   final int index;
   final ExamReviewQuestion question;
-  const ExamReviewItem({super.key, required this.index, required this.question});
+  const ExamReviewItem({
+    super.key,
+    required this.index,
+    required this.question,
+  });
 
   static String _ar(int n) {
     const w = '0123456789';
@@ -44,19 +48,20 @@ class ExamReviewItem extends StatelessWidget {
 
   McqOptionState _stateFor(String choiceKey) {
     if (choiceKey == question.correctChoice) return McqOptionState.correct;
-    if (choiceKey == question.userAnswer && choiceKey != question.correctChoice) {
+    if (choiceKey == question.userAnswer &&
+        choiceKey != question.correctChoice) {
       return McqOptionState.incorrect;
     }
     return McqOptionState.idle;
   }
 
   String _choiceLetter(String key) => switch (key) {
-        'a' => 'أ',
-        'b' => 'ب',
-        'c' => 'ج',
-        'd' => 'د',
-        _ => key,
-      };
+    'a' => 'أ',
+    'b' => 'ب',
+    'c' => 'ج',
+    'd' => 'د',
+    _ => key,
+  };
 
   @override
   Widget build(BuildContext context) {

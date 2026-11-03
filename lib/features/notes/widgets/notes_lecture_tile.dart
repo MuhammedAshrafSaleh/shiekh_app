@@ -55,7 +55,10 @@ class NotesLectureTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: AppTextStyles.small.copyWith(color: AppColors.ink, height: 1.5),
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.ink,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.s1),
                   Text(
@@ -69,11 +72,7 @@ class NotesLectureTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.s3),
-            Icon(
-              Icons.arrow_back_ios,
-              size: 14,
-              color: AppColors.inkFaint,
-            ),
+            Icon(Icons.arrow_back_ios, size: 14, color: AppColors.inkFaint),
           ],
         ),
       ),

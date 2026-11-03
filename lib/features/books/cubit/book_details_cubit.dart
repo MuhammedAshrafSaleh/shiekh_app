@@ -28,19 +28,23 @@ class BookDetailsCubit extends Cubit<BookDetailsState> {
 
     if (lessonsResult.isLeft()) {
       final msg = lessonsResult.fold(
-          (f) => f.message, (_) => 'حدث خطأ أثناء تحميل الدروس');
+        (f) => f.message,
+        (_) => 'حدث خطأ أثناء تحميل الدروس',
+      );
       emit(BookDetailsError(msg));
       return;
     }
 
-    emit(BookDetailsLoaded(
-      book: book,
-      lessons: lessonsResult.getOrElse(() => const []),
-      isEnrolled: enrolledResult.getOrElse(() => false),
-      completionPercentage: percentResult.getOrElse(() => 0.0),
-      hasFinalExam: examResult.getOrElse(() => false),
-      bestExamAttempt: bestAttemptResult.getOrElse(() => null),
-    ));
+    emit(
+      BookDetailsLoaded(
+        book: book,
+        lessons: lessonsResult.getOrElse(() => const []),
+        isEnrolled: enrolledResult.getOrElse(() => false),
+        completionPercentage: percentResult.getOrElse(() => 0.0),
+        hasFinalExam: examResult.getOrElse(() => false),
+        bestExamAttempt: bestAttemptResult.getOrElse(() => null),
+      ),
+    );
   }
 
   Future<void> enroll(String bookId) async {
@@ -50,17 +54,18 @@ class BookDetailsCubit extends Cubit<BookDetailsState> {
     emit(current.copyWith(isEnrolling: true));
 
     final result = await _repo.enrollInBook(bookId);
-    result.fold(
-      (failure) => emit(current.copyWith(isEnrolling: false)),
-      (_) async {
-        final lessonsResult = await _repo.getLessonsWithProgress(bookId);
-        emit(current.copyWith(
+    result.fold((failure) => emit(current.copyWith(isEnrolling: false)), (
+      _,
+    ) async {
+      final lessonsResult = await _repo.getLessonsWithProgress(bookId);
+      emit(
+        current.copyWith(
           isEnrolled: true,
           isEnrolling: false,
           lessons: lessonsResult.getOrElse(() => current.lessons),
-        ));
-      },
-    );
+        ),
+      );
+    });
   }
 
   Future<void> refreshProgress(String bookId) async {
@@ -70,10 +75,7 @@ class BookDetailsCubit extends Cubit<BookDetailsState> {
     final lessonsResult = await _repo.getLessonsWithProgress(bookId);
     final percentResult = await _repo.getCompletionPercentage(bookId);
 
-    final lessons = lessonsResult.fold(
-      (_) => current.lessons,
-      (l) => l,
-    );
+    final lessons = lessonsResult.fold((_) => current.lessons, (l) => l);
     final pct = percentResult.fold(
       (_) => current.completionPercentage,
       (p) => p,
