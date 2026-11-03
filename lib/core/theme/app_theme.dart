@@ -21,8 +21,9 @@ abstract final class AppTheme {
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       statusBarBrightness: isDark ? Brightness.dark : Brightness.light, // iOS
       systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness:
-          isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
       systemNavigationBarContrastEnforced: true,
     );
   }
@@ -95,9 +96,14 @@ abstract final class AppTheme {
         fillColor: scheme.brightness == Brightness.light
             ? Colors.white
             : scheme.surfaceContainerHighest,
+        // Vertical room for Arabic diacritics/descenders (was 14, clipped them).
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 14,
+          vertical: 18,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 48,
+          minHeight: 48,
         ),
       ),
       chipTheme: ChipThemeData(
