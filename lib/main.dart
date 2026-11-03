@@ -44,9 +44,8 @@ Future<void> main() async {
     url: AppConfig.supabaseUrl,
     publishableKey: AppConfig.supabaseAnonKey,
     debug: false,
-    // Wrap all REST/Auth/Storage calls with a per-request timeout so a stalled
-    // server can't hang a repository forever. Edge Functions are exempted
-    // internally (they run long). See TimeoutHttpClient.
+    // Wrap all REST/Auth/Storage/Functions calls with a per-request timeout so a
+    // stalled server can't hang a repository forever. See TimeoutHttpClient.
     httpClient: TimeoutHttpClient(http.Client()),
   );
 

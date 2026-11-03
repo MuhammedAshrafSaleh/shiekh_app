@@ -1,10 +1,11 @@
 // test/features/admin/lessons/admin_lesson_repository_test.dart
 //
-// Unit tests for AdminLessonRepository.generateQuestions — the generate-questions
-// Edge Function call. Covers the offline guard, the success path, and each
-// failure branch (function error body, client-side timeout, transport failure,
-// network loss).
-import 'dart:async';
+// Unit tests for the AI Edge Function calls on AdminLessonRepository under the
+// async-queue contract: both generate-questions and transcribe-lesson now return
+// HTTP 202 { job_id, status } (SUCCESS) and the repo returns a JobEnqueueEntity.
+// Covers the offline guard, the 202 success path, the non-JSON-ack guard, and the
+// genuine-error branches (AI_KEY_MISSING → ValidationFailure, overload →
+// AiOverloadFailure, generic 4xx → ServerFailure, transport / network loss).
 import 'dart:io';
 
 import 'package:dartz/dartz.dart';
@@ -65,59 +66,88 @@ void main() {
       verifyNever(() => functions.invoke(any(), body: any(named: 'body')));
     });
 
-    test('returns the parsed result on success', () async {
+    test('treats 202 ack as success, returning the job id', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => functions.invoke(any(), body: any(named: 'body')),
-      ).thenAnswer(
+      when(() => functions.invoke(any(), body: any(named: 'body'))).thenAnswer(
         (_) async => const FunctionResponse(
-          data: {'job_id': 'job-1', 'inserted_count': 12},
-          status: 200,
+          data: {'job_id': 'job-1', 'status': 'queued'},
+          status: 202,
         ),
       );
 
       final result = await callGenerate();
 
       expect(result.isRight(), true);
-      result.fold(
-        (_) => fail('expected Right'),
-        (r) {
-          expect(r.jobId, 'job-1');
-          expect(r.insertedCount, 12);
-        },
-      );
+      result.fold((_) => fail('expected Right'), (r) {
+        expect(r.jobId, 'job-1');
+        expect(r.status, 'queued');
+      });
       verify(
         () => functions.invoke('generate-questions', body: any(named: 'body')),
       ).called(1);
     });
 
-    test('maps FunctionException {error} body to ServerFailure', () async {
+    test('maps a non-JSON ack body to ServerFailure', () async {
       when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => functions.invoke(any(), body: any(named: 'body')),
-      ).thenThrow(
-        const FunctionException(
-          status: 400,
-          details: {'error': 'النص قصير جدًا'},
-        ),
+      when(() => functions.invoke(any(), body: any(named: 'body'))).thenAnswer(
+        (_) async => const FunctionResponse(data: 'accepted', status: 202),
       );
-
-      final result = await callGenerate();
-
-      expect(result, const Left(ServerFailure('النص قصير جدًا')));
-    });
-
-    test('maps TimeoutException to ServerFailure', () async {
-      when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => functions.invoke(any(), body: any(named: 'body')),
-      ).thenThrow(TimeoutException('too long'));
 
       final result = await callGenerate();
 
       expect(result.isLeft(), true);
       result.fold(
         (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+
+    test(
+      'maps generic FunctionException {error} body to ServerFailure',
+      () async {
+        when(() => connectivity.state).thenReturn(_online);
+        when(() => functions.invoke(any(), body: any(named: 'body'))).thenThrow(
+          const FunctionException(
+            status: 400,
+            details: {'error': 'النص قصير جدًا'},
+          ),
+        );
+
+        final result = await callGenerate();
+
+        expect(result, const Left(ServerFailure('النص قصير جدًا')));
+      },
+    );
+
+    test('maps AI_KEY_MISSING to ValidationFailure', () async {
+      when(() => connectivity.state).thenReturn(_online);
+      when(() => functions.invoke(any(), body: any(named: 'body'))).thenThrow(
+        const FunctionException(
+          status: 400,
+          details: {'error': 'AI_KEY_MISSING'},
+        ),
+      );
+
+      final result = await callGenerate();
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<ValidationFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+
+    test('maps a 503 overload to AiOverloadFailure', () async {
+      when(() => connectivity.state).thenReturn(_online);
+      when(() => functions.invoke(any(), body: any(named: 'body'))).thenThrow(
+        const FunctionException(status: 503, details: {'error': 'OVERLOADED'}),
+      );
+
+      final result = await callGenerate();
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<AiOverloadFailure>()),
         (_) => fail('expected Left'),
       );
     });
@@ -165,12 +195,12 @@ void main() {
       verifyNever(() => functions.invoke(any(), body: any(named: 'body')));
     });
 
-    test('returns the parsed transcript on success', () async {
+    test('treats 202 ack as success, returning the job id', () async {
       when(() => connectivity.state).thenReturn(_online);
       when(() => functions.invoke(any(), body: any(named: 'body'))).thenAnswer(
         (_) async => const FunctionResponse(
-          data: {'job_id': 'job-9', 'transcript_text': 'النص المُفرَّغ'},
-          status: 200,
+          data: {'job_id': 'job-9', 'status': 'queued'},
+          status: 202,
         ),
       );
 
@@ -179,41 +209,44 @@ void main() {
       expect(result.isRight(), true);
       result.fold((_) => fail('expected Right'), (r) {
         expect(r.jobId, 'job-9');
-        expect(r.transcriptText, 'النص المُفرَّغ');
+        expect(r.status, 'queued');
       });
       verify(
         () => functions.invoke('transcribe-lesson', body: any(named: 'body')),
       ).called(1);
     });
 
-    test('maps FunctionException {error} body to ServerFailure', () async {
+    test(
+      'maps generic FunctionException {error} body to ServerFailure',
+      () async {
+        when(() => connectivity.state).thenReturn(_online);
+        when(() => functions.invoke(any(), body: any(named: 'body'))).thenThrow(
+          const FunctionException(
+            status: 400,
+            details: {'error': 'الفيديو أطول من الحد المسموح'},
+          ),
+        );
+
+        final result = await callTranscribe();
+
+        expect(
+          result,
+          const Left(ServerFailure('الفيديو أطول من الحد المسموح')),
+        );
+      },
+    );
+
+    test('maps a 503 overload to AiOverloadFailure', () async {
       when(() => connectivity.state).thenReturn(_online);
       when(() => functions.invoke(any(), body: any(named: 'body'))).thenThrow(
-        const FunctionException(
-          status: 400,
-          details: {'error': 'الفيديو أطول من الحد المسموح'},
-        ),
+        const FunctionException(status: 503, details: {'error': 'OVERLOADED'}),
       );
-
-      final result = await callTranscribe();
-
-      expect(
-        result,
-        const Left(ServerFailure('الفيديو أطول من الحد المسموح')),
-      );
-    });
-
-    test('maps TimeoutException to ServerFailure', () async {
-      when(() => connectivity.state).thenReturn(_online);
-      when(
-        () => functions.invoke(any(), body: any(named: 'body')),
-      ).thenThrow(TimeoutException('too long'));
 
       final result = await callTranscribe();
 
       expect(result.isLeft(), true);
       result.fold(
-        (f) => expect(f, isA<ServerFailure>()),
+        (f) => expect(f, isA<AiOverloadFailure>()),
         (_) => fail('expected Left'),
       );
     });
@@ -242,6 +275,32 @@ void main() {
       final result = await callTranscribe();
 
       expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
+    });
+  });
+
+  group('getLatestGenerationJob', () {
+    test('returns NetworkFailure when offline, without touching db', () async {
+      when(() => connectivity.state).thenReturn(_offline);
+
+      final result = await repo.getLatestGenerationJob('lesson-1');
+
+      expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
+      verifyNever(() => client.from(any()));
+    });
+
+    test('returns ServerFailure on PostgrestException', () async {
+      when(() => connectivity.state).thenReturn(_online);
+      when(
+        () => client.from(any()),
+      ).thenThrow(const PostgrestException(message: 'select error'));
+
+      final result = await repo.getLatestGenerationJob('lesson-1');
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
     });
   });
 

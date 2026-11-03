@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/widgets/sheikhy_progress_bar.dart';
+import '../../../../core/widgets/error_state.dart';
 import '../../../../models/lesson_entity.dart';
 import '../../ai_settings/data/admin_ai_settings_repository.dart';
 import '../cubit/generate_questions_cubit.dart';
@@ -13,17 +13,20 @@ import '../cubit/generate_questions_state.dart';
 /// Where the transcript comes from before questions are generated.
 enum _SourceMode { pasteText, youtube, driveAudio }
 
-/// Admin screen: produce quiz questions with AI. The transcript can be pasted
-/// directly, or auto-transcribed from the lesson's YouTube video / Drive audio
-/// link (a chained two-phase call: transcribe → generate). Generated questions
-/// land as ai_review_status='pending' (invisible to students) and must be
-/// reviewed later. Pops with `true` on success so the caller can refresh the
-/// lesson's question list.
+/// Admin screen: produce quiz questions with AI. Under the async-queue contract
+/// both AI operations only ENQUEUE a background job and return immediately; this
+/// screen is a non-blocking status surface. The admin may leave and return at any
+/// time — status is re-read from the database on open and kept live via Realtime
+/// (with a 15 s poll fallback).
+///
+/// Link sources (YouTube / Drive audio) are a two-step flow: تفريغ المحاضرة →
+/// wait → when the transcript is ready, توليد الأسئلة. Pasted text skips straight
+/// to generation. Generated questions land as ai_review_status='pending'.
 class GenerateQuestionsPage extends StatefulWidget {
   final String lessonId;
 
-  /// The loaded lesson — used to prefill link fields and detect an already-saved
-  /// transcript. Nullable so the page still works if it wasn't provided.
+  /// The loaded lesson — used only to prefill link fields. The authoritative
+  /// transcript status comes from the cubit's DB read, not from here.
   final LessonEntity? lesson;
 
   const GenerateQuestionsPage({super.key, required this.lessonId, this.lesson});
@@ -43,11 +46,12 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
   bool _keyChecked = false;
   bool _keyIsSet = false;
 
-  // Captured so we can show SnackBars safely after navigation (they outlive
-  // this page). Only ever read while the page is live — never in dispose().
+  // Captured so we can show SnackBars safely. Only read while the page is live.
   late ScaffoldMessengerState _messenger;
-  // Tracks the transcribe→generate transition to fire the "phase 1 done" toast.
-  bool _wasTranscribing = false;
+
+  // Track terminal-status transitions so the success toast fires exactly once.
+  String? _lastTranscriptStatus;
+  String? _lastJobStatus;
 
   final _transcriptCtrl = TextEditingController();
   final _youtubeCtrl = TextEditingController();
@@ -68,16 +72,19 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     _youtubeCtrl.addListener(_onInputChanged);
     _driveCtrl.addListener(_onInputChanged);
     _countCtrl.addListener(_onInputChanged);
-    // Keep the live difficulty total in sync as the admin types.
     _easyCtrl.addListener(_onInputChanged);
     _mediumCtrl.addListener(_onInputChanged);
     _hardCtrl.addListener(_onInputChanged);
     _checkAiKey();
+    // Re-derive the true current status from the DB so reopening always shows
+    // reality (even after an app restart mid-job).
+    context.read<GenerateQuestionsCubit>().load(widget.lessonId);
   }
 
   Future<void> _checkAiKey() async {
-    final result =
-        await context.read<AdminAiSettingsRepository>().getGeminiKeyStatus();
+    final result = await context
+        .read<AdminAiSettingsRepository>()
+        .getGeminiKeyStatus();
     if (!mounted) return;
     setState(() {
       _keyChecked = true;
@@ -93,10 +100,6 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
 
   @override
   void dispose() {
-    // NOTE: never touch ScaffoldMessenger here — clearing/hiding a SnackBar in
-    // dispose() calls markNeedsBuild() while the tree is locked and throws.
-    // Lingering error SnackBars are dismissed in the listener before we pop, and
-    // the retry action self-guards with `mounted`.
     _transcriptCtrl.dispose();
     _youtubeCtrl.dispose();
     _driveCtrl.dispose();
@@ -116,21 +119,6 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
       (int.tryParse(_easyCtrl.text.trim()) ?? 0) +
       (int.tryParse(_mediumCtrl.text.trim()) ?? 0) +
       (int.tryParse(_hardCtrl.text.trim()) ?? 0);
-
-  bool get _canSubmit {
-    // No AI key configured → generation would fail server-side (AI_KEY_MISSING).
-    if (_keyChecked && !_keyIsSet) return false;
-    final count = _requestedCount;
-    if (count == null || count <= 0) return false;
-    switch (_mode) {
-      case _SourceMode.pasteText:
-        return _transcriptCtrl.text.trim().isNotEmpty;
-      case _SourceMode.youtube:
-        return _youtubeCtrl.text.trim().isNotEmpty;
-      case _SourceMode.driveAudio:
-        return _driveCtrl.text.trim().isNotEmpty;
-    }
-  }
 
   /// Validates the shared count/difficulty inputs. Returns the parsed values, or
   /// null if invalid (a warning is shown).
@@ -155,54 +143,35 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     return (count: count, mix: {'easy': easy, 'medium': medium, 'hard': hard});
   }
 
-  void _submit() {
-    final shared = _validateShared();
-    if (shared == null) return;
+  void _enqueueTranscription() {
+    final isYoutube = _mode == _SourceMode.youtube;
+    final url = (isYoutube ? _youtubeCtrl : _driveCtrl).text.trim();
+    if (url.isEmpty) return;
     FocusScope.of(context).unfocus();
-
-    final cubit = context.read<GenerateQuestionsCubit>();
-    switch (_mode) {
-      case _SourceMode.pasteText:
-        final transcript = _transcriptCtrl.text.trim();
-        if (transcript.isEmpty) return;
-        cubit.generate(
-          lessonId: widget.lessonId,
-          transcriptText: transcript,
-          requestedCount: shared.count,
-          difficultyMix: shared.mix,
-        );
-      case _SourceMode.youtube:
-      case _SourceMode.driveAudio:
-        final isYoutube = _mode == _SourceMode.youtube;
-        final url = (isYoutube ? _youtubeCtrl : _driveCtrl).text.trim();
-        if (url.isEmpty) return;
-        cubit.transcribeAndGenerate(
-          lessonId: widget.lessonId,
-          sourceType: isYoutube ? 'youtube' : 'drive_audio',
-          sourceUrl: url,
-          requestedCount: shared.count,
-          difficultyMix: shared.mix,
-        );
-    }
-  }
-
-  /// Generate from an already-saved transcript — skips re-transcription (and the
-  /// quota slot it would cost).
-  void _useSavedTranscript(String transcript) {
-    final shared = _validateShared();
-    if (shared == null) return;
-    FocusScope.of(context).unfocus();
-    context.read<GenerateQuestionsCubit>().generate(
+    context.read<GenerateQuestionsCubit>().enqueueTranscription(
       lessonId: widget.lessonId,
-      transcriptText: transcript,
-      requestedCount: shared.count,
-      difficultyMix: shared.mix,
-      savedTranscript: transcript,
+      sourceType: isYoutube ? 'youtube' : 'drive_audio',
+      sourceUrl: url,
     );
   }
 
-  /// Show a SnackBar, replacing whatever is currently visible so an older error
-  /// banner never lingers behind a new message (e.g. fix input → retry).
+  /// Enqueue generation using [transcriptText] — the pasted text, or the ready
+  /// transcript for a link source.
+  void _enqueueGeneration(String transcriptText) {
+    final shared = _validateShared();
+    if (shared == null) return;
+    if (transcriptText.trim().isEmpty) return;
+    FocusScope.of(context).unfocus();
+    context.read<GenerateQuestionsCubit>().enqueueGeneration(
+      lessonId: widget.lessonId,
+      transcriptText: transcriptText.trim(),
+      requestedCount: shared.count,
+      difficultyMix: shared.mix,
+    );
+  }
+
+  /// Show a SnackBar, replacing whatever is currently visible so an older banner
+  /// never lingers behind a new message.
   void _showSnack(SnackBar bar) {
     _messenger
       ..hideCurrentSnackBar()
@@ -222,169 +191,94 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<GenerateQuestionsCubit, GenerateQuestionsState>(
+      listenWhen: (prev, curr) =>
+          curr is GenerateQuestionsReady || curr is GenerateQuestionsError,
       listener: (context, state) {
-        if (state is GenerateQuestionsTranscribing) {
-          _wasTranscribing = true;
-        } else if (state is GenerateQuestionsGenerating) {
-          // Phase 1 → phase 2 transition: reassure the admin before the long
-          // generation spinner.
-          if (_wasTranscribing) {
-            _wasTranscribing = false;
-            _showSnack(
-              const SnackBar(
-                content: Text(
-                  'تم تفريغ المحاضرة بنجاح، جاري الآن توليد الأسئلة...',
-                ),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 5),
-              ),
-            );
-          }
-        } else if (state is GenerateQuestionsSuccess) {
-          _wasTranscribing = false;
-          // Replaces any lingering error banner, then the success toast rides the
-          // root messenger so it stays visible after we pop.
+        if (state is! GenerateQuestionsReady) return;
+        // One-shot enqueue failure.
+        if (state.transientError != null) {
           _showSnack(
             SnackBar(
-              content: Text(
-                'تم توليد ${state.insertedCount} سؤال، بانتظار المراجعة',
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          Navigator.of(context).pop(true);
-        } else if (state is GenerateQuestionsError) {
-          _wasTranscribing = false;
-          // Non-fatal: keep the inputs so the admin can retry immediately. When a
-          // transcript is already saved, the retry action reuses it (no
-          // re-transcribe); otherwise it re-runs the current source.
-          final saved = state.savedTranscript;
-          _showSnack(
-            SnackBar(
-              content: Text(state.message),
+              content: Text(state.transientError!),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'إعادة المحاولة',
-                textColor: Colors.white,
-                onPressed: () {
-                  // SnackBars outlive the page — do nothing if we're gone.
-                  if (!mounted) return;
-                  saved != null ? _useSavedTranscript(saved) : _submit();
-                },
-              ),
             ),
           );
         }
+        // Fire the success toasts only on the transition into a terminal status.
+        if (state.transcriptStatus != _lastTranscriptStatus) {
+          if (state.transcriptStatus == 'ready' &&
+              _lastTranscriptStatus != null) {
+            _showSnack(
+              const SnackBar(
+                content: Text(
+                  'تم تفريغ المحاضرة بنجاح، يمكنك الآن توليد الأسئلة',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+          _lastTranscriptStatus = state.transcriptStatus;
+        }
+        if (state.jobStatus != _lastJobStatus) {
+          if (state.jobStatus == 'done' && _lastJobStatus != null) {
+            _showSnack(
+              SnackBar(
+                content: Text(
+                  'تم توليد ${state.resultCount ?? 0} سؤال، بانتظار المراجعة',
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          _lastJobStatus = state.jobStatus;
+        }
       },
       builder: (context, state) {
-        final isTranscribing = state is GenerateQuestionsTranscribing;
-        final isGenerating = state is GenerateQuestionsGenerating;
-        final isBusy = isTranscribing || isGenerating;
-        final busyProgress = state is GenerateQuestionsTranscribing
-            ? state.progress
-            : state is GenerateQuestionsGenerating
-                ? state.progress
-                : 0.0;
         return Scaffold(
           resizeToAvoidBottomInset: true,
           appBar: AppBar(title: const Text('توليد أسئلة بالذكاء الاصطناعي')),
-          body: isBusy
-              ? _BusyView(isTranscribing: isTranscribing, progress: busyProgress)
-              : _buildForm(context, state),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // AI key not configured → point the admin to الإعدادات.
-                  if (!isBusy && _keyChecked && !_keyIsSet) ...[
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.vpn_key_off_outlined,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: Text(
-                            'لم يتم ضبط مفتاح الذكاء الاصطناعي. أضِفه من '
-                            'الإعدادات ← مفتاح الذكاء الاصطناعي أولاً.',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                  // Persistent inline error so it stays readable after the
-                  // SnackBar auto-dismisses.
-                  if (!isBusy && state is GenerateQuestionsError) ...[
-                    Text(
-                      state.message,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                    if (state.isOverload) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'الخدمة مشغولة حالياً. جرّب مرة أخرى بعد منتصف الليل عندما يقل الضغط على الخدمة.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                  FilledButton.icon(
-                    icon: isBusy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.auto_awesome),
-                    label: const Text('توليد الأسئلة'),
-                    onPressed: (isBusy || !_canSubmit) ? null : _submit,
-                  ),
-                ],
-              ),
+          body: switch (state) {
+            GenerateQuestionsLoading() => const Center(
+              child: CircularProgressIndicator(),
             ),
-          ),
+            GenerateQuestionsError(:final message) => ErrorState(
+              message: message,
+              onRetry: () =>
+                  context.read<GenerateQuestionsCubit>().load(widget.lessonId),
+            ),
+            GenerateQuestionsReady() => _buildBody(context, state),
+            _ => const SizedBox.shrink(),
+          },
+          bottomNavigationBar: state is GenerateQuestionsReady
+              ? _buildBottomBar(context, state)
+              : null,
         );
       },
     );
   }
 
-  Widget _buildForm(BuildContext context, GenerateQuestionsState state) {
-    final theme = Theme.of(context);
-    // Resolve a saved transcript from in-memory error state first (phase-2 failed
-    // this session), then fall back to the initially-loaded lesson.
-    final inMemory = state is GenerateQuestionsError
-        ? state.savedTranscript
-        : null;
-    final savedTranscript =
-        inMemory ??
-        ((widget.lesson?.hasSavedTranscript ?? false)
-            ? widget.lesson!.transcript
-            : null);
+  // Whether a transcript is available to generate from in the current mode.
+  bool _hasTranscriptText(GenerateQuestionsReady state) =>
+      _mode == _SourceMode.pasteText
+      ? _transcriptCtrl.text.trim().isNotEmpty
+      : state.hasTranscript;
 
+  // The transcript text to generate from in the current mode.
+  String _transcriptText(GenerateQuestionsReady state) =>
+      _mode == _SourceMode.pasteText
+      ? _transcriptCtrl.text
+      : (state.transcript ?? '');
+
+  // True when the UI is at the generation step (vs. still needing a transcript).
+  bool _isGenerationStep(GenerateQuestionsReady state) =>
+      _mode == _SourceMode.pasteText || state.hasTranscript;
+
+  Widget _buildBody(BuildContext context, GenerateQuestionsReady state) {
+    final theme = Theme.of(context);
+    final isGenStep = _isGenerationStep(state);
     return SingleChildScrollView(
       padding: const EdgeInsetsDirectional.all(AppSpacing.md),
       child: Column(
@@ -412,61 +306,25 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
             onSelectionChanged: (s) => setState(() => _mode = s.first),
           ),
           const SizedBox(height: AppSpacing.md),
-          if (savedTranscript != null) ...[
-            _SavedTranscriptNotice(
-              transcript: savedTranscript,
-              onUse: () => _useSavedTranscript(savedTranscript),
-              messenger: _messenger,
-            ),
+          // ── Transcript section ──────────────────────────────────────────
+          if (_mode == _SourceMode.pasteText)
+            _buildPasteField()
+          else
+            _buildTranscriptSection(context, state),
+          // ── Generation section ──────────────────────────────────────────
+          if (isGenStep) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Divider(color: theme.dividerColor),
             const SizedBox(height: AppSpacing.md),
+            if (state.hasTranscript && _mode != _SourceMode.pasteText)
+              _TranscriptReadyCard(
+                transcript: state.transcript!,
+                messenger: _messenger,
+              ),
+            _buildGenerationInputs(context),
+            const SizedBox(height: AppSpacing.md),
+            _buildGenerationStatus(context, state),
           ],
-          _buildSourceInput(),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _countCtrl,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(
-              labelText: 'عدد الأسئلة *',
-              hintText: 'مثال: 15',
-              helperText: 'الحد الأقصى 15 سؤالًا',
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text('توزيع الصعوبة', style: theme.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          Builder(
-            builder: (context) {
-              final target = _requestedCount ?? 0;
-              final matches = _difficultySum == target;
-              return Text(
-                'المجموع: $_difficultySum / $target',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: matches ? null : theme.colorScheme.error,
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _DifficultyField(label: 'سهل', controller: _easyCtrl),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _DifficultyField(
-                  label: 'متوسط',
-                  controller: _mediumCtrl,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _DifficultyField(label: 'صعب', controller: _hardCtrl),
-              ),
-            ],
-          ),
           // Keyboard-aware spacer so fields stay above the keyboard.
           SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
         ],
@@ -474,57 +332,334 @@ class _GenerateQuestionsPageState extends State<GenerateQuestionsPage> {
     );
   }
 
-  Widget _buildSourceInput() {
-    switch (_mode) {
-      case _SourceMode.pasteText:
-        return TextField(
-          controller: _transcriptCtrl,
-          minLines: 8,
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
-          textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(
-            labelText: 'نص المحاضرة *',
-            hintText: 'الصق نص المحاضرة هنا',
-            alignLabelWithHint: true,
-          ),
-        );
-      case _SourceMode.youtube:
-        return TextField(
-          controller: _youtubeCtrl,
+  Widget _buildPasteField() {
+    return TextField(
+      controller: _transcriptCtrl,
+      minLines: 6,
+      maxLines: null,
+      keyboardType: TextInputType.multiline,
+      textInputAction: TextInputAction.newline,
+      decoration: const InputDecoration(
+        labelText: 'نص المحاضرة *',
+        hintText: 'الصق نص المحاضرة هنا',
+        alignLabelWithHint: true,
+      ),
+    );
+  }
+
+  Widget _buildTranscriptSection(
+    BuildContext context,
+    GenerateQuestionsReady state,
+  ) {
+    final theme = Theme.of(context);
+    final isYoutube = _mode == _SourceMode.youtube;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: isYoutube ? _youtubeCtrl : _driveCtrl,
           keyboardType: TextInputType.url,
-          decoration: const InputDecoration(
-            labelText: 'رابط فيديو يوتيوب *',
-            hintText: 'https://youtu.be/...',
-            helperText: 'سيتم تفريغ الفيديو تلقائيًا قبل توليد الأسئلة',
+          enabled: !state.isTranscriptActive,
+          decoration: InputDecoration(
+            labelText: isYoutube
+                ? 'رابط فيديو يوتيوب *'
+                : 'رابط ملف صوت Drive *',
+            hintText: isYoutube
+                ? 'https://youtu.be/...'
+                : 'https://drive.google.com/file/d/...',
+            helperText: isYoutube
+                ? 'سيتم تفريغ الفيديو قبل توليد الأسئلة'
+                : 'سيتم تنزيل الملف وتفريغه قبل توليد الأسئلة',
           ),
-        );
-      case _SourceMode.driveAudio:
-        return TextField(
-          controller: _driveCtrl,
-          keyboardType: TextInputType.url,
-          decoration: const InputDecoration(
-            labelText: 'رابط ملف صوت Drive *',
-            hintText: 'https://drive.google.com/file/d/...',
-            helperText: 'سيتم تنزيل الملف وتفريغه تلقائيًا قبل توليد الأسئلة',
+        ),
+        if (state.isTranscriptActive) ...[
+          const SizedBox(height: AppSpacing.md),
+          _StatusCard(
+            icon: Icons.hourglass_top,
+            color: theme.colorScheme.primary,
+            title: state.transcriptStatus == 'queued'
+                ? 'في الطابور — جاري التفريغ، قد يستغرق وقتًا'
+                : 'جاري التفريغ الآن',
+            subtitle:
+                'يمكنك إغلاق الصفحة والعودة لاحقًا؛ ستكمل العملية في الخلفية.',
+            showSpinner: true,
           ),
-        );
+        ],
+        if (state.isTranscriptFailed) ...[
+          const SizedBox(height: AppSpacing.md),
+          _StatusCard(
+            icon: Icons.error_outline,
+            color: theme.colorScheme.error,
+            title: 'فشل تفريغ المحاضرة',
+            subtitle:
+                state.transcriptError ?? 'تعذّر تفريغ المحاضرة، حاول مرة أخرى.',
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGenerationInputs(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _countCtrl,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: 'عدد الأسئلة *',
+            hintText: 'مثال: 15',
+            helperText: 'الحد الأقصى 15 سؤالًا',
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text('توزيع الصعوبة', style: theme.textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.xs),
+        Builder(
+          builder: (context) {
+            final target = _requestedCount ?? 0;
+            final matches = _difficultySum == target;
+            return Text(
+              'المجموع: $_difficultySum / $target',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: matches ? null : theme.colorScheme.error,
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _DifficultyField(label: 'سهل', controller: _easyCtrl),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _DifficultyField(label: 'متوسط', controller: _mediumCtrl),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _DifficultyField(label: 'صعب', controller: _hardCtrl),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGenerationStatus(
+    BuildContext context,
+    GenerateQuestionsReady state,
+  ) {
+    final theme = Theme.of(context);
+    if (state.isJobActive) {
+      return _StatusCard(
+        icon: Icons.hourglass_top,
+        color: theme.colorScheme.primary,
+        title: 'في الطابور — جاري توليد الأسئلة',
+        subtitle:
+            'يمكنك إغلاق الصفحة والعودة لاحقًا؛ ستكمل العملية في الخلفية.',
+        showSpinner: true,
+      );
     }
+    if (state.isJobDone) {
+      return _StatusCard(
+        icon: Icons.check_circle_outline,
+        color: Colors.green,
+        title: 'تم توليد ${state.resultCount ?? 0} سؤال، بانتظار المراجعة',
+        subtitle: 'ارجع إلى الدرس لمراجعة الأسئلة والموافقة عليها.',
+      );
+    }
+    if (state.isJobFailed) {
+      return _StatusCard(
+        icon: Icons.error_outline,
+        color: theme.colorScheme.error,
+        title: 'فشل توليد الأسئلة',
+        subtitle: state.jobError ?? 'تعذّر توليد الأسئلة، حاول مرة أخرى.',
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildBottomBar(BuildContext context, GenerateQuestionsReady state) {
+    final theme = Theme.of(context);
+    final isGenStep = _isGenerationStep(state);
+
+    // Resolve the single adaptive primary action for the current step.
+    final String label;
+    final VoidCallback? onPressed;
+    final bool busy;
+    if (!isGenStep) {
+      // Transcription step (link sources, no transcript yet).
+      busy = state.isTranscriptActive || state.isSubmitting;
+      final url = (_mode == _SourceMode.youtube ? _youtubeCtrl : _driveCtrl)
+          .text
+          .trim();
+      label = state.isTranscriptFailed ? 'إعادة التفريغ' : 'تفريغ المحاضرة';
+      final enabled = !busy && url.isNotEmpty && !(_keyChecked && !_keyIsSet);
+      onPressed = enabled ? _enqueueTranscription : null;
+    } else {
+      // Generation step.
+      busy = state.isJobActive || state.isSubmitting;
+      label = state.isJobFailed ? 'إعادة المحاولة' : 'توليد الأسئلة';
+      final count = _requestedCount;
+      final enabled =
+          !busy &&
+          _hasTranscriptText(state) &&
+          count != null &&
+          count > 0 &&
+          !(_keyChecked && !_keyIsSet);
+      onPressed = enabled
+          ? () => _enqueueGeneration(_transcriptText(state))
+          : null;
+    }
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.md,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // AI key not configured → point the admin to الإعدادات.
+            if (_keyChecked && !_keyIsSet) ...[
+              Row(
+                children: [
+                  Icon(
+                    Icons.vpn_key_off_outlined,
+                    size: 18,
+                    color: theme.colorScheme.error,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      'لم يتم ضبط مفتاح الذكاء الاصطناعي. أضِفه من '
+                      'الإعدادات ← مفتاح الذكاء الاصطناعي أولاً.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            // Midnight-retry hint for a genuine overload failure.
+            if (state.transientIsOverload) ...[
+              Text(
+                'الخدمة مشغولة حالياً. جرّب مرة أخرى بعد منتصف الليل عندما يقل الضغط على الخدمة.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            FilledButton.icon(
+              icon: busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.auto_awesome),
+              label: Text(label),
+              onPressed: onPressed,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
-class _SavedTranscriptNotice extends StatelessWidget {
+/// A compact status card for a queued/running/ready/failed state.
+class _StatusCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String? subtitle;
+  final bool showSpinner;
+
+  const _StatusCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    this.subtitle,
+    this.showSpinner = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showSpinner)
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            else
+              Icon(icon, color: color),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      subtitle!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when a transcript is ready for a link source — confirms it and lets the
+/// admin view the full text before generating.
+class _TranscriptReadyCard extends StatelessWidget {
   final String transcript;
-  final VoidCallback onUse;
   final ScaffoldMessengerState messenger;
 
-  const _SavedTranscriptNotice({
+  const _TranscriptReadyCard({
     required this.transcript,
-    required this.onUse,
     required this.messenger,
   });
 
-  Future<void> _viewTranscript(BuildContext context) async {
+  Future<void> _view(BuildContext context) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -568,50 +703,34 @@ class _SavedTranscriptNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      color: theme.colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.description_outlined,
-                  color: theme.colorScheme.onSecondaryContainer,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'يوجد تفريغ محفوظ لهذه المحاضرة',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: AppSpacing.md),
+      child: Card(
+        margin: EdgeInsets.zero,
+        color: theme.colorScheme.secondaryContainer,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Icon(
+                Icons.description_outlined,
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'المحاضرة مُفرَّغة وجاهزة لتوليد الأسئلة',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSecondaryContainer,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _viewTranscript(context),
-                    child: const Text('رؤية'),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton.tonal(
-                    onPressed: onUse,
-                    child: const Text('استخدامه'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+              TextButton(
+                onPressed: () => _view(context),
+                child: const Text('رؤية'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -632,53 +751,6 @@ class _DifficultyField extends StatelessWidget {
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       textAlign: TextAlign.center,
       decoration: InputDecoration(labelText: label),
-    );
-  }
-}
-
-class _BusyView extends StatelessWidget {
-  /// True during phase one (transcription); false during question generation.
-  final bool isTranscribing;
-
-  /// Estimated progress 0.0–1.0, animated by the cubit timer.
-  final double progress;
-
-  const _BusyView({required this.isTranscribing, required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final pct = (progress * 100).round();
-    return Center(
-      child: Padding(
-        padding: const EdgeInsetsDirectional.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              isTranscribing
-                  ? 'جاري تفريغ المحاضرة...'
-                  : 'جاري توليد الأسئلة...',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SheikhyProgressBar(value: progress),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '$pct٪',
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'قد تستغرق هذه العملية دقيقة أو أكثر، يرجى الانتظار وعدم إغلاق الصفحة',
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

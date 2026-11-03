@@ -1,7 +1,10 @@
 // lib/features/admin/lessons/cubit/admin_lesson_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../models/admin_quiz_question_entity.dart';
+import '../../../../models/generation_job_entity.dart';
+import '../../../../models/lesson_entity.dart';
 import '../../../../models/lesson_pdf_entity.dart';
 import '../data/admin_lesson_repository.dart';
 import 'admin_lesson_state.dart';
@@ -49,6 +52,15 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
 
   AdminLessonFormCubit(this._repo) : super(AdminLessonFormInitial());
 
+  // Realtime channels powering the Quiz-tab status chip. Keyed 'form' so they
+  // never collide with the generate page's own 'generate'-keyed channels on the
+  // same rows (the generate page is pushed on top of this form).
+  static const _kChipChannelKey = 'form';
+  RealtimeChannel? _lessonChannel;
+  RealtimeChannel? _jobChannel;
+  String? _subscribedLessonId;
+  String? _subscribedJobId;
+
   /// Surfaces a MUTATION failure (delete/add/update/approve/import/pdf) without
   /// blanking the screen: if we hold a loaded snapshot, re-emit it unchanged
   /// carrying a one-shot [transientError] (the UI shows a SnackBar and keeps the
@@ -62,6 +74,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
           quizQuestions: current.quizQuestions,
           pdfs: current.pdfs,
           bankCount: current.bankCount,
+          latestGenerationJob: current.latestGenerationJob,
           transientError: message,
           errorNonce: current.errorNonce + 1,
         ),
@@ -81,32 +94,106 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     await lessonResult.fold((f) async => emit(AdminLessonFormError(f.message)), (
       lesson,
     ) async {
-      // Quiz questions and the bank count are independent — fetch concurrently.
-      final (qResult, bankCountResult) = await (
+      // Quiz questions, the bank count and the newest AI job are independent —
+      // fetch concurrently.
+      final (qResult, bankCountResult, jobResult) = await (
         _repo.getQuizQuestions(lessonId),
         _repo.getQuizBankQuestionsCount(
           bookId: lesson.bookId,
           excludeLessonId: lessonId,
         ),
+        _repo.getLatestGenerationJob(lessonId),
       ).wait;
       final bankCount = bankCountResult.fold((_) => 0, (c) => c);
+      final latestJob = jobResult.fold((_) => null, (j) => j);
       // PDFs come embedded with the lesson (getLesson selects lesson_pdfs(*)).
       // Sort a copy by order_index; show ALL rows so the admin can manage even
       // a (hypothetical) empty-url row that orderedPdfs would hide.
       final pdfs = [...lesson.pdfs]
         ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
-      qResult.fold(
-        (f) => emit(AdminLessonFormError(f.message)),
-        (qs) => emit(
+      qResult.fold((f) => emit(AdminLessonFormError(f.message)), (qs) {
+        emit(
           AdminLessonFormLoaded(
             lesson: lesson,
             quizQuestions: qs,
             pdfs: pdfs,
             bankCount: bankCount,
+            latestGenerationJob: latestJob,
           ),
-        ),
-      );
+        );
+        _syncChipSubscriptions(lesson, latestJob);
+      });
     });
+  }
+
+  // ── Quiz-tab status chip (Realtime) ────────────────────────────────────────
+
+  /// Subscribes to the lesson row while transcription is active and to the newest
+  /// generation job while it is active, so the chip updates live. On any update
+  /// it re-reads just those two single rows (no full reload, no spinner flash).
+  void _syncChipSubscriptions(LessonEntity? lesson, GenerationJobEntity? job) {
+    final lessonId = lesson?.id;
+    final transcriptActive =
+        lesson?.transcriptStatus == 'queued' ||
+        lesson?.transcriptStatus == 'running';
+    final jobActive = job?.isActive ?? false;
+
+    if (transcriptActive &&
+        lessonId != null &&
+        _subscribedLessonId != lessonId) {
+      _lessonChannel?.unsubscribe();
+      _subscribedLessonId = lessonId;
+      _lessonChannel = _repo.subscribeToLesson(
+        lessonId,
+        channelKey: _kChipChannelKey,
+        onUpdate: (_) => _refreshChip(),
+      );
+    } else if (!transcriptActive && _lessonChannel != null) {
+      _lessonChannel!.unsubscribe();
+      _lessonChannel = null;
+      _subscribedLessonId = null;
+    }
+
+    if (jobActive && job != null && _subscribedJobId != job.id) {
+      _jobChannel?.unsubscribe();
+      _subscribedJobId = job.id;
+      _jobChannel = _repo.subscribeToGenerationJob(
+        job.id,
+        channelKey: _kChipChannelKey,
+        onUpdate: (_) => _refreshChip(),
+      );
+    } else if (!jobActive && _jobChannel != null) {
+      _jobChannel!.unsubscribe();
+      _jobChannel = null;
+      _subscribedJobId = null;
+    }
+  }
+
+  /// Light refresh for the chip only: re-read the lesson row + newest job and
+  /// re-emit the loaded snapshot with the heavier lists untouched.
+  Future<void> _refreshChip() async {
+    final current = state;
+    if (current is! AdminLessonFormLoaded || current.lesson == null) return;
+    final lessonId = current.lesson!.id;
+    final (lessonRes, jobRes) = await (
+      _repo.getLesson(lessonId),
+      _repo.getLatestGenerationJob(lessonId),
+    ).wait;
+    if (isClosed) return;
+    final cur = state;
+    if (cur is! AdminLessonFormLoaded) return;
+    final lesson = lessonRes.fold((_) => cur.lesson, (l) => l);
+    final job = jobRes.fold((_) => cur.latestGenerationJob, (j) => j);
+    emit(
+      AdminLessonFormLoaded(
+        lesson: lesson,
+        quizQuestions: cur.quizQuestions,
+        pdfs: cur.pdfs,
+        bankCount: cur.bankCount,
+        latestGenerationJob: job,
+      ),
+    );
+    _syncChipSubscriptions(lesson, job);
   }
 
   /// Copies the selected bank questions into the current lesson, then reloads.
@@ -196,6 +283,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             quizQuestions: [...current.quizQuestions, q],
             pdfs: current.pdfs,
             bankCount: current.bankCount,
+            latestGenerationJob: current.latestGenerationJob,
           ),
         );
       }
@@ -234,6 +322,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             quizQuestions: qs,
             pdfs: current.pdfs,
             bankCount: current.bankCount,
+            latestGenerationJob: current.latestGenerationJob,
           ),
         );
       }
@@ -255,6 +344,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             quizQuestions: qs,
             pdfs: current.pdfs,
             bankCount: current.bankCount,
+            latestGenerationJob: current.latestGenerationJob,
           ),
         );
       }
@@ -287,6 +377,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
             quizQuestions: qs,
             pdfs: current.pdfs,
             bankCount: current.bankCount,
+            latestGenerationJob: current.latestGenerationJob,
             transientSuccess: 'تم حذف السؤال',
             successNonce: current.successNonce + 1,
           ),
@@ -310,6 +401,7 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
         quizQuestions: current.quizQuestions,
         pdfs: pdfs,
         bankCount: current.bankCount,
+        latestGenerationJob: current.latestGenerationJob,
       ),
     );
   }
@@ -379,5 +471,12 @@ class AdminLessonFormCubit extends Cubit<AdminLessonFormState> {
     ];
     final result = await _repo.reorderLessonPdfs(updates);
     result.fold((_) => _emitPdfs(current, current.pdfs), (_) {});
+  }
+
+  @override
+  Future<void> close() async {
+    await _lessonChannel?.unsubscribe();
+    await _jobChannel?.unsubscribe();
+    return super.close();
   }
 }
