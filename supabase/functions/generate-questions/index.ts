@@ -1,16 +1,18 @@
 // supabase/functions/generate-questions/index.ts
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+//
+// ENQUEUE ONLY. This function no longer talks to Gemini.
+//
+// Measured on the live Ahmed project before this change: 15 done / 10 failed
+// (38% failure), slowest SUCCESS 149s against a ~150s platform wall clock, 86s
+// average. There was no room for a second attempt inside one invocation, and
+// when the platform killed the function the catch block never ran, leaving jobs
+// stuck at 'running' forever.
+//
+// Now it records the request and returns in ~1s. generation-worker, driven by
+// pg_cron every 2 minutes, does the work and retries with backoff across ~8
+// hours. See docs: docs/AI_QUEUE.md
 
-// ── Static config (NOT the caller-controlled generation params) ──────────────
-// Fallback order per validated testing: gemini-flash-latest is LEAST reliable
-// (most 503s) despite the name, so it is tried last. Must match transcribe-lesson —
-// front-loading gemini-flash-latest burns the wall-clock budget on retries and
-// trips the overall deadline. Do NOT "correct" this back to name order.
-const MODEL_FALLBACK = ["gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest"];
-const RETRY_BACKOFF_MS = [10_000, 20_000, 30_000]; // per-model, on HTTP 503 only
-const NUM_CHUNKS = 1; // single full-transcript call — coverage is handled by the prompt, not chunking
-const OVERALL_DEADLINE_MS = 100_000; // wall-clock cap for Gemini phase (~50s margin under the 150s platform limit)
-const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -18,182 +20,11 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_INSTRUCTION = `أنت مساعد متخصص في إعداد أسئلة اختبارية لمحتوى شرعي تعليمي.
-
-## القاعدة الأولى - لا تتجاوزها أبدًا
-تولّد الأسئلة من "النص المصدر" المرفق فقط، ولا شيء غيره.
-* ممنوع منعًا باتًا إضافة أي حكم فقهي أو معلومة أو رأي غير مذكور صراحة في النص.
-* ممنوع الاستعانة بمعرفتك الخارجية حتى لو كنت متأكدًا من صحتها.
-* الآيات والأحاديث والنصوص المنقولة: تُنقل حرفيًا كما وردت في المصدر فقط.
-* إن كانت المعلومة واردة في النص لكن بشكل غامض، تجاهلها ولا تبنِ عليها سؤالًا.
-* النص المرفق هو جزء واحد من محاضرة أطول، فقد يبدأ أو ينتهي في منتصف فكرة.
-  تعامل مع هذا بشكل طبيعي ولا تُشر إلى أن النص جزء مقتطع.
-
-## قاعدة العدد
-اجتهد في الوصول إلى العدد المطلوب من الأسئلة. النص عادةً يحتمل هذا العدد، فابحث في كامل النص عن كل معلومة تصلح لسؤال قبل أن تتوقف. لكن إن لم يحتمل النص العدد المطلوب فعلًا، أنتج عددًا أقل ولا تخترع معلومة غير موجودة في النص.
-
-## تغطية النص
-وزّع الأسئلة على كامل النص من بدايته إلى نهايته بالتساوي. لا تركّز على جزء واحد أو على بداية النص.
-
-## مستويات الصعوبة
-* سهل: استرجاع مباشر (تعريف، عدد، اسم، حكم مذكور نصًا)
-* متوسط: فهم وربط (علّة الحكم، الفرق بين مفهومين، شرط)
-* صعب: تطبيق واستنباط (حالة عملية تطبق القاعدة المذكورة)
-
-## صياغة السؤال
-* أربعة خيارات، إجابة واحدة صحيحة قطعًا.
-* المشتتات معقولة ومتقاربة في الطول مع الإجابة الصحيحة.
-* ممنوع: كل ما سبق / لا شيء مما سبق / أ و ب معًا / النفي المزدوج.
-* ممنوع الأسئلة عن أسلوب الإلقاء أو ترتيب الكلام.
-* لكل سؤال: اقتباس حرفي قصير من المصدر + شرح موجز.`;
-
-const RESPONSE_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    questions: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          text: { type: "STRING" },
-          choices: { type: "ARRAY", items: { type: "STRING" } },
-          correct_index: { type: "INTEGER" },
-          difficulty: { type: "STRING", enum: ["easy", "medium", "hard"] },
-          explanation: { type: "STRING" },
-          source_quote: { type: "STRING" },
-        },
-        required: ["text", "choices", "correct_index", "difficulty", "explanation", "source_quote"],
-      },
-    },
-    notes: { type: "STRING" },
-  },
-  required: ["questions"],
-};
-
-const CHOICE_LETTERS = ["a", "b", "c", "d"] as const;
-
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...CORS, "Content-Type": "application/json" },
   });
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Strip ?key=… / &key=… from any string so a Deno network-error message that
-// embeds the request URL can never carry the Gemini API key to the caller or
-// persist it in generation_jobs.error_message.
-function sanitize(msg: string): string {
-  return msg.replace(/[?&]key=[^&\s"']*/g, "");
-}
-
-// Split on whitespace into NUM_CHUNKS roughly equal word-count chunks; never cut mid-word.
-function chunkTranscript(text: string, numChunks: number): string[] {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-  const per = Math.ceil(words.length / numChunks);
-  const chunks: string[] = [];
-  for (let i = 0; i < words.length; i += per) {
-    chunks.push(words.slice(i, i + per).join(" "));
-  }
-  return chunks;
-}
-
-// Fisher–Yates shuffle of the 4 choices; returns shuffled choices + new correct index.
-function shuffleChoices(choices: string[], correctIndex: number) {
-  const idx = choices.map((_, i) => i);
-  for (let i = idx.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [idx[i], idx[j]] = [idx[j], idx[i]];
-  }
-  const shuffled = idx.map((i) => choices[i]);
-  const newCorrect = idx.indexOf(correctIndex);
-  return { shuffled, newCorrect };
-}
-
-// Per-chunk difficulty target from the request-wide counts object, divided across chunks.
-function perChunkTargets(mix: Record<string, number>, numChunks: number) {
-  const share = (n: number) => Math.max(0, Math.round((Number(n) || 0) / numChunks));
-  return { easy: share(mix.easy), medium: share(mix.medium), hard: share(mix.hard) };
-}
-
-// Call Gemini for one chunk with model fallback + 503 retry/backoff, honoring the deadline.
-async function generateForChunk(
-  apiKey: string,
-  chunk: string,
-  targets: { easy: number; medium: number; hard: number },
-  chunkCap: number,
-  deadlineAt: number,
-): Promise<any[]> {
-  const userPrompt =
-    `النص المصدر:\n"""\n${chunk}\n"""\n\n` +
-    `المطلوب: ${chunkCap} أسئلة، بتوزيع تقريبي: ` +
-    `${targets.easy} سهل، ${targets.medium} متوسط، ${targets.hard} صعب. ` +
-    `اجتهد للوصول إلى هذا العدد دون اختلاق أي معلومة غير موجودة في النص.`;
-
-  const body = {
-    systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-    },
-  };
-
-  // Track the most recent failure reason so a total model failure surfaces a real
-  // error (mirrors transcribe-lesson) instead of a silent empty result.
-  let lastError = "لم ينتج النموذج أي أسئلة";
-  for (const model of MODEL_FALLBACK) {
-    for (let attempt = 0; attempt < RETRY_BACKOFF_MS.length; attempt++) {
-      if (Date.now() > deadlineAt) throw new Error("deadline_exceeded");
-      let res: Response;
-      try {
-        res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-      } catch (_e) {
-        lastError = "انقطع الاتصال بخدمة توليد الأسئلة";
-        break; // network error → next model immediately
-      }
-
-      if (res.status === 503) {
-        const wait = RETRY_BACKOFF_MS[attempt];
-        lastError = "خدمة التوليد مشغولة مؤقتًا (503)";
-        if (attempt === RETRY_BACKOFF_MS.length - 1) break; // retries exhausted → next model
-        if (Date.now() + wait > deadlineAt) throw new Error("deadline_exceeded");
-        await sleep(wait);
-        continue;
-      }
-
-      if (!res.ok) {
-        lastError = `خطأ من خدمة التوليد (${res.status})`;
-        break; // non-503 error → next model immediately
-      }
-
-      const data = await res.json();
-      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!raw) {
-        lastError = "أعاد النموذج استجابة فارغة";
-        break; // empty response → next model
-      }
-      try {
-        const parsed = JSON.parse(raw);
-        const questions = Array.isArray(parsed?.questions) ? parsed.questions : [];
-        if (questions.length > 0) return questions;
-        lastError = "أعاد النموذج استجابة بلا أسئلة";
-        break; // valid JSON but no questions → next model
-      } catch (_e) {
-        lastError = "تعذّر تحليل استجابة النموذج";
-        break; // unparseable JSON → next model
-      }
-    }
-  }
-  // All models/retries exhausted — surface the real reason (NUM_CHUNKS=1, so this
-  // is a hard failure for the whole request, not a skippable chunk).
-  throw new Error(lastError);
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -237,122 +68,44 @@ Deno.serve(async (req) => {
   if (!difficulty_mix || typeof difficulty_mix !== "object")
     return json({ error: "difficulty_mix is required" }, 400);
 
-  // ── Service-role client for all writes ─────────────────────────────────────
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // ── Gemini key: read from app_secrets (admin-managed). No env fallback. ─────
+  // Fail fast while the admin is still looking at the screen, rather than
+  // queueing work that every attempt would reject.
   const { data: secret } = await admin
     .from("app_secrets")
     .select("value")
     .eq("key", "gemini_api_key")
     .maybeSingle();
-  const GEMINI_API_KEY = secret?.value as string | undefined;
-  if (!GEMINI_API_KEY) return json({ error: "AI_KEY_MISSING" }, 400);
+  if (!secret?.value) return json({ error: "AI_KEY_MISSING" }, 400);
 
-  // ── Create the job row (running) ───────────────────────────────────────────
+  // Supersede any still-pending generation for this lesson, so pressing the
+  // button twice does not queue two batches of questions for the same lesson.
+  await admin
+    .from("generation_jobs")
+    .update({ status: "failed", error_message: "تم استبدالها بطلب أحدث" })
+    .eq("lesson_id", lesson_id)
+    .eq("job_type", "generate_questions")
+    .in("status", ["queued", "running"]);
+
   const { data: job, error: jobErr } = await admin
     .from("generation_jobs")
     .insert({
       lesson_id,
       job_type: "generate_questions",
-      status: "running",
+      status: "queued",
+      attempts: 0,
+      next_attempt_at: new Date().toISOString(),
       requested_count,
       difficulty_mix,
+      input_text: transcript_text,
       created_by: userData.user.id,
     })
     .select("id")
     .single();
   if (jobErr || !job) return json({ error: "Failed to create job", detail: jobErr?.message }, 500);
 
-  const jobId = job.id as string;
+  console.log(`[enqueue] questions lesson=${lesson_id} count=${requested_count} job=${job.id}`);
 
-  try {
-    const chunks = chunkTranscript(transcript_text, NUM_CHUNKS);
-    if (chunks.length === 0) throw new Error("transcript produced no chunks");
-
-    const targets = perChunkTargets(difficulty_mix, chunks.length);
-    // Single chunk (NUM_CHUNKS=1) → requested_count is passed straight through.
-    const chunkCap = Math.ceil(requested_count / chunks.length);
-    const startedAt = Date.now();
-    const deadlineAt = startedAt + OVERALL_DEADLINE_MS;
-
-    // Collect all chunks' questions (sequential — respects backoff + deadline).
-    // On a deadline hit, annotate the error with elapsed time so we can see where
-    // the wall-clock actually went next time.
-    const collected: any[] = [];
-    for (const chunk of chunks) {
-      try {
-        const qs = await generateForChunk(GEMINI_API_KEY, chunk, targets, chunkCap, deadlineAt);
-        collected.push(...qs);
-      } catch (e) {
-        if (e instanceof Error && e.message === "deadline_exceeded") {
-          const elapsed = Math.round((Date.now() - startedAt) / 1000);
-          throw new Error(`deadline_exceeded after ${elapsed}s`);
-        }
-        throw e;
-      }
-    }
-
-    // Cap the total to requested_count.
-    const limited = collected.slice(0, requested_count);
-
-    // Continue order_index after the current max for this lesson.
-    const { data: maxRow } = await admin
-      .from("lesson_quiz_questions")
-      .select("order_index")
-      .eq("lesson_id", lesson_id)
-      .order("order_index", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    let nextOrder = (maxRow?.order_index ?? -1) + 1;
-
-    // Build insert rows: shuffle choices, remap correct_choice.
-    const rows = limited
-      .filter((q) => Array.isArray(q?.choices) && q.choices.length === 4 &&
-        typeof q?.correct_index === "number" && q.correct_index >= 0 && q.correct_index <= 3)
-      .map((q) => {
-        const { shuffled, newCorrect } = shuffleChoices(q.choices, q.correct_index);
-        return {
-          lesson_id,
-          order_index: nextOrder++,
-          question_text: q.text,
-          choice_a: shuffled[0],
-          choice_b: shuffled[1],
-          choice_c: shuffled[2],
-          choice_d: shuffled[3],
-          correct_choice: CHOICE_LETTERS[newCorrect],
-          source: "ai_generated",
-          ai_review_status: "pending",
-          difficulty: q.difficulty ?? null,
-          explanation: q.explanation ?? null,
-          source_quote: q.source_quote ?? null,
-        };
-      });
-
-    // The model produced output but every item failed validation (wrong choice
-    // count / out-of-range answer). Surface it rather than reporting a silent 0.
-    if (rows.length === 0) throw new Error("أعاد النموذج أسئلة غير صالحة الصياغة");
-
-    const { data: ins, error: insErr } = await admin
-      .from("lesson_quiz_questions")
-      .insert(rows)
-      .select();
-    if (insErr) throw new Error(`insert failed: ${insErr.message}`);
-    const inserted = ins ?? [];
-
-    await admin
-      .from("generation_jobs")
-      .update({ status: "done", result_count: inserted.length })
-      .eq("id", jobId);
-
-    return json({ job_id: jobId, inserted_count: inserted.length, questions: inserted });
-  } catch (err) {
-    const message = sanitize(err instanceof Error ? err.message : String(err));
-    // Always mark the job failed — whatever was inserted before the error is kept.
-    await admin
-      .from("generation_jobs")
-      .update({ status: "failed", error_message: message })
-      .eq("id", jobId);
-    return json({ job_id: jobId, error: message }, 500);
-  }
+  return json({ job_id: job.id, status: "queued" }, 202);
 });
