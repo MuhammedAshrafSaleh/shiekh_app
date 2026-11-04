@@ -232,6 +232,93 @@ fallback; the key is stored in the DB via `app_secrets`).
 
 ---
 
+## Step 12 — AI job queue (background worker)
+
+Transcription and question generation do **not** run inside the Edge Function
+request — they are enqueued and processed by a background worker driven by
+`pg_cron`. If you skip any step below, the app accepts the request, shows
+**"في الطابور"**, and nothing ever picks it up — there is no error anywhere to
+lead you to the cause. For *why* it is built this way, see `docs/AI_QUEUE.md`;
+this section is only the per-project setup.
+
+1. **Migrations.** `0025`–`0028` run with the rest in Step 2 (they are in the
+   normal numbered sequence). `0025` also seeds a random `worker_secret` into
+   `app_secrets` — never set it by hand.
+
+2. **Deploy all three Edge Functions.** The worker must have JWT verification
+   **off**; the CLI defaults it on, so pass `--no-verify-jwt`:
+
+   ```bash
+   supabase functions deploy transcribe-lesson   --project-ref <PROJECT_REF>
+   supabase functions deploy generate-questions  --project-ref <PROJECT_REF>
+   supabase functions deploy generation-worker   --project-ref <PROJECT_REF> --no-verify-jwt
+   ```
+
+   | Function | verify_jwt |
+   |---|---|
+   | `transcribe-lesson` | true |
+   | `generate-questions` | true |
+   | `generation-worker` | **false** |
+
+   `generation-worker` is called by `pg_cron`, not a signed-in user, and
+   authenticates with the `x-worker-secret` header. Deployed with JWT on, every
+   cron call is rejected 401 and the queue silently does nothing.
+
+3. **Confirm the extensions are installed** (migration `0026` enables them):
+
+   ```sql
+   select extname from pg_extension where extname in ('pg_cron', 'pg_net');
+   -- expect two rows
+   ```
+
+4. **Create the cron schedule — once per project.** It embeds this client's
+   project ref in the URL, so it cannot live in a migration. Replace
+   `<PROJECT_REF>`:
+
+   ```sql
+   select cron.schedule(
+     'generation-worker',
+     '*/2 * * * *',
+     $job$
+     select net.http_post(
+       url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/generation-worker',
+       headers := jsonb_build_object(
+                    'Content-Type',    'application/json',
+                    'x-worker-secret', (select value from public.app_secrets where key = 'worker_secret')
+                  ),
+       body    := '{}'::jsonb,
+       timeout_milliseconds := 150000
+     )
+     $job$
+   );
+   ```
+
+5. **Verify the Realtime publication** (migration `0028` adds it). The admin
+   status UI updates from these; without them the screen never refreshes on its
+   own:
+
+   ```sql
+   select tablename from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and tablename in ('lessons', 'generation_jobs');
+   -- expect both rows
+   ```
+
+6. **Smoke test.** Enqueue a transcription from the admin UI, then within
+   ~2 minutes:
+
+   ```sql
+   select job_type, status, attempts, next_attempt_at, left(error_message, 120)
+   from public.generation_jobs order by created_at desc limit 5;
+   ```
+
+   `attempts` must become **1 or more**. If it stays `0`, the cron is not
+   reaching the worker — recheck the function name, the project ref in the
+   schedule URL, and that `generation-worker` really has `verify_jwt` off.
+   See `docs/AI_QUEUE.md` → "Diagnosing a stalled queue".
+
+---
+
 ## Known Pitfalls
 
 Silent failure modes that have caused issues on real deployments.
@@ -269,6 +356,7 @@ Silent failure modes that have caused issues on real deployments.
 - [ ] Android flavor added in `build.gradle.kts` (applicationId, app_name, deepLinkScheme)
 - [ ] First admin promoted via SQL: `update public.users set role = 'admin' where email = 'sheikh@example.com';`
 - [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
+- [ ] AI job queue (Step 12): 3 functions deployed (`generation-worker` at `verify_jwt: false`), `pg_cron`/`pg_net` installed, cron schedule created, `lessons`+`generation_jobs` in `supabase_realtime`, smoke test shows `attempts ≥ 1`
 - [ ] Auth settings: "Confirm email" = **Off**, Site URL = `<DEEP_LINK_SCHEME>://`, Redirect URL = `<DEEP_LINK_SCHEME>://reset-callback`
 - [ ] Smoke test: sign up → log in → see home screen
 

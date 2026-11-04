@@ -154,7 +154,9 @@ either way; billing only changes how long the queue takes.
   Getting this wrong breaks the queue **silently** — jobs enqueue and nothing
   ever claims them.
 - The cron schedule embeds the project ref in a URL, so it must be created
-  once per client. See `docs/WHITELABEL.md`, "AI job queue".
+  once per client. For the full per-project setup checklist (functions,
+  extensions, cron schedule, Realtime, smoke test) see `docs/WHITELABEL.md`
+  → "Step 12 — AI job queue (background worker)".
 - `lessons` and `generation_jobs` must be in the `supabase_realtime`
   publication, and `generation_jobs` needs `REPLICA IDENTITY FULL`. Without
   these the admin UI never updates on its own and looks broken.
