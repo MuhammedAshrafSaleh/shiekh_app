@@ -74,13 +74,13 @@ class _Body extends StatelessWidget {
     return BlocBuilder<AchievementsCubit, AchievementsState>(
       builder: (context, state) {
         return switch (state) {
-          AchievementsInitial() || AchievementsLoading() => const _LoadingView(),
+          AchievementsInitial() ||
+          AchievementsLoading() => const _LoadingView(),
           AchievementsError(:final message) => SheikhyErrorState(
-              heading: 'تعذّر تحميل الإنجازات',
-              message: message,
-              onRetry: () =>
-                  context.read<AchievementsCubit>().loadAchievements(),
-            ),
+            heading: 'تعذّر تحميل الإنجازات',
+            message: message,
+            onRetry: () => context.read<AchievementsCubit>().loadAchievements(),
+          ),
           AchievementsLoaded() => _LoadedView(state: state),
           _ => const SizedBox.shrink(),
         };
@@ -154,8 +154,7 @@ class _LoadedView extends StatelessWidget {
     String studentName = '';
     if (authState is AuthAuthenticated) {
       final meta = authState.user.userMetadata;
-      studentName =
-          (meta != null ? meta['full_name'] as String? : null) ?? '';
+      studentName = (meta != null ? meta['full_name'] as String? : null) ?? '';
     }
     final bookTitle = cert.bookTitle?.trim() ?? '';
     try {

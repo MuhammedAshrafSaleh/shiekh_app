@@ -87,9 +87,7 @@ class _VideoTabState extends State<VideoTab>
   /// progress/watched/resume stay off.
   bool get _notesEnabled =>
       widget.suggestionId != null ||
-      (!widget.previewMode &&
-          widget.lessonId != null &&
-          widget.bookId != null);
+      (!widget.previewMode && widget.lessonId != null && widget.bookId != null);
 
   @override
   void initState() {
@@ -373,11 +371,7 @@ class _AddNoteAffordance extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.note_add_outlined,
-              size: 20,
-              color: AppColors.primary,
-            ),
+            Icon(Icons.note_add_outlined, size: 20, color: AppColors.primary),
             const SizedBox(width: AppSpacing.s2),
             Text(
               'إضافة ملحوظة',

@@ -18,12 +18,7 @@ class NoteCard extends StatelessWidget {
   final String? bookId;
   final VoidCallback? onSeek;
 
-  const NoteCard({
-    super.key,
-    required this.note,
-    this.bookId,
-    this.onSeek,
-  });
+  const NoteCard({super.key, required this.note, this.bookId, this.onSeek});
 
   void _seekToNote(BuildContext context) {
     // Fallback nav only applies to lesson notes (book-scope lists). Suggestion

@@ -291,10 +291,12 @@ class ExamBloc extends Bloc<ExamEvent, ExamState> {
 
     final newCount = current.backgroundLeaveCount + 1;
     // Always emit the new count so the UI listener fires, then auto-submit on 2.
-    emit(current.copyWith(
-      backgroundLeaveCount: newCount,
-      secondsRemaining: remaining,
-    ));
+    emit(
+      current.copyWith(
+        backgroundLeaveCount: newCount,
+        secondsRemaining: remaining,
+      ),
+    );
     if (newCount >= ExamInProgress.backgroundLeaveLimit) {
       add(const ExamAutoSubmit());
     }

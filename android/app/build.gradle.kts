@@ -79,6 +79,18 @@ android {
             resValue("string", "app_name", "الشيخ أحمد بن عبد التواب")
             manifestPlaceholders["deepLinkScheme"] = "io.sheikhy.app"
         }
+        create("medhat") {
+            dimension = "client"
+            applicationId = "io.sheikhy.medhat"
+            resValue("string", "app_name", "الشيخ مدحت عبدالعزيز")
+            manifestPlaceholders["deepLinkScheme"] = "io.sheikhy.medhat"
+        }
+        create("mokhtar") {
+            dimension = "client"
+            applicationId = "io.sheikhy.mokhtar"
+            resValue("string", "app_name", "الشيخ أحمد مختار")
+            manifestPlaceholders["deepLinkScheme"] = "io.sheikhy.mokhtar"
+        }
     }
 }
 

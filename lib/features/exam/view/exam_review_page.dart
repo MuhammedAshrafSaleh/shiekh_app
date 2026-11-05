@@ -40,9 +40,9 @@ class _ExamReviewPageState extends State<ExamReviewPage> {
     });
 
     final result = await context.read<ExamRepository>().getExamReview(
-          widget.bookId,
-          widget.attemptId,
-        );
+      widget.bookId,
+      widget.attemptId,
+    );
 
     if (!mounted) return;
 
@@ -62,37 +62,38 @@ class _ExamReviewPageState extends State<ExamReviewPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('مراجعة المحاولة ${widget.attemptNumber}'),
-      ),
+      appBar: AppBar(title: Text('مراجعة المحاولة ${widget.attemptNumber}')),
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _failed
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: 48,
-                            color: theme.colorScheme.error
-                                .withValues(alpha: 0.6)),
-                        const SizedBox(height: AppSpacing.md),
-                        Text('تعذّر تحميل المراجعة',
-                            style: theme.textTheme.bodyMedium),
-                        const SizedBox(height: AppSpacing.md),
-                        FilledButton.icon(
-                          onPressed: _load,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: theme.colorScheme.error.withValues(alpha: 0.6),
                     ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: ExamReviewList(questions: _questions!),
-                  ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'تعذّر تحميل المراجعة',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    FilledButton.icon(
+                      onPressed: _load,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: ExamReviewList(questions: _questions!),
+              ),
       ),
     );
   }

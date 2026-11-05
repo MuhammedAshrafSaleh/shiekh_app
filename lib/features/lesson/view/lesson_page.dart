@@ -387,7 +387,8 @@ class _LessonViewState extends State<_LessonView>
                       '/lessons/${widget.lessonId}?bookId=${widget.bookId}',
                   title: 'الاختبار غير متاح الآن',
                   guestMessage: 'سجّل حساباً أولاً عشان تقدر تحل الاختبار',
-                  enrolledMessage: 'سجّل في الكتاب أولاً عشان تقدر تحل الاختبار',
+                  enrolledMessage:
+                      'سجّل في الكتاب أولاً عشان تقدر تحل الاختبار',
                 ),
         ),
     ];
@@ -644,7 +645,10 @@ class _LessonTabBar extends StatelessWidget {
         unselectedLabelStyle: GoogleFonts.tajawal(fontSize: 14),
         dividerColor: Colors.transparent,
         tabs: tabs.asMap().entries.map((e) {
-          final tab = Tab(icon: Icon(e.value.icon, size: 20), text: e.value.label);
+          final tab = Tab(
+            icon: Icon(e.value.icon, size: 20),
+            text: e.value.label,
+          );
           if (quizLocked && e.key != quizTabIndex) {
             // The TabBar wraps every tab in its own (Expanded) InkWell that
             // fills the whole cell — wider than the Tab's intrinsic content, so
@@ -658,10 +662,7 @@ class _LessonTabBar extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.38,
-                    child: Center(child: tab),
-                  ),
+                  child: Opacity(opacity: 0.38, child: Center(child: tab)),
                 ),
               ),
             );

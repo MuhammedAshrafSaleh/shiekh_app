@@ -9,6 +9,7 @@ import '../../../../core/widgets/bank_import_page.dart';
 import '../../../../core/widgets/show_confirm_dialog.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
+import '../../../../models/generation_job_entity.dart';
 import '../../../../models/lesson_entity.dart';
 import '../../../../models/lesson_pdf_entity.dart';
 import '../cubit/admin_lesson_cubit.dart';
@@ -273,6 +274,12 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
             : (state is AdminLessonFormSaved ? state.lesson.id : null);
         final currentLessonId = widget.lessonId ?? savedLessonId;
         final bankCount = state is AdminLessonFormLoaded ? state.bankCount : 0;
+        final transcriptStatus = state is AdminLessonFormLoaded
+            ? state.lesson?.transcriptStatus
+            : null;
+        final latestGenerationJob = state is AdminLessonFormLoaded
+            ? state.latestGenerationJob
+            : null;
 
         return Scaffold(
           appBar: AppBar(
@@ -328,6 +335,8 @@ class _AdminLessonFormPageState extends State<AdminLessonFormPage>
                       lessonId: currentLessonId,
                       questions: quizQuestions,
                       bankCount: bankCount,
+                      transcriptStatus: transcriptStatus,
+                      generationJob: latestGenerationJob,
                     ),
                   ],
                 ),
@@ -886,11 +895,56 @@ class _QuizTab extends StatelessWidget {
   final List<AdminQuizQuestionEntity> questions;
   final int bankCount;
 
+  /// lessons.transcript_status for the live AI status chip (null when unknown).
+  final String? transcriptStatus;
+
+  /// Newest AI question-generation job, for the live AI status chip.
+  final GenerationJobEntity? generationJob;
+
   const _QuizTab({
     required this.lessonId,
     required this.questions,
     required this.bankCount,
+    this.transcriptStatus,
+    this.generationJob,
   });
+
+  /// Resolves the live AI status chip, or null when nothing is in flight / failed.
+  /// Transcription takes precedence (it's the first step), then generation.
+  ({IconData icon, Color color, String label})? _chip(BuildContext context) {
+    final theme = Theme.of(context);
+    final ts = transcriptStatus;
+    if (ts == 'queued' || ts == 'running') {
+      return (
+        icon: Icons.hourglass_top,
+        color: theme.colorScheme.primary,
+        label: 'جاري التفريغ…',
+      );
+    }
+    if (ts == 'failed') {
+      return (
+        icon: Icons.error_outline,
+        color: theme.colorScheme.error,
+        label: 'فشل التفريغ',
+      );
+    }
+    final js = generationJob?.status;
+    if (js == 'queued' || js == 'running') {
+      return (
+        icon: Icons.hourglass_top,
+        color: theme.colorScheme.primary,
+        label: 'جاري توليد الأسئلة…',
+      );
+    }
+    if (js == 'failed') {
+      return (
+        icon: Icons.error_outline,
+        color: theme.colorScheme.error,
+        label: 'فشل توليد الأسئلة',
+      );
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -932,6 +986,25 @@ class _QuizTab extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.gold,
                     fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              // Live AI status chip — transcription / question generation in
+              // flight or failed (kept live by the form cubit's Realtime subs).
+              if (_chip(context) case final chip?) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Chip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: Icon(chip.icon, size: 16, color: chip.color),
+                    label: Text(chip.label),
+                    labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: chip.color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    side: BorderSide(color: chip.color.withValues(alpha: 0.4)),
+                    backgroundColor: chip.color.withValues(alpha: 0.08),
                   ),
                 ),
               ],
@@ -1064,18 +1137,18 @@ class _QuizTab extends StatelessWidget {
     // detect an already-saved transcript.
     final formState = formCubit.state;
     final lesson = formState is AdminLessonFormLoaded ? formState.lesson : null;
-    final generated = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
         builder: (_) => BlocProvider<GenerateQuestionsCubit>(
           create: (_) => GenerateQuestionsCubit(repo),
           child: GenerateQuestionsPage(lessonId: lessonId, lesson: lesson),
         ),
       ),
     );
-    // On success, refetch so the new pending questions appear in the list.
-    if (generated == true) {
-      formCubit.load(lessonId: lessonId);
-    }
+    // Always refetch on return: the async job may have produced new pending
+    // questions and/or advanced the transcription/generation status while the
+    // generate page was open (it no longer blocks or signals via a pop result).
+    formCubit.load(lessonId: lessonId);
   }
 }
 

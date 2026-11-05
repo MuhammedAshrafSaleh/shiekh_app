@@ -143,9 +143,16 @@ args, prepare script as an External Tool pre-launch step).
 Runtime/data steps, not compiled into the app (see `docs/WHITELABEL.md`):
 1. New Supabase project → URL + anon key into `clients/<name>/secrets.json`.
 2. Run `docs/full_setup.sql` (or the 4 `full_setup_part*.sql` parts) in order.
-3. Create public `media` Storage bucket + `is_admin()` INSERT policy.
+   > **Warning:** Do NOT re-run individual migration files after `full_setup.sql`.
+   > The full_setup file already contains every migration including
+   > `0001_app_support.sql`.  Re-running `0001_app_support` downgrades quiz/exam
+   > RPCs to their pre-0005 versions.
+3. Storage bucket and policies are created automatically by migration
+   `0024_storage.sql` (already included in `full_setup.sql`). No manual
+   bucket creation needed.
 4. Deploy edge functions `generate-questions`, `transcribe-lesson`.
-5. Supabase Auth Site URL + Redirect URL = `<scheme>://reset-callback`.
+5. Supabase Auth: "Confirm email" = **Off**, Site URL = `<DEEP_LINK_SCHEME>://`,
+   Redirect URL = `<DEEP_LINK_SCHEME>://reset-callback`.
 6. Promote first admin via SQL.
 7. Enter Gemini key in admin UI.
 8. Seed onboarding slides + loading quotes in admin UI.

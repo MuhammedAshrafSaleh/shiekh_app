@@ -178,10 +178,7 @@ class _AdminSuggestionFormPageState extends State<AdminSuggestionFormPage> {
                 const SizedBox(height: AppSpacing.md),
 
                 // Duration (minutes + seconds → duration_seconds)
-                Text(
-                  'المدة *',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                Text('المدة *', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [

@@ -36,13 +36,13 @@ class AdminAiKeyLoaded extends AdminAiKeyState {
 
   @override
   List<Object?> get props => [
-        status,
-        isSaving,
-        transientSuccess,
-        successNonce,
-        transientError,
-        errorNonce,
-      ];
+    status,
+    isSaving,
+    transientSuccess,
+    successNonce,
+    transientError,
+    errorNonce,
+  ];
 }
 
 /// Full-screen error — only for a failed initial status load.

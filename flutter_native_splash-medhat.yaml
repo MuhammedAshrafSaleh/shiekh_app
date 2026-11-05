@@ -1,0 +1,13 @@
+flutter_native_splash:
+  color: "#3B2141"
+  color_dark: "#3B2141"
+  # Gold-ring circular sheikh avatar — generated per client by
+  # tool/gen_native_splash.dart (run via tool/prepare_client.sh medhat before
+  # `flutter_native_splash:create --flavor medhat`). Transparent background so
+  # the plum above shows through; matches the Flutter SplashPage avatar.
+  image: assets/generated/native_splash.png
+  android_12:
+    color: "#3B2141"
+    color_dark: "#3B2141"
+    image: assets/generated/native_splash.png
+  fullscreen: false

@@ -59,6 +59,7 @@ clients/*/secrets.json
 # clients/<name>/ is the source of truth; these copies must stay untracked.
 assets/images/sheikh.png
 assets/app-icon.png
+assets/generated/native_splash.png
 
 # Per-client upload keystores (added when R1 signing lands)
 android/key.*.properties

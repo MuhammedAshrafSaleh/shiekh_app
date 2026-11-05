@@ -34,12 +34,12 @@ class LessonQuizAttemptEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        userId,
-        lessonId,
-        attemptNumber,
-        scorePercentage,
-        passed,
-        submittedAt,
-      ];
+    id,
+    userId,
+    lessonId,
+    attemptNumber,
+    scorePercentage,
+    passed,
+    submittedAt,
+  ];
 }

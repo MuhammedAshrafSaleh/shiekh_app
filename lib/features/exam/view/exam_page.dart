@@ -152,7 +152,8 @@ class _GatedScaffold extends StatelessWidget {
               bookId: bookId,
               returnTo: '/books/$bookId/exam',
               title: 'الاختبار النهائي غير متاح',
-              guestMessage: 'أنشئ حساباً وسجّل في الكتاب لأداء الاختبار النهائي.',
+              guestMessage:
+                  'أنشئ حساباً وسجّل في الكتاب لأداء الاختبار النهائي.',
               enrolledMessage: 'سجّل في الكتاب أولاً لأداء الاختبار النهائي.',
             ),
           ),
@@ -811,7 +812,8 @@ class _InProgressViewState extends State<_InProgressView> {
         final s = curr as ExamInProgress;
         if (s.backgroundLeaveCount == 1) {
           _showBackgroundWarningDialog(context);
-        } else if (s.backgroundLeaveCount == ExamInProgress.backgroundLeaveLimit) {
+        } else if (s.backgroundLeaveCount ==
+            ExamInProgress.backgroundLeaveLimit) {
           appMessengerKey.currentState?.showSnackBar(
             SnackBar(
               content: const Text('تم تسليم الامتحان لأنك خرجت من التطبيق'),
@@ -827,117 +829,121 @@ class _InProgressViewState extends State<_InProgressView> {
           if (!didPop) _showLeaveExamDialog(context);
         },
         child: Scaffold(
-        backgroundColor: AppColors.paper,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Heritage question bar (replaces Material AppBar)
-            _QuestionBar(
-              currentIndex: state.currentIndex,
-              totalQuestions: state.questions.length,
-            ),
+          backgroundColor: AppColors.paper,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Heritage question bar (replaces Material AppBar)
+              _QuestionBar(
+                currentIndex: state.currentIndex,
+                totalQuestions: state.questions.length,
+              ),
 
-            // Question + choices + navigator
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s4,
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s4,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      q.questionText,
-                      style: AppTextStyles.bodyLg.copyWith(
-                        fontWeight: FontWeight.w600,
+              // Question + choices + navigator
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsetsDirectional.fromSTEB(
+                    hs.AppSpacing.pageGutter,
+                    hs.AppSpacing.s4,
+                    hs.AppSpacing.pageGutter,
+                    hs.AppSpacing.s4,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        q.questionText,
+                        style: AppTextStyles.bodyLg.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: hs.AppSpacing.s4),
-                    for (final choice in ['a', 'b', 'c', 'd'])
-                      McqOptionCard(
-                        label: _choiceLetter(choice),
-                        text: q.choiceLabel(choice),
-                        optionState: selectedChoice == choice
-                            ? McqOptionState.selected
-                            : McqOptionState.idle,
-                        onTap: state.isSubmitting
-                            ? null
-                            : () => context.read<ExamBloc>().add(
-                                ExamAnswerSelected(q.id, choice),
+                      const SizedBox(height: hs.AppSpacing.s4),
+                      for (final choice in ['a', 'b', 'c', 'd'])
+                        McqOptionCard(
+                          label: _choiceLetter(choice),
+                          text: q.choiceLabel(choice),
+                          optionState: selectedChoice == choice
+                              ? McqOptionState.selected
+                              : McqOptionState.idle,
+                          onTap: state.isSubmitting
+                              ? null
+                              : () => context.read<ExamBloc>().add(
+                                  ExamAnswerSelected(q.id, choice),
+                                ),
+                        ),
+                      const SizedBox(height: hs.AppSpacing.s2),
+                      ExamNavigatorGrid(
+                        questions: state.questions,
+                        answers: state.answers,
+                        currentIndex: state.currentIndex,
+                        onNavigate: (i) =>
+                            context.read<ExamBloc>().add(ExamNavigateTo(i)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Prev / Next / Submit
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(
+                    hs.AppSpacing.pageGutter,
+                    hs.AppSpacing.s2,
+                    hs.AppSpacing.pageGutter,
+                    hs.AppSpacing.s4,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SheikhyButton.secondary(
+                          fullWidth: true,
+                          label: 'السابق',
+                          onPressed:
+                              state.currentIndex > 0 && !state.isSubmitting
+                              ? () => context.read<ExamBloc>().add(
+                                  ExamNavigateTo(state.currentIndex - 1),
+                                )
+                              : null,
+                          icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                        ),
+                      ),
+                      const SizedBox(width: hs.AppSpacing.s3),
+                      Expanded(
+                        child: state.currentIndex < state.questions.length - 1
+                            ? SheikhyButton.primary(
+                                fullWidth: true,
+                                label: 'التالي',
+                                onPressed: state.isSubmitting
+                                    ? null
+                                    : () => context.read<ExamBloc>().add(
+                                        ExamNavigateTo(state.currentIndex + 1),
+                                      ),
+                                icon: const Icon(
+                                  Icons.arrow_back_ios,
+                                  size: 16,
+                                ),
+                              )
+                            : SheikhyButton.primary(
+                                fullWidth: true,
+                                isLoading: state.isSubmitting,
+                                label: 'تسليم',
+                                onPressed: state.isSubmitting
+                                    ? null
+                                    : () => _confirmSubmit(context),
+                                icon: const Icon(Icons.send_rounded, size: 16),
                               ),
                       ),
-                    const SizedBox(height: hs.AppSpacing.s2),
-                    ExamNavigatorGrid(
-                      questions: state.questions,
-                      answers: state.answers,
-                      currentIndex: state.currentIndex,
-                      onNavigate: (i) =>
-                          context.read<ExamBloc>().add(ExamNavigateTo(i)),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-
-            // Prev / Next / Submit
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s2,
-                  hs.AppSpacing.pageGutter,
-                  hs.AppSpacing.s4,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SheikhyButton.secondary(
-                        fullWidth: true,
-                        label: 'السابق',
-                        onPressed: state.currentIndex > 0 && !state.isSubmitting
-                            ? () => context.read<ExamBloc>().add(
-                                ExamNavigateTo(state.currentIndex - 1),
-                              )
-                            : null,
-                        icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                      ),
-                    ),
-                    const SizedBox(width: hs.AppSpacing.s3),
-                    Expanded(
-                      child: state.currentIndex < state.questions.length - 1
-                          ? SheikhyButton.primary(
-                              fullWidth: true,
-                              label: 'التالي',
-                              onPressed: state.isSubmitting
-                                  ? null
-                                  : () => context.read<ExamBloc>().add(
-                                      ExamNavigateTo(state.currentIndex + 1),
-                                    ),
-                              icon: const Icon(Icons.arrow_back_ios, size: 16),
-                            )
-                          : SheikhyButton.primary(
-                              fullWidth: true,
-                              isLoading: state.isSubmitting,
-                              label: 'تسليم',
-                              onPressed: state.isSubmitting
-                                  ? null
-                                  : () => _confirmSubmit(context),
-                              icon: const Icon(Icons.send_rounded, size: 16),
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   void _confirmSubmit(BuildContext context) {

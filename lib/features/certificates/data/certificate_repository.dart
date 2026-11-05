@@ -37,8 +37,7 @@ class CertificateRepository {
           .limit(50);
 
       final certs = (response as List)
-          .map((e) =>
-              CertificateEntity.fromJson(e as Map<String, dynamic>))
+          .map((e) => CertificateEntity.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return Right(certs);
@@ -51,7 +50,8 @@ class CertificateRepository {
   }
 
   Future<Either<Failure, CertificateEntity?>> getCertificateForBook(
-      String bookId) async {
+    String bookId,
+  ) async {
     final networkError = _checkNetwork<CertificateEntity?>();
     if (networkError != null) return networkError;
 
@@ -69,7 +69,8 @@ class CertificateRepository {
       final rows = response as List;
       if (rows.isEmpty) return const Right(null);
       return Right(
-          CertificateEntity.fromJson(rows.first as Map<String, dynamic>));
+        CertificateEntity.fromJson(rows.first as Map<String, dynamic>),
+      );
     } on PostgrestException catch (e) {
       _log.warning('getCertificateForBook: ${e.message}');
       return Left(ServerFailure(e.message));

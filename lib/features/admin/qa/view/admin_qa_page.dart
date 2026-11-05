@@ -17,11 +17,13 @@ class AdminQaPage extends StatelessWidget {
     return BlocConsumer<AdminQaCubit, AdminQaState>(
       listener: (context, state) {
         if (state is AdminQaError) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -48,12 +50,15 @@ class AdminQaPage extends StatelessWidget {
                           const SizedBox(width: AppSpacing.xs),
                           CircleAvatar(
                             radius: 9,
-                            backgroundColor:
-                                Theme.of(context).colorScheme.error,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.error,
                             child: Text(
                               '${state.pending.length}',
                               style: const TextStyle(
-                                  fontSize: 10, color: Colors.white),
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ],
@@ -65,26 +70,27 @@ class AdminQaPage extends StatelessWidget {
               ),
             ),
             body: switch (state) {
-              AdminQaLoading() =>
-                const Center(child: CircularProgressIndicator()),
+              AdminQaLoading() => const Center(
+                child: CircularProgressIndicator(),
+              ),
               AdminQaError() => ErrorState(
-                  message: state.message,
-                  onRetry: () => context.read<AdminQaCubit>().load(),
-                ),
+                message: state.message,
+                onRetry: () => context.read<AdminQaCubit>().load(),
+              ),
               AdminQaLoaded() => TabBarView(
-                  children: [
-                    _QuestionsList(
-                      questions: state.pending,
-                      emptyMessage: 'لا توجد أسئلة في الانتظار',
-                      showReply: true,
-                    ),
-                    _QuestionsList(
-                      questions: state.answered,
-                      emptyMessage: 'لا توجد أسئلة تمت إجابتها',
-                      showReply: false,
-                    ),
-                  ],
-                ),
+                children: [
+                  _QuestionsList(
+                    questions: state.pending,
+                    emptyMessage: 'لا توجد أسئلة في الانتظار',
+                    showReply: true,
+                  ),
+                  _QuestionsList(
+                    questions: state.answered,
+                    emptyMessage: 'لا توجد أسئلة تمت إجابتها',
+                    showReply: false,
+                  ),
+                ],
+              ),
               _ => const SizedBox.shrink(),
             },
           ),
@@ -119,10 +125,8 @@ class _QuestionsList extends StatelessWidget {
       child: ListView.builder(
         padding: const EdgeInsetsDirectional.all(AppSpacing.md),
         itemCount: questions.length,
-        itemBuilder: (context, i) => _QuestionCard(
-          question: questions[i],
-          showReply: showReply,
-        ),
+        itemBuilder: (context, i) =>
+            _QuestionCard(question: questions[i], showReply: showReply),
       ),
     );
   }
@@ -150,8 +154,8 @@ class _QuestionCard extends StatelessWidget {
                 Text(
                   'سؤال',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const Spacer(),
                 Text(
@@ -166,17 +170,18 @@ class _QuestionCard extends StatelessWidget {
               const Divider(height: AppSpacing.lg),
               Row(
                 children: [
-                  Icon(Icons.check_circle_outline,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     'الإجابة',
-                    style:
-                        Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -241,17 +246,19 @@ class _ReplyDialogState extends State<_ReplyDialog> {
     if (text.isEmpty) return;
     setState(() => _saving = true);
     final ok = await context.read<AdminQaCubit>().answerQuestion(
-          questionId: widget.question.id,
-          answerText: text,
-        );
+      questionId: widget.question.id,
+      answerText: text,
+    );
     if (mounted) {
       Navigator.of(context).pop();
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تمت الإجابة بنجاح'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تمت الإجابة بنجاح'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -299,7 +306,10 @@ class _ReplyDialogState extends State<_ReplyDialog> {
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('إرسال الإجابة'),
         ),
       ],

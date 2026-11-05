@@ -61,8 +61,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool get _hasPendingReturn =>
       (widget.returnTo != null && widget.returnTo!.isNotEmpty) ||
-      (widget.autoEnrollBookId != null &&
-          widget.autoEnrollBookId!.isNotEmpty);
+      (widget.autoEnrollBookId != null && widget.autoEnrollBookId!.isNotEmpty);
 
   @override
   void dispose() {
@@ -148,108 +147,107 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           child: Column(
-          children: [
-            const SheikhyAuthHeader(
-              title: 'أهلاً بعودتك',
-              subtitle: 'أكمل ما بدأته في مجالس العلم',
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.pageGutter,
-                  AppSpacing.s6,
-                  AppSpacing.pageGutter,
-                  AppSpacing.s5 + context.safeBottom,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (widget.notice == 'email_exists') ...[
-                      SheikhyNotice(
-                        variant: SheikhyNoticeVariant.info,
-                        message:
-                            'هذا البريد الإلكتروني مسجّل مسبقاً. سجّل الدخول للمتابعة إلى حيث توقفت.',
+            children: [
+              const SheikhyAuthHeader(
+                title: 'أهلاً بعودتك',
+                subtitle: 'أكمل ما بدأته في مجالس العلم',
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    AppSpacing.pageGutter,
+                    AppSpacing.s6,
+                    AppSpacing.pageGutter,
+                    AppSpacing.s5 + context.safeBottom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (widget.notice == 'email_exists') ...[
+                        SheikhyNotice(
+                          variant: SheikhyNoticeVariant.info,
+                          message:
+                              'هذا البريد الإلكتروني مسجّل مسبقاً. سجّل الدخول للمتابعة إلى حيث توقفت.',
+                        ),
+                        const SizedBox(height: AppSpacing.s5),
+                      ],
+                      if (_formError != null) ...[
+                        SheikhyNotice(message: _formError!),
+                        const SizedBox(height: AppSpacing.s5),
+                      ],
+                      SheikhyTextField(
+                        label: 'البريد الإلكتروني',
+                        controller: _emailController,
+                        hintText: 'example@domain.com',
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        prefixIcon: const Icon(Icons.mail_outline),
+                        errorText: _emailError,
+                        onChanged: (_) {
+                          if (_emailError != null) {
+                            setState(() => _emailError = null);
+                          }
+                        },
                       ),
-                      const SizedBox(height: AppSpacing.s5),
-                    ],
-                    if (_formError != null) ...[
-                      SheikhyNotice(message: _formError!),
-                      const SizedBox(height: AppSpacing.s5),
-                    ],
-                    SheikhyTextField(
-                      label: 'البريد الإلكتروني',
-                      controller: _emailController,
-                      hintText: 'example@domain.com',
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      prefixIcon: const Icon(Icons.mail_outline),
-                      errorText: _emailError,
-                      onChanged: (_) {
-                        if (_emailError != null) {
-                          setState(() => _emailError = null);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.s4),
-                    _PasswordWithForgot(
-                      controller: _passwordController,
-                      errorText: _passwordError,
-                      onChanged: (_) {
-                        if (_passwordError != null) {
-                          setState(() => _passwordError = null);
-                        }
-                      },
-                      onForgot: () => context.push('/forgot-password'),
-                      onSubmitted: (_) => _submit(),
-                    ),
-                    const SizedBox(height: AppSpacing.s4),
-                    SheikhyCheckbox(
-                      value: _rememberMe,
-                      onChanged: (v) => setState(() => _rememberMe = v),
-                      label: Text(
-                        'ابقني مسجّلاً في هذا الجهاز',
-                        style: AppTextStyles.small.copyWith(
-                          color: AppColors.inkMuted,
+                      const SizedBox(height: AppSpacing.s4),
+                      _PasswordWithForgot(
+                        controller: _passwordController,
+                        errorText: _passwordError,
+                        onChanged: (_) {
+                          if (_passwordError != null) {
+                            setState(() => _passwordError = null);
+                          }
+                        },
+                        onForgot: () => context.push('/forgot-password'),
+                        onSubmitted: (_) => _submit(),
+                      ),
+                      const SizedBox(height: AppSpacing.s4),
+                      SheikhyCheckbox(
+                        value: _rememberMe,
+                        onChanged: (v) => setState(() => _rememberMe = v),
+                        label: Text(
+                          'ابقني مسجّلاً في هذا الجهاز',
+                          style: AppTextStyles.small.copyWith(
+                            color: AppColors.inkMuted,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.s5),
-                    BlocBuilder<AuthCubit, AuthState>(
-                      buildWhen: (prev, curr) =>
-                          curr is AuthLoading ||
-                          prev is AuthLoading,
-                      builder: (context, state) {
-                        return SheikhyButton.primary(
-                          label: 'دخول',
-                          fullWidth: true,
-                          isLoading: state is AuthLoading,
-                          onPressed: _submit,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.s5),
-                    const SheikhyLabeledDivider(label: 'أو'),
-                    const SizedBox(height: AppSpacing.s5),
-                    // Guest entry point — mirrors the onboarding "متابعة كزائر"
-                    // path for users who skip onboarding or return to the app.
-                    // Starts an anonymous session; the auth-state change routes
-                    // the guest to /home.
-                    SheikhyButton.secondary(
-                      label: 'تصفح كزائر',
-                      fullWidth: true,
-                      onPressed: () =>
-                          context.read<AuthCubit>().continueAsGuest(),
-                    ),
-                    const SizedBox(height: AppSpacing.s6),
-                    _SignupFooter(onTap: () => context.push('/signup')),
-                    SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
-                  ],
+                      const SizedBox(height: AppSpacing.s5),
+                      BlocBuilder<AuthCubit, AuthState>(
+                        buildWhen: (prev, curr) =>
+                            curr is AuthLoading || prev is AuthLoading,
+                        builder: (context, state) {
+                          return SheikhyButton.primary(
+                            label: 'دخول',
+                            fullWidth: true,
+                            isLoading: state is AuthLoading,
+                            onPressed: _submit,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.s5),
+                      const SheikhyLabeledDivider(label: 'أو'),
+                      const SizedBox(height: AppSpacing.s5),
+                      // Guest entry point — mirrors the onboarding "متابعة كزائر"
+                      // path for users who skip onboarding or return to the app.
+                      // Starts an anonymous session; the auth-state change routes
+                      // the guest to /home.
+                      SheikhyButton.secondary(
+                        label: 'تصفح كزائر',
+                        fullWidth: true,
+                        onPressed: () =>
+                            context.read<AuthCubit>().continueAsGuest(),
+                      ),
+                      const SizedBox(height: AppSpacing.s6),
+                      _SignupFooter(onTap: () => context.push('/signup')),
+                      SizedBox(height: MediaQuery.viewInsetsOf(context).bottom),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
           ),
+        ),
       ),
     );
   }

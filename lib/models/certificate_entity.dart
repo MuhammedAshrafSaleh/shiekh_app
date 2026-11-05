@@ -43,14 +43,14 @@ class CertificateEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        userId,
-        bookId,
-        finalExamAttemptId,
-        finalScore,
-        gradeLabel,
-        issuedAt,
-        pdfUrl,
-        bookTitle,
-      ];
+    id,
+    userId,
+    bookId,
+    finalExamAttemptId,
+    finalScore,
+    gradeLabel,
+    issuedAt,
+    pdfUrl,
+    bookTitle,
+  ];
 }

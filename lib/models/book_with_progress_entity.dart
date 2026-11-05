@@ -20,10 +20,10 @@ class BookWithProgressEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        book,
-        progress,
-        isEnrolled,
-        totalLessons,
-        completedLessons,
-      ];
+    book,
+    progress,
+    isEnrolled,
+    totalLessons,
+    completedLessons,
+  ];
 }

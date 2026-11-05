@@ -22,7 +22,8 @@ class PathRepository {
     return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
   }
 
-  Future<Either<Failure, List<BookWithProgressEntity>>> getEnrolledBooks() async {
+  Future<Either<Failure, List<BookWithProgressEntity>>>
+  getEnrolledBooks() async {
     final networkError = _checkNetwork<List<BookWithProgressEntity>>();
     if (networkError != null) return networkError;
 

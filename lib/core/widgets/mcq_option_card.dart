@@ -121,15 +121,27 @@ class _OptionCircle extends StatelessWidget {
       case McqOptionState.selected:
         circleBg = AppColors.surface;
         circleBorder = Colors.transparent;
-        circleChild = Icon(Icons.check_rounded, size: 18, color: AppColors.primary);
+        circleChild = Icon(
+          Icons.check_rounded,
+          size: 18,
+          color: AppColors.primary,
+        );
       case McqOptionState.correct:
         circleBg = AppColors.success.withValues(alpha: 0.15);
         circleBorder = Colors.transparent;
-        circleChild = const Icon(Icons.check_rounded, size: 18, color: AppColors.success);
+        circleChild = const Icon(
+          Icons.check_rounded,
+          size: 18,
+          color: AppColors.success,
+        );
       case McqOptionState.incorrect:
         circleBg = AppColors.danger.withValues(alpha: 0.12);
         circleBorder = Colors.transparent;
-        circleChild = const Icon(Icons.close_rounded, size: 18, color: AppColors.danger);
+        circleChild = const Icon(
+          Icons.close_rounded,
+          size: 18,
+          color: AppColors.danger,
+        );
     }
 
     return AnimatedContainer(

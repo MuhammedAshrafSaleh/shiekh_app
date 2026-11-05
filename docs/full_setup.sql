@@ -27,18 +27,22 @@
 --       TRIGGER on auth.users or run this statement manually.
 --   [!] REVOKE … FROM public  (in 0023_revoke_public_exec.sql)
 --       Requires the function owner role; succeeds as postgres.
+--   [!] CREATE EXTENSION pg_cron / pg_net  (in 0026_enable_cron_net.sql)
+--       Requires the privileges the Supabase SQL Editor has (postgres).
+--       A lower-privilege migration role cannot create these extensions.
 --
 -- SPLIT FILES
--- This same content is also split into four self-contained parts
+-- This same content is also split into five self-contained parts
 -- (each assumes the previous part succeeded), in run order:
 --   docs/full_setup_part1.sql  — 0000–0004 (STARTS WITH THE BASELINE)
 --   docs/full_setup_part2.sql  — 0005–0008
 --   docs/full_setup_part3.sql  — 0009–0016
---   docs/full_setup_part4.sql  — 0017–0023
+--   docs/full_setup_part4.sql  — 0017–0024
+--   docs/full_setup_part5.sql  — 0025–0028 (AI job queue)
 -- Part boundaries are marked below with
 --   -- ===== END OF PART N / START OF PART M =====
 --
--- Generated: 2026-10-25
+-- Generated: 2026-11-05
 -- ============================================================
 
 -- ============================================================
@@ -49,7 +53,7 @@
 --
 -- PURPOSE: Establish the state that existed BEFORE 0001_app_support.sql
 -- was applied.  Running this file on a brand-new Supabase project followed
--- by migrations 0001 → 0023 (ascending) reproduces the live schema exactly.
+-- by migrations 0001 → 0024 (ascending) reproduces the live schema exactly.
 --
 -- OBJECT ORDER (important):
 --   1. ENUMs
@@ -810,8 +814,37 @@ create policy "banners_admin_write" on public.home_banners
   using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================
+-- EXPLICIT SCHEMA GRANTS
+-- Required when "Automatically expose new tables" is OFF at project
+-- creation, or after DROP SCHEMA public CASCADE resets privileges.
+-- RLS is the real access-control layer; these grants only allow
+-- roles to reach the schema.  Without them PostgREST returns
+-- "42501: permission denied for schema public" on every table.
+--
+-- The four GRANT … ON ALL … lines cover objects that already exist
+-- at this point in the file.  The three ALTER DEFAULT PRIVILEGES
+-- lines cover every table/sequence/routine created by migrations
+-- 0001–0024 and beyond.
+--
+-- 0023_revoke_public_exec.sql runs after this and overrides the
+-- routine grant for the app_secrets RPCs — correct behaviour.
+-- ============================================================
+
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables     in schema public to anon, authenticated, service_role;
+grant all on all sequences  in schema public to anon, authenticated, service_role;
+grant all on all routines   in schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public
+  grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on routines  to anon, authenticated, service_role;
+
+-- ============================================================
 -- RECONCILIATION NOTES — Differences between
--- "baseline + 0001–0023" and the live pg_dump that cannot be
+-- "baseline + 0001–0024" and the live pg_dump that cannot be
 -- fully resolved from the available files:
 --
 -- [R1] rls_auto_enable() EVENT TRIGGER:
@@ -4877,4 +4910,288 @@ grant  execute on function public.get_secret_status(text) to authenticated;
 --    handle_new_user, handle_anon_conversion, prune_practice_attempts) are
 --    invoked by PostgreSQL triggers only, not via PostgREST RPC, so grant/
 --    revoke on them has no client-facing effect.
+
+-- ===== END OF PART 4 =====
+
+-- ============================================================
+-- SOURCE: supabase/migrations/0024_storage.sql
+-- ============================================================
+-- ============================================================
+-- Sheikhy — Migration 0024_storage.sql
+-- Creates the `media` storage bucket and its admin-only write
+-- policies idempotently.
+--
+-- Why this is needed:
+--   Storage lives outside the PostgreSQL public schema and was
+--   never part of the migration stack.  Every new client deployment
+--   required a manual Supabase Dashboard step that was easy to miss,
+--   leaving admin image upload broken with "new row violates
+--   row-level security policy" on storage.objects.
+--
+--   Live (ahmed) has exactly three storage policies:
+--     "Admins can upload media"  — INSERT
+--     "Admins can update media"  — UPDATE
+--     "Admins can delete media"  — DELETE
+--   This migration reproduces them on every fresh project.
+--
+-- Public reads: The bucket is created as public=true, so any
+--   client (anon or authenticated) can read objects by URL without
+--   an RLS SELECT policy on storage.objects.  Only writes need
+--   protecting.
+--
+-- Bucket used by the app: `media` only.
+--   Verified by grepping storage.from() across lib/ — three files,
+--   all using 'media':
+--     lib/features/admin/banners/data/admin_banner_repository.dart
+--     lib/features/admin/books/data/admin_book_repository.dart
+--     lib/features/admin/suggestions/data/admin_suggestion_repository.dart
+--
+-- Idempotency: bucket INSERT uses ON CONFLICT DO NOTHING;
+--   policies use DROP … IF EXISTS before CREATE.
+--
+-- Note on public.is_admin(): storage policies run in the storage
+--   schema context, so the helper must be schema-qualified.
+--
+-- Additive only — runs on top of 0000_baseline.sql → 0023.
+-- Run once in Supabase SQL Editor.
+-- ============================================================
+
+-- ── Create the bucket ────────────────────────────────────────
+insert into storage.buckets (id, name, public)
+values ('media', 'media', true)
+on conflict (id) do nothing;
+
+-- ── Remove existing policies if present (idempotency) ────────
+drop policy if exists "Admins can upload media"  on storage.objects;
+drop policy if exists "Admins can update media"  on storage.objects;
+drop policy if exists "Admins can delete media"  on storage.objects;
+
+-- ── Admin-only write policies ─────────────────────────────────
+
+-- INSERT (upload new objects)
+create policy "Admins can upload media"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (
+    bucket_id = 'media'
+    and public.is_admin()
+  );
+
+-- UPDATE (overwrite or rename existing objects)
+create policy "Admins can update media"
+  on storage.objects
+  for update
+  to authenticated
+  using (
+    bucket_id = 'media'
+    and public.is_admin()
+  );
+
+-- DELETE (remove objects)
+create policy "Admins can delete media"
+  on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'media'
+    and public.is_admin()
+  );
+
+-- ============================================================
+-- SOURCE: supabase/migrations/0025_async_transcription.sql
+-- ============================================================
+-- 0025_async_transcription.sql
+-- Move transcription off the 150s request path and onto a retry queue.
+-- 'queued' is already allowed by generation_jobs_status_check and
+-- lessons_transcript_status_check, so no constraint changes are needed.
+--
+-- APPLIED TO Medhat-Abdelaziz 2026-11-03 as version 20261103054751.
+-- This file is the exact SQL that ran. Do not "improve" it — it must stay
+-- reproducible against the live project.
+
+alter table public.generation_jobs
+  add column if not exists attempts        int         not null default 0,
+  add column if not exists next_attempt_at timestamptz not null default now(),
+  add column if not exists source_type     text,
+  add column if not exists source_url      text;
+
+create index if not exists generation_jobs_due_idx
+  on public.generation_jobs (next_attempt_at)
+  where status = 'queued' and job_type = 'transcribe';
+
+-- Atomically hand exactly one due transcribe job to a worker.
+-- Also recovers jobs whose worker was killed mid-flight (left 'running').
+-- NOTE: superseded by claim_generation_job() in 0027; kept here so the
+-- migration history replays faithfully on a new project.
+create or replace function public.claim_transcribe_job()
+returns public.generation_jobs
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  j public.generation_jobs;
+begin
+  update public.generation_jobs
+     set status = 'queued', updated_at = now()
+   where job_type = 'transcribe'
+     and status = 'running'
+     and updated_at < now() - interval '5 minutes';
+
+  update public.generation_jobs g
+     set status = 'running', attempts = g.attempts + 1, updated_at = now()
+   where g.id = (
+     select id
+       from public.generation_jobs
+      where job_type = 'transcribe'
+        and status = 'queued'
+        and next_attempt_at <= now()
+      order by next_attempt_at
+      limit 1
+      for update skip locked
+   )
+  returning g.* into j;
+
+  return j;
+end;
+$$;
+
+-- Service role only: the worker is the sole caller.
+revoke execute on function public.claim_transcribe_job() from public;
+revoke execute on function public.claim_transcribe_job() from anon;
+revoke execute on function public.claim_transcribe_job() from authenticated;
+
+-- Shared secret the cron job presents to the worker function.
+insert into public.app_secrets (key, value)
+values (
+  'worker_secret',
+  replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')
+)
+on conflict (key) do nothing;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/0026_enable_cron_net.sql
+-- ============================================================
+-- 0026_enable_cron_net.sql
+-- pg_cron drives the background worker; pg_net lets it call the Edge Function.
+--
+-- APPLIED TO Medhat-Abdelaziz 2026-11-03 as version 20261103055026.
+--
+-- After this runs, the schedule itself still has to be created once per
+-- project, because it embeds that project's ref in the URL. See
+-- docs/WHITELABEL.md, "AI job queue".
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+-- ============================================================
+-- SOURCE: supabase/migrations/0027_generalize_job_queue.sql
+-- ============================================================
+-- 0027_generalize_job_queue.sql
+-- Extend the retry queue from 'transcribe' to 'generate_questions'.
+--
+-- APPLIED TO Medhat-Abdelaziz 2026-11-03 as version 20261103140702.
+--
+-- Why: on the live Ahmed project, generate_questions was 15 done / 10 failed
+-- (38% failure) and the slowest SUCCESS took 149s against a ~150s platform
+-- wall clock, with an 86s average. There is no room for a second attempt
+-- inside one invocation, so shortening the backoff cannot help — the work has
+-- to move off the request path, exactly as transcription did.
+
+alter table public.generation_jobs
+  add column if not exists input_text text;
+
+-- The worker now claims any due job, not just transcribe.
+drop index if exists public.generation_jobs_due_idx;
+create index if not exists generation_jobs_due_idx
+  on public.generation_jobs (next_attempt_at)
+  where status = 'queued';
+
+create or replace function public.claim_generation_job()
+returns public.generation_jobs
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  j public.generation_jobs;
+begin
+  -- Rows written by the old synchronous design carry no queue payload, so a
+  -- worker could never finish them. Resolve them instead of looping forever.
+  update public.generation_jobs
+     set status        = 'failed',
+         error_message = coalesce(error_message, 'انتهى وقت المعالجة قبل رد الخدمة'),
+         updated_at    = now()
+   where status = 'running'
+     and updated_at < now() - interval '5 minutes'
+     and source_url is null
+     and input_text is null;
+
+  -- Recover jobs whose worker was killed mid-flight.
+  update public.generation_jobs
+     set status = 'queued', updated_at = now()
+   where status = 'running'
+     and updated_at < now() - interval '5 minutes';
+
+  update public.generation_jobs g
+     set status = 'running', attempts = g.attempts + 1, updated_at = now()
+   where g.id = (
+     select id
+       from public.generation_jobs
+      where status = 'queued'
+        and next_attempt_at <= now()
+      order by next_attempt_at
+      limit 1
+      for update skip locked
+   )
+  returning g.* into j;
+
+  return j;
+end;
+$$;
+
+revoke execute on function public.claim_generation_job() from public;
+revoke execute on function public.claim_generation_job() from anon;
+revoke execute on function public.claim_generation_job() from authenticated;
+
+-- Superseded by claim_generation_job().
+drop function if exists public.claim_transcribe_job();
+
+-- ============================================================
+-- SOURCE: supabase/migrations/0028_realtime_job_status.sql
+-- ============================================================
+-- 0028_realtime_job_status.sql
+-- The admin UI subscribes to job progress instead of polling, now that AI work
+-- runs in the background and can take minutes to hours.
+--
+-- APPLIED TO Medhat-Abdelaziz 2026-11-03 as version 20261103141408.
+--
+-- Realtime only forwards changes for tables in the supabase_realtime
+-- publication. Without this, the app would silently never receive an update and
+-- would look broken exactly as it did before.
+-- RLS still applies to Realtime, so only rows a user may already read are sent.
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+     where pubname = 'supabase_realtime'
+       and schemaname = 'public' and tablename = 'lessons'
+  ) then
+    alter publication supabase_realtime add table public.lessons;
+  end if;
+
+  if not exists (
+    select 1 from pg_publication_tables
+     where pubname = 'supabase_realtime'
+       and schemaname = 'public' and tablename = 'generation_jobs'
+  ) then
+    alter publication supabase_realtime add table public.generation_jobs;
+  end if;
+end $$;
+
+-- Realtime sends only the changed columns unless the row identity is full, and
+-- the app needs lesson_id / job_type / status together to route an update.
+alter table public.generation_jobs replica identity full;
 

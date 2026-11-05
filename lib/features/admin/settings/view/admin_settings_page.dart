@@ -69,8 +69,7 @@ class AdminSettingsPage extends StatelessWidget {
                 ),
                 title: const Text('الوضع الليلي'),
                 value: isDark,
-                onChanged: (_) =>
-                    context.read<ThemeCubit>().toggle(),
+                onChanged: (_) => context.read<ThemeCubit>().toggle(),
                 activeThumbColor: AppColors.gold,
               );
             },
@@ -138,9 +137,9 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../../models/admin_quiz_question_entity.dart';
+import '../../../../models/generation_job_entity.dart';
 import '../../../../models/lesson_entity.dart';
 import '../../../../models/lesson_pdf_entity.dart';
 
@@ -55,6 +56,11 @@ class AdminLessonFormLoaded extends AdminLessonFormState {
   /// (source for "استيراد من البنك" on the quiz tab).
   final int bankCount;
 
+  /// Newest AI question-generation job for this lesson (or null). Drives the
+  /// Quiz-tab status chip together with [lesson]'s transcript_status. Kept live
+  /// via Realtime while a job is active.
+  final GenerationJobEntity? latestGenerationJob;
+
   /// One-shot error from a failed MUTATION (delete/add/update/…), surfaced as a
   /// SnackBar while the loaded lists stay visible. Null in the normal state.
   final String? transientError;
@@ -73,6 +79,7 @@ class AdminLessonFormLoaded extends AdminLessonFormState {
     required this.quizQuestions,
     this.pdfs = const [],
     this.bankCount = 0,
+    this.latestGenerationJob,
     this.transientError,
     this.errorNonce = 0,
     this.transientSuccess,
@@ -84,6 +91,7 @@ class AdminLessonFormLoaded extends AdminLessonFormState {
     quizQuestions,
     pdfs,
     bankCount,
+    latestGenerationJob,
     transientError,
     errorNonce,
     transientSuccess,

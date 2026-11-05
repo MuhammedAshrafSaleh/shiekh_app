@@ -45,7 +45,10 @@ class PathPage extends StatelessWidget {
               return TabBarView(
                 children: [
                   _emptyTab('لم تبدأ أي كتاب بعد', Icons.menu_book_outlined),
-                  _emptyTab('لم تنضم إلى أي كتاب بعد', Icons.library_books_outlined),
+                  _emptyTab(
+                    'لم تنضم إلى أي كتاب بعد',
+                    Icons.library_books_outlined,
+                  ),
                 ],
               );
             }
@@ -54,8 +57,9 @@ class PathPage extends StatelessWidget {
               final inProgress = state.books
                   .where((b) => b.progress > 0 && b.progress < 1.0)
                   .toList();
-              final notStarted =
-                  state.books.where((b) => b.progress == 0).toList();
+              final notStarted = state.books
+                  .where((b) => b.progress == 0)
+                  .toList();
 
               return RefreshIndicator(
                 onRefresh: () => context.read<PathCubit>().loadPath(),

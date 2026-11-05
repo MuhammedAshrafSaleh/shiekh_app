@@ -111,6 +111,7 @@ class _SheikhyPasswordFieldState extends State<SheikhyPasswordField> {
       decoration: decoration,
       padding: const EdgeInsetsDirectional.only(start: 14, end: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (widget.prefixIcon != null) ...[
             IconTheme(
@@ -128,18 +129,26 @@ class _SheikhyPasswordFieldState extends State<SheikhyPasswordField> {
               textInputAction: widget.textInputAction,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
-              style: AppTextStyles.body.copyWith(
+              strutStyle: const StrutStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 17,
+                height: 1.5,
+                leadingDistribution: TextLeadingDistribution.even,
+                forceStrutHeight: true,
+              ),
+              style: AppTextStyles.inputText.copyWith(
                 color: widget.enabled ? AppColors.ink : AppColors.inkFaint,
               ),
               cursorColor: AppColors.gold,
               decoration: InputDecoration(
-                // Theme-independent: the heritage container owns the fill, so
-                // never inherit a fill/border from an ambient inputDecorationTheme.
                 filled: false,
                 isCollapsed: true,
+                contentPadding: EdgeInsets.zero,
                 border: InputBorder.none,
                 hintText: widget.hintText,
-                hintStyle: AppTextStyles.body.copyWith(color: AppColors.inkFaint),
+                hintStyle: AppTextStyles.inputText.copyWith(
+                  color: AppColors.inkFaint,
+                ),
               ),
             ),
           ),

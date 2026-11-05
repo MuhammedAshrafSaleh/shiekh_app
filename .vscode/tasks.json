@@ -6,6 +6,12 @@
       "type": "shell",
       "command": "tool/prepare_client.sh ahmed",
       "problemMatcher": []
+    },
+    {
+      "label": "prepare-medhat",
+      "type": "shell",
+      "command": "tool/prepare_client.sh medhat",
+      "problemMatcher": []
     }
   ]
 }

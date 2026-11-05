@@ -32,7 +32,7 @@ supabase/migrations/0000_baseline.sql      # enums, base tables, auth trigger, b
 supabase/migrations/0001_app_support.sql   # student-safe views + exam/quiz RPCs
 supabase/migrations/0002_hardening.sql     # reorder_lessons RPC + featured-cap trigger
 # …continue in order through the highest numbered file:
-supabase/migrations/0023_revoke_public_exec.sql
+supabase/migrations/0024_storage.sql
 ```
 
 `docs/schema.sql` is **superseded** by `0000_baseline.sql` and retained
@@ -63,24 +63,39 @@ In the Supabase Dashboard → **Authentication → Settings**:
 
 | Setting | Value |
 |---|---|
-| Email confirmations | **On** (recommended) |
+| Email confirmations | **Off** |
 | Minimum password length | 8 |
-| Site URL | `io.sheikhy.app://` (or your custom scheme) |
-| Redirect URLs | `io.sheikhy.app://reset-callback` |
+| Site URL | `<DEEP_LINK_SCHEME>://`  e.g. `io.sheikhy.medhat://` |
+| Redirect URLs | `<DEEP_LINK_SCHEME>://reset-callback` |
+
+> **Why "Confirm email: Off"?**  When email confirmation is enabled, the
+> confirmation link redirects to the Supabase project's **Site URL**.  If
+> Site URL is still the Supabase default (`http://localhost:3000`), the link
+> goes to localhost and breaks signup for every new user.  Disabling
+> confirmation eliminates this failure mode.  `<DEEP_LINK_SCHEME>` is the
+> value from `client.json` (e.g. `io.sheikhy.medhat`) — use the **current
+> client's own scheme**, never another client's.
 
 ---
 
 ## Step 4 — Storage bucket
 
-In Supabase Dashboard → **Storage**:
+The `media` bucket and its three admin-only RLS policies (INSERT / UPDATE /
+DELETE) are **created automatically by `0024_storage.sql`**, which is included
+in `full_setup.sql`.  No manual Supabase Dashboard steps are needed.
 
-1. Create a bucket named `media`.
-2. Set it to **Public** (anonymous reads).
-3. Add an RLS INSERT policy restricted to `is_admin()` (see `docs/schema.sql`
-   for the helper function).
-4. Banner and suggestion images both live in this same `media` bucket —
-   under the `banners/` and `suggestions/` prefixes respectively. No extra
-   bucket or per-prefix policy is needed.
+Banner and cover images live in the `media` bucket under `banners/` and
+`books/` prefixes respectively; suggestion images use `suggestions/`.  All
+write via the same three policies.  Verify after running migrations:
+
+```sql
+-- Expect 1 row: id='media', public=true
+select id, name, public from storage.buckets;
+
+-- Expect 3 rows (INSERT, UPDATE, DELETE)
+select policyname, cmd from pg_policies
+where schemaname = 'storage' and tablename = 'objects';
+```
 
 ---
 
@@ -217,19 +232,133 @@ fallback; the key is stored in the DB via `app_secrets`).
 
 ---
 
+## Step 12 — AI job queue (background worker)
+
+Transcription and question generation do **not** run inside the Edge Function
+request — they are enqueued and processed by a background worker driven by
+`pg_cron`. If you skip any step below, the app accepts the request, shows
+**"في الطابور"**, and nothing ever picks it up — there is no error anywhere to
+lead you to the cause. For *why* it is built this way, see `docs/AI_QUEUE.md`;
+this section is only the per-project setup.
+
+1. **Migrations.** `0025`–`0028` run with the rest in Step 2 (they are in the
+   normal numbered sequence). `0025` also seeds a random `worker_secret` into
+   `app_secrets` — never set it by hand.
+
+2. **Deploy all three Edge Functions.** The worker must have JWT verification
+   **off**; the CLI defaults it on, so pass `--no-verify-jwt`:
+
+   ```bash
+   supabase functions deploy transcribe-lesson   --project-ref <PROJECT_REF>
+   supabase functions deploy generate-questions  --project-ref <PROJECT_REF>
+   supabase functions deploy generation-worker   --project-ref <PROJECT_REF> --no-verify-jwt
+   ```
+
+   | Function | verify_jwt |
+   |---|---|
+   | `transcribe-lesson` | true |
+   | `generate-questions` | true |
+   | `generation-worker` | **false** |
+
+   `generation-worker` is called by `pg_cron`, not a signed-in user, and
+   authenticates with the `x-worker-secret` header. Deployed with JWT on, every
+   cron call is rejected 401 and the queue silently does nothing.
+
+3. **Confirm the extensions are installed** (migration `0026` enables them):
+
+   ```sql
+   select extname from pg_extension where extname in ('pg_cron', 'pg_net');
+   -- expect two rows
+   ```
+
+4. **Create the cron schedule — once per project.** It embeds this client's
+   project ref in the URL, so it cannot live in a migration. Replace
+   `<PROJECT_REF>`:
+
+   ```sql
+   select cron.schedule(
+     'generation-worker',
+     '*/2 * * * *',
+     $job$
+     select net.http_post(
+       url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/generation-worker',
+       headers := jsonb_build_object(
+                    'Content-Type',    'application/json',
+                    'x-worker-secret', (select value from public.app_secrets where key = 'worker_secret')
+                  ),
+       body    := '{}'::jsonb,
+       timeout_milliseconds := 150000
+     )
+     $job$
+   );
+   ```
+
+5. **Verify the Realtime publication** (migration `0028` adds it). The admin
+   status UI updates from these; without them the screen never refreshes on its
+   own:
+
+   ```sql
+   select tablename from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and tablename in ('lessons', 'generation_jobs');
+   -- expect both rows
+   ```
+
+6. **Smoke test.** Enqueue a transcription from the admin UI, then within
+   ~2 minutes:
+
+   ```sql
+   select job_type, status, attempts, next_attempt_at, left(error_message, 120)
+   from public.generation_jobs order by created_at desc limit 5;
+   ```
+
+   `attempts` must become **1 or more**. If it stays `0`, the cron is not
+   reaching the worker — recheck the function name, the project ref in the
+   schedule URL, and that `generation-worker` really has `verify_jwt` off.
+   See `docs/AI_QUEUE.md` → "Diagnosing a stalled queue".
+
+---
+
+## Known Pitfalls
+
+Silent failure modes that have caused issues on real deployments.
+
+1. **"Automatically expose new tables" must be ON at project creation.**
+   If this Supabase setting is OFF, PostgREST returns `42501: permission denied
+   for schema public` on every table.  The grants block in `0000_baseline.sql`
+   also covers this case, but leaving the setting ON avoids it entirely.
+
+2. **Never use `DROP SCHEMA public CASCADE` to reset a project.**
+   This destroys Supabase's internal default privileges and cannot be fully
+   restored by migrations.  To start fresh, create a new Supabase project instead.
+
+3. **Turn off "Confirm email" in Auth Settings.**
+   If email confirmation is ON and the project's Site URL is still the Supabase
+   default (`http://localhost:3000`), confirmation links go to localhost and every
+   new signup breaks.  See Step 3.
+
+4. **Never re-run individual migration files after running `full_setup.sql`.**
+   `full_setup.sql` is a concatenation of every migration in order.  Re-running
+   `0001_app_support.sql` (or any earlier file) after `full_setup.sql` downgrades
+   functions to their pre-0005 versions.  If something went wrong mid-run, resume
+   from the file that failed — do not re-run earlier ones from scratch.
+
+---
+
 ## Checklist
 
-- [ ] All migrations `0000_baseline.sql` → `0023_revoke_public_exec.sql` run without errors
+- [ ] All migrations `0000_baseline.sql` → `0028_realtime_job_status.sql` run without errors
 - [ ] Three student-safe views exist (`lesson_quiz_questions_student`, etc.)
 - [ ] `on_auth_user_created` trigger present (created by `0000_baseline.sql`)
-- [ ] `media` Storage bucket created and public
+- [ ] `media` Storage bucket + 3 policies created by migration `0024_storage.sql` (verify: 1 bucket, 3 storage policies)
 - [ ] `clients/<name>/client.json` committed and `secrets.json` filled in (not committed)
 - [ ] Brand assets added to `clients/<name>/` and staged via `tool/prepare_client.sh <name>`
 - [ ] Android flavor added in `build.gradle.kts` (applicationId, app_name, deepLinkScheme)
 - [ ] First admin promoted via SQL: `update public.users set role = 'admin' where email = 'sheikh@example.com';`
 - [ ] Gemini API key set in-app (الإعدادات ← مفتاح الذكاء الاصطناعي)
-- [ ] Auth email-confirm redirect URL set in Supabase Dashboard
-- [ ] Smoke test: sign up → confirm email → log in → see home screen
+- [ ] AI job queue (Step 12): 3 functions deployed (`generation-worker` at `verify_jwt: false`), `pg_cron`/`pg_net` installed, cron schedule created, `lessons`+`generation_jobs` in `supabase_realtime`, smoke test shows `attempts ≥ 1`
+- [ ] Auth settings: "Confirm email" = **Off**, Site URL = `<DEEP_LINK_SCHEME>://`, Redirect URL = `<DEEP_LINK_SCHEME>://reset-callback`
+- [ ] Smoke test: sign up → log in → see home screen
 
 ---
 
@@ -250,24 +379,24 @@ select count(*) as view_count
 from information_schema.views
 where table_schema = 'public';
 
--- ── Functions in public schema (expect 25) ──────────────────────────────────
+-- ── Functions in public schema (expect 26) ──────────────────────────────────
 select count(*) as function_count
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public';
 
--- ── Triggers on public tables + auth schema (expect 11) ─────────────────────
---    9 on public tables + on_auth_user_created + on_auth_user_converted
+-- ── Triggers on public tables + auth schema (expect 17) ─────────────────────
+--    public-table triggers + on_auth_user_created + on_auth_user_converted
 select count(*) as trigger_count
 from information_schema.triggers
 where event_object_schema in ('public', 'auth');
 
--- ── RLS policies on public tables (expect ~55) ──────────────────────────────
+-- ── RLS policies on public tables (expect 53) ───────────────────────────────
 select count(*) as policy_count
 from pg_policies
 where schemaname = 'public';
 
--- ── Indexes on public tables (expect ~35) ───────────────────────────────────
+-- ── Indexes on public tables (expect 55) ────────────────────────────────────
 select count(*) as index_count
 from pg_indexes
 where schemaname = 'public';
@@ -299,4 +428,51 @@ from information_schema.triggers
 where trigger_name = 'on_auth_user_created';
 -- Expected: 1 row, event_object_schema = auth, event_object_table = users,
 --           action_timing = AFTER, event_manipulation = INSERT
+
+-- ── Storage buckets (expect 1) ──────────────────────────────────────────────
+select id, name, public
+from storage.buckets;
+-- Expected: 1 row — id='media', name='media', public=true
+
+-- ── Storage RLS policies on storage.objects (expect 3) ─────────────────────
+select policyname, cmd
+from pg_policies
+where schemaname = 'storage'
+  and tablename  = 'objects';
+-- Expected: 3 rows:
+--   'Admins can upload media'  INSERT
+--   'Admins can update media'  UPDATE
+--   'Admins can delete media'  DELETE
+
+-- ── Extensions for the AI job queue (expect 2) ──────────────────────────────
+--    Installed by 0026_enable_cron_net.sql.
+select extname from pg_extension where extname in ('pg_cron','pg_net');
+
+-- ── Realtime publication for job status (expect 2) ──────────────────────────
+--    Added by 0028_realtime_job_status.sql; the admin UI updates from these.
+select tablename from pg_publication_tables
+ where pubname = 'supabase_realtime'
+   and tablename in ('lessons','generation_jobs');
+
+-- ── Schema grant sanity check (expect anon, authenticated, service_role) ────
+select grantee, privilege_type
+from information_schema.role_usage_grants
+where object_schema = 'public'
+order by grantee;
+-- Expected: at least 3 rows — anon, authenticated, service_role — all USAGE
 ```
+
+**Expected counts summary (fresh install after all 28 migrations):**
+
+| Object | Count |
+|---|---|
+| Public tables | 25 |
+| Public views | 4 |
+| Public functions | 26 |
+| Triggers (public + auth schema) | 17 |
+| Public RLS policies | 53 |
+| Public indexes | 55 |
+| Storage buckets | 1 (`media`) |
+| Storage RLS policies | 3 |
+| Extensions (`pg_cron`, `pg_net`) | 2 |
+| Realtime publication tables (`lessons`, `generation_jobs`) | 2 |

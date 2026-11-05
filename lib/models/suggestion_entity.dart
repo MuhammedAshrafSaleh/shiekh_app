@@ -57,8 +57,9 @@ class SuggestionEntity extends Equatable {
       id: json['id'] as String,
       title: json['title'] as String,
       imageUrl: json['image_url'] as String,
-      contentType:
-          SuggestionContentType.fromValue(json['content_type'] as String),
+      contentType: SuggestionContentType.fromValue(
+        json['content_type'] as String,
+      ),
       contentUrl: json['content_url'] as String,
       durationSeconds: json['duration_seconds'] as int,
       sortOrder: json['sort_order'] as int?,
@@ -80,13 +81,13 @@ class SuggestionEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        imageUrl,
-        contentType,
-        contentUrl,
-        durationSeconds,
-        sortOrder,
-        isActive,
-      ];
+    id,
+    title,
+    imageUrl,
+    contentType,
+    contentUrl,
+    durationSeconds,
+    sortOrder,
+    isActive,
+  ];
 }

@@ -14,8 +14,9 @@ class MyQuestionsCubit extends Cubit<MyQuestionsState> {
     final result = await _repo.getMyQuestions();
     result.fold(
       (failure) => emit(MyQuestionsError(failure.message)),
-      (questions) =>
-          emit(questions.isEmpty ? MyQuestionsEmpty() : MyQuestionsLoaded(questions)),
+      (questions) => emit(
+        questions.isEmpty ? MyQuestionsEmpty() : MyQuestionsLoaded(questions),
+      ),
     );
   }
 }

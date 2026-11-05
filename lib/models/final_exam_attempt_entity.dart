@@ -39,13 +39,13 @@ class FinalExamAttemptEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        userId,
-        bookId,
-        attemptNumber,
-        scorePercentage,
-        passed,
-        startedAt,
-        submittedAt,
-      ];
+    id,
+    userId,
+    bookId,
+    attemptNumber,
+    scorePercentage,
+    passed,
+    startedAt,
+    submittedAt,
+  ];
 }

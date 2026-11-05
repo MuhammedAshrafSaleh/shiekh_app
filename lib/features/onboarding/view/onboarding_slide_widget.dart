@@ -44,22 +44,15 @@ class OnboardingSlideWidget extends StatelessWidget {
   Widget _mainText() {
     // All slide types share the same title treatment: Aref Ruqaa 700, white.
     final style = AppTextStyles.displaySm.copyWith(color: AppColors.surface);
-    return Text(
-      slide.mainText,
-      textAlign: TextAlign.center,
-      style: style,
-    );
+    return Text(slide.mainText, textAlign: TextAlign.center, style: style);
   }
 
   Widget _subText() {
-    final color =
-        slide.isHadith ? AppColors.goldLight : AppColors.inkInvert;
+    final color = slide.isHadith ? AppColors.goldLight : AppColors.inkInvert;
     return Text(
       slide.subText!,
       textAlign: TextAlign.center,
-      style: AppTextStyles.body.copyWith(
-        color: color.withValues(alpha: 0.9),
-      ),
+      style: AppTextStyles.body.copyWith(color: color.withValues(alpha: 0.9)),
     );
   }
 }

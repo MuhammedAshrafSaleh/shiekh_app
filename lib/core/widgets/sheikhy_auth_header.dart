@@ -75,7 +75,9 @@ class SheikhyAuthHeader extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.h2.copyWith(color: AppColors.goldLight),
+                    style: AppTextStyles.h2.copyWith(
+                      color: AppColors.goldLight,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.s2),
                   Text(

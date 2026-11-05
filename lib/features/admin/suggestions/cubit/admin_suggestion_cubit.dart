@@ -15,8 +15,7 @@ class AdminSuggestionCubit extends Cubit<AdminSuggestionState> {
     final result = await _repo.getSuggestions();
     result.fold(
       (f) => emit(AdminSuggestionError(f.message)),
-      (suggestions) =>
-          emit(AdminSuggestionLoaded(suggestions: suggestions)),
+      (suggestions) => emit(AdminSuggestionLoaded(suggestions: suggestions)),
     );
   }
 

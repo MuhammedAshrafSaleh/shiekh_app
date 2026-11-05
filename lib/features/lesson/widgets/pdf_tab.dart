@@ -47,16 +47,17 @@ class _PdfTabState extends State<PdfTab> {
     }
     try {
       final downloadUrl = toDirectDownloadUrl(widget.pdfUrl);
-      final response = await Dio(
-        BaseOptions(
-          // Guard against a stalled connection hanging the load forever.
-          connectTimeout: const Duration(seconds: 20),
-          receiveTimeout: const Duration(seconds: 30),
-        ),
-      ).get<List<int>>(
-        downloadUrl,
-        options: Options(responseType: ResponseType.bytes),
-      );
+      final response =
+          await Dio(
+            BaseOptions(
+              // Guard against a stalled connection hanging the load forever.
+              connectTimeout: const Duration(seconds: 20),
+              receiveTimeout: const Duration(seconds: 30),
+            ),
+          ).get<List<int>>(
+            downloadUrl,
+            options: Options(responseType: ResponseType.bytes),
+          );
 
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
@@ -83,9 +84,15 @@ class _PdfTabState extends State<PdfTab> {
     } on DioException catch (e) {
       // Network/timeout failure — log specifics and show a connectivity hint
       // rather than wrongly blaming the link.
-      _log.warning('PDF download failed (${e.type}) for ${widget.pdfUrl}: ${e.message}');
+      _log.warning(
+        'PDF download failed (${e.type}) for ${widget.pdfUrl}: ${e.message}',
+      );
       final isNetwork = e.type != DioExceptionType.badResponse;
-      _fail(hint: isNetwork ? 'تعذّر الاتصال، تحقّق من الإنترنت وأعد المحاولة' : null);
+      _fail(
+        hint: isNetwork
+            ? 'تعذّر الاتصال، تحقّق من الإنترنت وأعد المحاولة'
+            : null,
+      );
     } catch (e, st) {
       // Broad by design: PdfDocument.openData throws assorted non-Dio errors on
       // a corrupt/non-PDF payload; a bad file must never crash the lesson screen.
@@ -187,20 +194,16 @@ class _PdfError extends StatelessWidget {
             color: Theme.of(context).colorScheme.error,
           ),
           const SizedBox(height: AppSpacing.md),
-          const Text(
-            'تعذّر تحميل ملف PDF',
-            textAlign: TextAlign.center,
-          ),
+          const Text('تعذّر تحميل ملف PDF', textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.sm),
           Text(
             hint ?? 'يرجى التواصل مع الإدارة لمراجعة الرابط',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.55),
-                ),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.55),
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           FilledButton.icon(

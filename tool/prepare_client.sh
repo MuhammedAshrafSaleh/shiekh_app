@@ -28,6 +28,20 @@ cp "$SRC/sheikh.png" "$ROOT/assets/images/sheikh.png"
 # Launcher-icon source consumed by flutter_launcher_icons.
 cp "$SRC/icon.png" "$ROOT/assets/app-icon.png"
 
+# Native (cold-start) splash artwork — gold-ring circular avatar matching the
+# Flutter SplashPage, sized for the Android 12+ safe circle. Consumed by
+# flutter_native_splash (image: / android_12.image:). Regenerate per client so
+# `flutter_native_splash:create` bakes the right sheikh into the native layer.
+dart run "$ROOT/tool/gen_native_splash.dart" "$CLIENT"
+
 echo "Staged brand assets for '$CLIENT'."
-echo "  assets/images/sheikh.png  <- clients/$CLIENT/sheikh.png"
-echo "  assets/app-icon.png       <- clients/$CLIENT/icon.png"
+echo "  assets/images/sheikh.png            <- clients/$CLIENT/sheikh.png"
+echo "  assets/app-icon.png                 <- clients/$CLIENT/icon.png"
+echo "  assets/generated/native_splash.png  <- generated from clients/$CLIENT/sheikh.png"
+echo
+echo "Next: bake the native splash into android resources:"
+if [[ "$CLIENT" == "ahmed" ]]; then
+  echo "  dart run flutter_native_splash:create"
+else
+  echo "  dart run flutter_native_splash:create --flavor $CLIENT"
+fi

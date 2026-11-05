@@ -1,11 +1,9 @@
 // lib/features/admin/lessons/data/admin_lesson_repository.dart
-import 'dart:async';
 import 'dart:io';
 
 import 'package:dartz/dartz.dart';
 // http is a transitive dep of supabase_flutter (functions_client); imported
-// only to catch transport-level ClientException on the long-running
-// generate-questions call.
+// only to catch transport-level ClientException on the AI Edge Function calls.
 // ignore: depend_on_referenced_packages
 import 'package:http/http.dart' show ClientException;
 import 'package:logging/logging.dart';
@@ -14,10 +12,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../features/notifications/cubit/connectivity_cubit.dart';
 import '../../../../models/admin_quiz_question_entity.dart';
-import '../../../../models/generated_questions_result_entity.dart';
+import '../../../../models/generation_job_entity.dart';
+import '../../../../models/job_enqueue_entity.dart';
 import '../../../../models/lesson_entity.dart';
 import '../../../../models/lesson_pdf_entity.dart';
-import '../../../../models/transcription_result_entity.dart';
 
 /// Shown when the Edge Functions report no AI key is configured
 /// (`AI_KEY_MISSING`). The admin sets it in الإعدادات ← مفتاح الذكاء الاصطناعي.
@@ -619,126 +617,193 @@ class AdminLessonRepository {
 
   // ── AI question generation (generate-questions Edge Function) ──────────────
 
-  /// Invokes the `generate-questions` Edge Function. The admin JWT is attached
-  /// automatically by the Supabase client. Generation is long-running
-  /// (30–130+ s of Gemini calls with retries); the function self-caps at ~150 s,
-  /// so we set a slightly higher client-side deadline and surface a retryable
-  /// failure rather than hanging. Inserted rows land as ai_review_status='pending'.
-  Future<Either<Failure, GeneratedQuestionsResultEntity>> generateQuestions({
+  /// Enqueues question generation via the `generate-questions` Edge Function.
+  /// Under the async-queue contract the function returns HTTP 202
+  /// `{ job_id, status: 'queued' }` in ~1 s and never returns the questions —
+  /// the work runs in a background worker (up to 12 retries over ~8 h). Progress
+  /// is tracked on `public.generation_jobs` by the returned [JobEnqueueEntity.jobId]
+  /// (see [getLatestGenerationJob] / [subscribeToGenerationJob]). 202 is SUCCESS;
+  /// only a genuine 4xx/5xx is an error. The admin JWT is attached automatically.
+  Future<Either<Failure, JobEnqueueEntity>> generateQuestions({
     required String lessonId,
     required String transcriptText,
     required int requestedCount,
     required Map<String, int> difficultyMix,
   }) async {
-    final net = _checkNetwork<GeneratedQuestionsResultEntity>();
+    final net = _checkNetwork<JobEnqueueEntity>();
     if (net != null) return net;
     try {
-      final res = await _client.functions
-          .invoke(
-            'generate-questions',
-            body: {
-              'lesson_id': lessonId,
-              'transcript_text': transcriptText,
-              'requested_count': requestedCount,
-              'difficulty_mix': difficultyMix,
-            },
-          )
-          .timeout(const Duration(seconds: 160));
-      final data = res.data as Map<String, dynamic>;
-      return Right(GeneratedQuestionsResultEntity.fromJson(data));
-    } on FunctionException catch (e) {
-      // Non-2xx from the function (400/401/403/500). `details` is the decoded
-      // response body, typically { error: '...' }.
-      final details = e.details;
-      final code = (details is Map) ? details['error']?.toString() : null;
-      if (code == 'AI_KEY_MISSING') {
-        _log.warning('generateQuestions: AI key missing');
-        return Left(ValidationFailure(_kAiKeyMissingMessage));
-      }
-      // 503, RESOURCE_EXHAUSTED, OVERLOADED, or deadline_exceeded all indicate
-      // AI service saturation — not a logic error in the request.
-      if (e.status == 503 ||
-          code == 'RESOURCE_EXHAUSTED' ||
-          code == 'OVERLOADED' ||
-          (code != null && code.contains('deadline_exceeded'))) {
-        final msg = code ?? 'تعذّر توليد الأسئلة، الخدمة مشغولة حالياً';
-        _log.warning('generateQuestions overload http ${e.status}: $msg');
-        return Left(AiOverloadFailure(msg));
-      }
-      final msg = code ?? 'تعذّر توليد الأسئلة، يرجى المحاولة مرة أخرى';
-      _log.warning('generateQuestions http ${e.status}: $msg');
-      return Left(ServerFailure(msg));
-    } on TimeoutException {
-      _log.warning('generateQuestions: client deadline exceeded');
-      return Left(
-        AiOverloadFailure(
-          'استغرق التوليد وقتًا أطول من المتوقع، حاول مرة أخرى',
-        ),
+      final res = await _client.functions.invoke(
+        'generate-questions',
+        body: {
+          'lesson_id': lessonId,
+          'transcript_text': transcriptText,
+          'requested_count': requestedCount,
+          'difficulty_mix': difficultyMix,
+        },
       );
+      return _parseEnqueueAck(res, context: 'generateQuestions');
+    } on FunctionException catch (e) {
+      return Left(_mapAiFunctionException(e, context: 'generateQuestions'));
     } on ClientException catch (e) {
       _log.warning('generateQuestions transport: $e');
-      return Left(NetworkFailure('انقطع الاتصال أثناء التوليد، حاول مرة أخرى'));
+      return Left(NetworkFailure('انقطع الاتصال أثناء الطلب، حاول مرة أخرى'));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
     }
   }
 
-  /// Invokes the `transcribe-lesson` Edge Function to transcribe a lesson's
-  /// video (YouTube) or audio (Drive) into [lessons.transcript]. Long-running:
-  /// the function self-caps at ~100 s, but has extra pre-Gemini overhead (Drive
-  /// download + Gemini Files API upload + polling for ACTIVE) before the model
-  /// call, so the client deadline is wider than generateQuestions'. Returns the
-  /// full transcript so the caller can chain it into generateQuestions.
-  Future<Either<Failure, TranscriptionResultEntity>> transcribeLesson({
+  /// Enqueues transcription via the `transcribe-lesson` Edge Function. Returns
+  /// HTTP 202 `{ job_id, status: 'queued' }` in ~2 s; the transcript itself is
+  /// never returned — progress lives on `public.lessons` (`transcript_status`,
+  /// `transcript_error`, `transcript`), watched via [subscribeToLesson] / a
+  /// re-fetch of [getLesson]. 202 is SUCCESS; only a genuine 4xx/5xx is an error.
+  Future<Either<Failure, JobEnqueueEntity>> transcribeLesson({
     required String lessonId,
     required String sourceType, // 'youtube' | 'drive_audio'
     required String sourceUrl,
   }) async {
-    final net = _checkNetwork<TranscriptionResultEntity>();
+    final net = _checkNetwork<JobEnqueueEntity>();
     if (net != null) return net;
     try {
-      final res = await _client.functions
-          .invoke(
-            'transcribe-lesson',
-            body: {
-              'lesson_id': lessonId,
-              'source_type': sourceType,
-              'source_url': sourceUrl,
-            },
-          )
-          .timeout(const Duration(seconds: 170));
-      final data = res.data as Map<String, dynamic>;
-      return Right(TranscriptionResultEntity.fromJson(data));
-    } on FunctionException catch (e) {
-      final details = e.details;
-      final code = (details is Map) ? details['error']?.toString() : null;
-      if (code == 'AI_KEY_MISSING') {
-        _log.warning('transcribeLesson: AI key missing');
-        return Left(ValidationFailure(_kAiKeyMissingMessage));
-      }
-      if (e.status == 503 ||
-          code == 'RESOURCE_EXHAUSTED' ||
-          code == 'OVERLOADED' ||
-          (code != null && code.contains('deadline_exceeded'))) {
-        final msg = code ?? 'تعذّر تفريغ المحاضرة، الخدمة مشغولة حالياً';
-        _log.warning('transcribeLesson overload http ${e.status}: $msg');
-        return Left(AiOverloadFailure(msg));
-      }
-      final msg = code ?? 'تعذّر تفريغ المحاضرة، يرجى المحاولة مرة أخرى';
-      _log.warning('transcribeLesson http ${e.status}: $msg');
-      return Left(ServerFailure(msg));
-    } on TimeoutException {
-      _log.warning('transcribeLesson: client deadline exceeded');
-      return Left(
-        AiOverloadFailure(
-          'استغرق التفريغ وقتًا أطول من المتوقع، حاول مرة أخرى',
-        ),
+      final res = await _client.functions.invoke(
+        'transcribe-lesson',
+        body: {
+          'lesson_id': lessonId,
+          'source_type': sourceType,
+          'source_url': sourceUrl,
+        },
       );
+      return _parseEnqueueAck(res, context: 'transcribeLesson');
+    } on FunctionException catch (e) {
+      return Left(_mapAiFunctionException(e, context: 'transcribeLesson'));
     } on ClientException catch (e) {
       _log.warning('transcribeLesson transport: $e');
-      return Left(NetworkFailure('انقطع الاتصال أثناء التفريغ، حاول مرة أخرى'));
+      return Left(NetworkFailure('انقطع الاتصال أثناء الطلب، حاول مرة أخرى'));
     } on SocketException {
       return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
     }
+  }
+
+  /// Decodes a 2xx enqueue acknowledgement. `functions.invoke` returns a normal
+  /// [FunctionResponse] for any 200–299 status (incl. 202), so the ack arrives
+  /// here, not via [FunctionException]. [FunctionResponse.data] is a decoded Map
+  /// only when the function sent `Content-Type: application/json`; guard against
+  /// a String/empty body rather than a blind cast.
+  Either<Failure, JobEnqueueEntity> _parseEnqueueAck(
+    FunctionResponse res, {
+    required String context,
+  }) {
+    final data = res.data;
+    if (data is! Map<String, dynamic>) {
+      _log.warning('$context: unexpected non-JSON ack body (${res.status})');
+      return Left(ServerFailure('تعذّر بدء العملية، يرجى المحاولة مرة أخرى'));
+    }
+    return Right(JobEnqueueEntity.fromJson(data));
+  }
+
+  /// Maps a genuine non-2xx from the AI Edge Functions. `details` is the decoded
+  /// response body, typically `{ error: '...' }`.
+  Failure _mapAiFunctionException(
+    FunctionException e, {
+    required String context,
+  }) {
+    final details = e.details;
+    final code = (details is Map) ? details['error']?.toString() : null;
+    if (code == 'AI_KEY_MISSING') {
+      _log.warning('$context: AI key missing');
+      return ValidationFailure(_kAiKeyMissingMessage);
+    }
+    // 503, RESOURCE_EXHAUSTED, OVERLOADED, or deadline_exceeded all indicate AI
+    // service saturation — not a logic error in the request.
+    if (e.status == 503 ||
+        code == 'RESOURCE_EXHAUSTED' ||
+        code == 'OVERLOADED' ||
+        (code != null && code.contains('deadline_exceeded'))) {
+      final msg = code ?? 'الخدمة مشغولة حالياً، حاول مرة أخرى';
+      _log.warning('$context overload http ${e.status}: $msg');
+      return AiOverloadFailure(msg);
+    }
+    final msg = code ?? 'تعذّر تنفيذ الطلب، يرجى المحاولة مرة أخرى';
+    _log.warning('$context http ${e.status}: $msg');
+    return ServerFailure(msg);
+  }
+
+  // ── AI job tracking (async-queue contract) ─────────────────────────────────
+
+  /// The newest `generate_questions` job for a lesson, or null if none exists.
+  /// Read on page/tab open to re-derive the true current status (the UI is
+  /// resumable across app restarts), and as the Realtime poll fallback.
+  Future<Either<Failure, GenerationJobEntity?>> getLatestGenerationJob(
+    String lessonId,
+  ) async {
+    final net = _checkNetwork<GenerationJobEntity?>();
+    if (net != null) return net;
+    try {
+      final data = await _client
+          .from('generation_jobs')
+          .select()
+          .eq('lesson_id', lessonId)
+          .eq('job_type', 'generate_questions')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      return Right(data == null ? null : GenerationJobEntity.fromJson(data));
+    } on PostgrestException catch (e) {
+      _log.warning('getLatestGenerationJob: ${e.message}');
+      return Left(ServerFailure(e.message));
+    } on SocketException {
+      return Left(NetworkFailure('لا يوجد اتصال بالإنترنت'));
+    }
+  }
+
+  /// Subscribes to UPDATEs on a single `lessons` row (transcription progress).
+  ///
+  /// [channelKey] disambiguates the topic so two cubits can watch the SAME row
+  /// at once without colliding — the form cubit (Quiz-tab chip) and the generate
+  /// cubit are both live when the generate page is pushed over the form. Pass a
+  /// per-owner key like 'form' vs 'generate'.
+  RealtimeChannel subscribeToLesson(
+    String lessonId, {
+    required String channelKey,
+    required void Function(Map<String, dynamic> row) onUpdate,
+  }) {
+    return _client
+        .channel('lesson:$lessonId:$channelKey')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'lessons',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: lessonId,
+          ),
+          callback: (payload) => onUpdate(payload.newRecord),
+        )
+        .subscribe();
+  }
+
+  /// Subscribes to UPDATEs on a single `generation_jobs` row (question-gen
+  /// progress). See [subscribeToLesson] for the [channelKey] contract.
+  RealtimeChannel subscribeToGenerationJob(
+    String jobId, {
+    required String channelKey,
+    required void Function(Map<String, dynamic> row) onUpdate,
+  }) {
+    return _client
+        .channel('genjob:$jobId:$channelKey')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'generation_jobs',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: jobId,
+          ),
+          callback: (payload) => onUpdate(payload.newRecord),
+        )
+        .subscribe();
   }
 }

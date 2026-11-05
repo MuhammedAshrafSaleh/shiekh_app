@@ -132,9 +132,7 @@ class _SuggestionListItem extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  suggestion.isActive
-                      ? Icons.visibility
-                      : Icons.visibility_off,
+                  suggestion.isActive ? Icons.visibility : Icons.visibility_off,
                   size: 14,
                   color: suggestion.isActive ? Colors.green : Colors.grey,
                 ),

@@ -64,7 +64,9 @@ class GuestDebugFab extends StatelessWidget {
       onPressed: () async {
         final messenger = ScaffoldMessenger.of(context);
         messenger.showSnackBar(
-          const SnackBar(content: Text('جارٍ تشغيل فحص الزائر… راجع الـ console')),
+          const SnackBar(
+            content: Text('جارٍ تشغيل فحص الزائر… راجع الـ console'),
+          ),
         );
         final report = await runGuestSelfTest();
         // debugPrint truncates long strings, so print line-by-line.
@@ -73,7 +75,9 @@ class GuestDebugFab extends StatelessWidget {
         }
         if (messenger.mounted) {
           messenger.showSnackBar(
-            const SnackBar(content: Text('انتهى فحص الزائر — راجع الـ console')),
+            const SnackBar(
+              content: Text('انتهى فحص الزائر — راجع الـ console'),
+            ),
           );
         }
       },
@@ -97,7 +101,9 @@ Future<String> runGuestSelfTest() async {
   }
   b
     ..writeln('user.id           = ${user.id}')
-    ..writeln('user.isAnonymous  = ${user.isAnonymous}   ${user.isAnonymous ? "✓" : "✗ EXPECTED true"}')
+    ..writeln(
+      'user.isAnonymous  = ${user.isAnonymous}   ${user.isAnonymous ? "✓" : "✗ EXPECTED true"}',
+    )
     ..writeln('');
 
   // Grab real published ids so the insert checks hit RLS, not a FK error.
@@ -117,66 +123,106 @@ Future<String> runGuestSelfTest() async {
   } catch (_) {}
 
   b.writeln('── A. DB-rejection checks (guest must be BLOCKED) ──');
-  await _expectBlocked(b, 'rpc submit_lesson_quiz', () => client.rpc(
-        'submit_lesson_quiz',
-        params: {'p_lesson_id': lessonId, 'p_answers': <String, dynamic>{}},
-      ), mustContain: 'GUESTS_NOT_ALLOWED');
-  await _expectBlocked(b, 'rpc submit_final_exam', () => client.rpc(
-        'submit_final_exam',
-        params: {
-          'p_book_id': bookId,
-          'p_answers': <String, dynamic>{},
-          'p_started_at': DateTime.now().toUtc().toIso8601String(),
-        },
-      ), mustContain: 'GUESTS_NOT_ALLOWED');
-  await _expectBlocked(b, 'rpc grade_lesson_quiz', () => client.rpc(
-        'grade_lesson_quiz',
-        params: {'p_lesson_id': lessonId, 'p_answers': <String, dynamic>{}},
-      ), mustContain: 'GUESTS_NOT_ALLOWED');
-  await _expectBlocked(b, 'insert enrollments (RLS)', () => client
-      .from('enrollments')
-      .insert({'user_id': user.id, 'book_id': bookId}));
-  await _expectBlocked(b, 'insert lesson_progress (RLS)', () => client
-      .from('lesson_progress')
-      .insert({'user_id': user.id, 'lesson_id': lessonId, 'completed': false}));
+  await _expectBlocked(
+    b,
+    'rpc submit_lesson_quiz',
+    () => client.rpc(
+      'submit_lesson_quiz',
+      params: {'p_lesson_id': lessonId, 'p_answers': <String, dynamic>{}},
+    ),
+    mustContain: 'GUESTS_NOT_ALLOWED',
+  );
+  await _expectBlocked(
+    b,
+    'rpc submit_final_exam',
+    () => client.rpc(
+      'submit_final_exam',
+      params: {
+        'p_book_id': bookId,
+        'p_answers': <String, dynamic>{},
+        'p_started_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    ),
+    mustContain: 'GUESTS_NOT_ALLOWED',
+  );
+  await _expectBlocked(
+    b,
+    'rpc grade_lesson_quiz',
+    () => client.rpc(
+      'grade_lesson_quiz',
+      params: {'p_lesson_id': lessonId, 'p_answers': <String, dynamic>{}},
+    ),
+    mustContain: 'GUESTS_NOT_ALLOWED',
+  );
+  await _expectBlocked(
+    b,
+    'insert enrollments (RLS)',
+    () => client.from('enrollments').insert({
+      'user_id': user.id,
+      'book_id': bookId,
+    }),
+  );
+  await _expectBlocked(
+    b,
+    'insert lesson_progress (RLS)',
+    () => client.from('lesson_progress').insert({
+      'user_id': user.id,
+      'lesson_id': lessonId,
+      'completed': false,
+    }),
+  );
 
   b.writeln('');
   b.writeln('── B. Student views (guest must see 0 rows) ──');
-  await _expectRowCount(b, 'lesson_quiz_questions_student', 0,
-      () => client.from('lesson_quiz_questions_student').select('id').limit(5));
-  await _expectRowCount(b, 'final_exam_questions_student', 0,
-      () => client.from('final_exam_questions_student').select('id').limit(5));
-  await _expectRowCount(b, 'student_questions_public', 0,
-      () => client.from('student_questions_public').select('id').limit(5));
+  await _expectRowCount(
+    b,
+    'lesson_quiz_questions_student',
+    0,
+    () => client.from('lesson_quiz_questions_student').select('id').limit(5),
+  );
+  await _expectRowCount(
+    b,
+    'final_exam_questions_student',
+    0,
+    () => client.from('final_exam_questions_student').select('id').limit(5),
+  );
+  await _expectRowCount(
+    b,
+    'student_questions_public',
+    0,
+    () => client.from('student_questions_public').select('id').limit(5),
+  );
 
   b.writeln('');
   b.writeln('── C. Browse must still work (guest allowed) ──');
   await _expectReadable(
-      b, 'sections', () => client.from('sections').select('id').limit(50));
+    b,
+    'sections',
+    () => client.from('sections').select('id').limit(50),
+  );
   await _expectReadable(
-      b,
-      'books (published)',
-      () => client
-          .from('books')
-          .select('id')
-          .eq('status', 'published')
-          .limit(50));
+    b,
+    'books (published)',
+    () => client.from('books').select('id').eq('status', 'published').limit(50),
+  );
   await _expectReadable(
-      b,
-      'home_banners (active)',
-      () => client
-          .from('home_banners')
-          .select('id')
-          .eq('is_active', true)
-          .limit(50));
+    b,
+    'home_banners (active)',
+    () => client
+        .from('home_banners')
+        .select('id')
+        .eq('is_active', true)
+        .limit(50),
+  );
   await _expectReadable(
-      b,
-      'onboarding_slides (active)',
-      () => client
-          .from('onboarding_slides')
-          .select('id')
-          .eq('is_active', true)
-          .limit(50));
+    b,
+    'onboarding_slides (active)',
+    () => client
+        .from('onboarding_slides')
+        .select('id')
+        .eq('is_active', true)
+        .limit(50),
+  );
 
   b.writeln('');
   b.writeln('── D. is_guest() claim ──');
@@ -222,7 +268,9 @@ Future<void> _expectRowCount(
   try {
     final rows = await run();
     final ok = rows.length == expected;
-    b.writeln('${ok ? "✓" : "✗"} $label — ${rows.length} rows (expected $expected)');
+    b.writeln(
+      '${ok ? "✓" : "✗"} $label — ${rows.length} rows (expected $expected)',
+    );
   } catch (e) {
     b.writeln('✗ $label — threw: $e');
   }

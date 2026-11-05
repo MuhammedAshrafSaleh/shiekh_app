@@ -76,9 +76,7 @@ class _AudioTabState extends State<AudioTab>
   /// callback only fires — after the file is downloaded and loaded.
   bool get _notesEnabled =>
       widget.suggestionId != null ||
-      (!widget.previewMode &&
-          widget.lessonId != null &&
-          widget.bookId != null);
+      (!widget.previewMode && widget.lessonId != null && widget.bookId != null);
 
   final _player = AudioPlayer();
   // Timeouts guard against a stalled connection hanging the download forever.
@@ -121,7 +119,8 @@ class _AudioTabState extends State<AudioTab>
     _player.durationStream.listen((d) {
       if (d != null && mounted) {
         Logger('AudioTab').info(
-            'raw duration=${d.inSeconds}s formatted=${formatMediaDuration(d)}');
+          'raw duration=${d.inSeconds}s formatted=${formatMediaDuration(d)}',
+        );
         setState(() => _duration = d);
       }
     });
@@ -225,8 +224,7 @@ class _AudioTabState extends State<AudioTab>
         if (mounted) {
           setState(() {
             _status = _AudioStatus.error;
-            _errorMessage =
-                'تجاوز الملف حصة Google Drive اليومية، جرّب لاحقاً';
+            _errorMessage = 'تجاوز الملف حصة Google Drive اليومية، جرّب لاحقاً';
           });
         }
         return;
@@ -324,29 +322,29 @@ class _AudioTabState extends State<AudioTab>
     return switch (_status) {
       _AudioStatus.checking => const _AudioChecking(),
       _AudioStatus.idle => _AudioIdle(
-          lessonTitle: widget.lessonTitle,
-          onDownload: _startDownload,
-        ),
+        lessonTitle: widget.lessonTitle,
+        onDownload: _startDownload,
+      ),
       _AudioStatus.downloading => _DownloadProgress(
-          progress: _downloadProgress,
-          onCancel: _cancelDownload,
-        ),
+        progress: _downloadProgress,
+        onCancel: _cancelDownload,
+      ),
       _AudioStatus.error => _AudioError(
-          message: _errorMessage ?? 'حدث خطأ أثناء التحميل',
-          onRetry: _initialize,
-        ),
+        message: _errorMessage ?? 'حدث خطأ أثناء التحميل',
+        onRetry: _initialize,
+      ),
       _ => _AudioPlayer(
-          lessonTitle: widget.lessonTitle,
-          status: _status,
-          position: _position,
-          duration: _duration,
-          onTogglePlay: _togglePlay,
-          onSeek: _seek,
-          onAddNote: _notesEnabled ? _openNoteEditor : null,
-          onSeekToNote: _notesEnabled
-              ? (seconds) => _player.seek(Duration(seconds: seconds))
-              : null,
-        ),
+        lessonTitle: widget.lessonTitle,
+        status: _status,
+        position: _position,
+        duration: _duration,
+        onTogglePlay: _togglePlay,
+        onSeek: _seek,
+        onAddNote: _notesEnabled ? _openNoteEditor : null,
+        onSeekToNote: _notesEnabled
+            ? (seconds) => _player.seek(Duration(seconds: seconds))
+            : null,
+      ),
     };
   }
 }
@@ -447,10 +445,7 @@ class _DownloadProgress extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s5),
-          SheikhyButton.text(
-            label: 'إلغاء',
-            onPressed: onCancel,
-          ),
+          SheikhyButton.text(label: 'إلغاء', onPressed: onCancel),
         ],
       ),
     );
@@ -478,10 +473,7 @@ class _AudioError extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.dangerBg,
               borderRadius: AppRadii.rLg,
-              border: Border.all(
-                color: AppColors.danger,
-                width: 1.5,
-              ),
+              border: Border.all(color: AppColors.danger, width: 1.5),
             ),
             child: const Icon(
               Icons.headset_off_outlined,
@@ -662,9 +654,7 @@ class _AudioPlayer extends StatelessWidget {
           ),
         ),
         if (onAddNote != null) ...[
-          SliverToBoxAdapter(
-            child: _AddNoteAffordance(onTap: onAddNote!),
-          ),
+          SliverToBoxAdapter(child: _AddNoteAffordance(onTap: onAddNote!)),
           BlocBuilder<NotesCubit, NotesState>(
             builder: (context, state) {
               if (state is NotesInitial || state is NotesLoading) {

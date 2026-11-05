@@ -249,8 +249,9 @@ class _NoteTextField extends StatelessWidget {
     return AnimatedBuilder(
       animation: focusNode,
       builder: (context, _) {
-        final deco =
-            focusNode.hasFocus ? AppDecorations.fieldFocused : AppDecorations.field;
+        final deco = focusNode.hasFocus
+            ? AppDecorations.fieldFocused
+            : AppDecorations.field;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -268,7 +269,13 @@ class _NoteTextField extends StatelessWidget {
                 enabled: enabled,
                 maxLines: 5,
                 maxLength: maxChars,
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+                buildCounter:
+                    (
+                      _, {
+                      required currentLength,
+                      required isFocused,
+                      maxLength,
+                    }) => null,
                 style: AppTextStyles.body.copyWith(color: AppColors.ink),
                 cursorColor: AppColors.gold,
                 decoration: InputDecoration(

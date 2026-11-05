@@ -1,14 +1,14 @@
 -- ============================================================
--- docs/full_setup_part2.sql — Sheikhy setup, Part 2 of 4
+-- docs/full_setup_part2.sql — Sheikhy setup, Part 2 of 5
 -- ============================================================
 -- Migrations 0005–0008  (guest mode + entitlement)
--- Run the four parts in order (part1 → part2 → part3 → part4);
+-- Run the five parts in order (part1 → part2 → part3 → part4 → part5);
 -- each part assumes every earlier part already succeeded.
 --
 -- [!] Elevated-privilege statements (postgres role; fine in the
 --     Supabase SQL Editor):
 --       • (none in this part)
--- Generated: 2026-10-25
+-- Generated: 2026-10-26
 -- ============================================================
 
 -- ============================================================

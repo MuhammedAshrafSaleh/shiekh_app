@@ -15,18 +15,15 @@ class NotificationsCubit extends Cubit<NotificationsState> {
   Future<void> loadNotifications() async {
     emit(NotificationsLoading());
     final result = await _repo.getNotifications();
-    result.fold(
-      (failure) => emit(NotificationsError(failure.message)),
-      (list) {
-        if (list.isEmpty) {
-          emit(NotificationsEmpty());
-        } else {
-          emit(NotificationsLoaded(list));
-        }
-        final userId = _repo.currentUserId;
-        if (userId != null) _subscribeRealtime(userId);
-      },
-    );
+    result.fold((failure) => emit(NotificationsError(failure.message)), (list) {
+      if (list.isEmpty) {
+        emit(NotificationsEmpty());
+      } else {
+        emit(NotificationsLoaded(list));
+      }
+      final userId = _repo.currentUserId;
+      if (userId != null) _subscribeRealtime(userId);
+    });
   }
 
   void _subscribeRealtime(String userId) {
@@ -57,20 +54,19 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     final current = state;
     if (current is! NotificationsLoaded) return;
 
-    final unreadIds =
-        current.notifications.where((n) => !n.isRead).map((n) => n.id).toList();
+    final unreadIds = current.notifications
+        .where((n) => !n.isRead)
+        .map((n) => n.id)
+        .toList();
     if (unreadIds.isEmpty) return;
 
     final result = await _repo.markAllRead(unreadIds);
-    result.fold(
-      (_) => null,
-      (_) {
-        final updated = current.notifications
-            .map((n) => n.copyWith(isRead: true))
-            .toList();
-        emit(NotificationsLoaded(updated));
-      },
-    );
+    result.fold((_) => null, (_) {
+      final updated = current.notifications
+          .map((n) => n.copyWith(isRead: true))
+          .toList();
+      emit(NotificationsLoaded(updated));
+    });
   }
 
   Future<void> markRead(String notificationId) async {

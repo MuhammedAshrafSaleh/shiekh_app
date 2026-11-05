@@ -40,11 +40,7 @@ class LessonPdfEntity extends Equatable {
     );
   }
 
-  LessonPdfEntity copyWith({
-    String? title,
-    String? url,
-    int? orderIndex,
-  }) {
+  LessonPdfEntity copyWith({String? title, String? url, int? orderIndex}) {
     return LessonPdfEntity(
       id: id,
       lessonId: lessonId,

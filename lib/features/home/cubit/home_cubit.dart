@@ -27,8 +27,7 @@ class HomeCubit extends Cubit<HomeState> {
 
     if (isClosed) return;
 
-    final bannersEither =
-        results[0] as Either<Failure, List<BannerEntity>>;
+    final bannersEither = results[0] as Either<Failure, List<BannerEntity>>;
     final featuredEither =
         results[1] as Either<Failure, List<BookWithProgressEntity>>;
     final suggestionsEither =
@@ -36,20 +35,14 @@ class HomeCubit extends Cubit<HomeState> {
 
     String? errorMessage;
 
-    bannersEither.fold(
-      (failure) => errorMessage = failure.message,
-      (_) {},
-    );
+    bannersEither.fold((failure) => errorMessage = failure.message, (_) {});
 
     if (errorMessage != null) {
       emit(HomeError(errorMessage!));
       return;
     }
 
-    featuredEither.fold(
-      (failure) => errorMessage = failure.message,
-      (_) {},
-    );
+    featuredEither.fold((failure) => errorMessage = failure.message, (_) {});
 
     if (errorMessage != null) {
       emit(HomeError(errorMessage!));
@@ -61,14 +54,13 @@ class HomeCubit extends Cubit<HomeState> {
     // Suggestions must never fail the Home load: a failure just hides the
     // "مقترحات" section, so we fold any error to an empty list. Log it first so
     // a silent RLS/query issue is visible in dev.
-    final suggestions = suggestionsEither.fold(
-      (failure) {
-        _log.warning('getActiveSuggestions failed (section hidden): '
-            '${failure.message}');
-        return <SuggestionEntity>[];
-      },
-      (list) => list,
-    );
+    final suggestions = suggestionsEither.fold((failure) {
+      _log.warning(
+        'getActiveSuggestions failed (section hidden): '
+        '${failure.message}',
+      );
+      return <SuggestionEntity>[];
+    }, (list) => list);
 
     if (banners.isEmpty && featured.isEmpty && suggestions.isEmpty) {
       emit(const HomeEmpty());
