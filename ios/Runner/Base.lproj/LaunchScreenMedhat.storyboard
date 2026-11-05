@@ -38,7 +38,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="LaunchImageMedhat" width="168" height="185"/>
+        <image name="LaunchImageMedhat" width="1152" height="1152"/>
         <image name="LaunchBackgroundMedhat" width="1" height="1"/>
     </resources>
 </document>

@@ -120,9 +120,16 @@ flutter_native_splash:
   # there is no flash or jump when the native layer hands off to Flutter.
   color: "#1E4034"
   color_dark: "#1E4034"
+  # Gold-ring circular sheikh avatar, generated per client by
+  # tool/gen_native_splash.dart (staged, git-ignored). Matches the Flutter
+  # SplashPage avatar so cold start reads as one continuous screen. The image
+  # background is transparent, so the green above shows through — on Android 12+
+  # the whole ring sits inside the masked safe circle.
+  image: assets/generated/native_splash.png
   android_12:
     color: "#1E4034"
     color_dark: "#1E4034"
+    image: assets/generated/native_splash.png
   fullscreen: false
 
 flutter:
