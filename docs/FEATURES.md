@@ -24,6 +24,10 @@ YouTube is a **public video platform** built for viral content, not for structur
 | Resume exactly where you left off | Sometimes | Always — per-second position saved |
 | Works offline (audio + PDF) | No | Yes — downloaded locally |
 | No hosting cost | Free with ads | Free, no ads, ever |
+| Timestamped personal notes on any lesson | No | Yes — tap to jump back to exact second |
+| Self-paced custom review exam | No | Yes — «اختبر نفسك» from any set of lessons |
+| AI-generated quiz questions | No | Yes — Gemini drafts full MCQ sets in seconds |
+| Browse without signing up | Limited | Yes — full guest browsing, gated on action |
 
 **The core difference:** YouTube distributes content. Sheikhy delivers structured, accountable Islamic education — the kind that results in real learning, real certificates, and a real relationship between a sheikh and his students.
 
@@ -323,8 +327,38 @@ No student data, no content, and no configuration is ever shared between deploym
 - `docs/admin_recovery.sql`: SQL for admin account recovery (CC-29)
 - No cross-deployment data coupling; each deployment is fully isolated
 
-### Guest Mode (Branch: `feature/guest-mode` — partially implemented)
+### Guest Mode
 - Unauthenticated browsing via Supabase anonymous auth
 - Achievements, certificates, Q&A ask, exam gated behind account
 - Guest conversion CTA in profile menu and gated screens
 - Lesson entitlement logic with RLS (migration 0007)
+
+### Notes (الملحوظات)
+- Students add timestamped notes while watching video or listening to audio; playback pauses automatically on note creation
+- Notes stored in `lesson_notes` table, linked to `(user_id, lesson_id, position_seconds)`
+- Book-level **المحفوظات** tab lists all notes for a book sorted by lesson/time; tap any note → navigates into the lesson and seeks to the exact second (video or audio)
+- In-lesson notes list rendered below the player (video + audio tabs) via `CustomScrollView` slivers; add/edit/delete refresh in real-time without leaving the tab
+- `NotesCubit` supports both book-scope (المحفوظات tab) and lesson-scope (in-tab list); `NoteCard.onSeek` callback seeks the local player instead of navigating when rendered inside a lesson tab
+- Guest gate: note creation prompts sign-up with `returnTo` + `autoEnrollBookId` params
+
+### Practice Exams (اختبر نفسك)
+- New raised circular center button in the 5-tab student bottom nav: الرئيسية · مساري · **اختبر نفسك** · إنجازاتي · حسابي
+- **Setup screen:** lessons grouped by book (accordion + select-all); only lessons with a submitted quiz are eligible; question count slider (min 20, max `min(100, available)`); optional timer (15–120 min, step 5 min); blocked with «اختار محاضرات أكتر» CTA when < 20 questions available
+- **Question distribution** (pure, unit-tested): even split across lectures, random remainder, short-lecture backfill, per-question shuffle; choices always displayed a/b/c/d
+- **Loading screen:** cycles admin-managed motivational quotes (~3 s each with progress bar); «ابدأ الآن» appears after first quote; question pool prefetched in parallel so exam opens instantly; falls back to 3 seeded defaults when no quotes are active
+- **Exam runner:** MCQ + question-map navigator, optional wall-clock timer with auto-submit on expiry, leave-confirmation dialog (nothing saved), failed-submit retains answers + retry, double-submit guard
+- **Result + history:** total score, per-lecture breakdown, per-question review (reuses shared quiz-review widget with source-lecture label); last 10 attempts kept; tapping any attempt reopens its full review
+- **Security:** no client-side writes; only write path is `submit_practice_attempt` RPC (SECURITY DEFINER); questions fetched from `lesson_quiz_questions_student` view (no `correct_choice` exposed, CC-18); `correct_choice` returned only by grading/review RPCs after submission
+- **Migration:** `0020_practice_exams.sql` — `practice_attempts` table (select-own RLS; inserts via RPC), keep-last-10 trigger, `loading_quotes` table + 3 seeded defaults, RPCs: `get_practice_eligible_lessons`, `submit_practice_attempt`, `get_practice_attempt_review`
+
+### Admin AI Question Generation
+- Admin can store their own Gemini API key via Settings screen (stored in `app_secrets` table, `SECURITY DEFINER` RPCs, never exposed to client in plaintext)
+- From the quiz tab of any lesson, admin pastes lecture text → Gemini generates a full set of MCQ questions ready to review and publish
+- Animated multi-step progress bar during generation; AI overload (deadline_exceeded) maps to `AiOverloadFailure` with a midnight-retry hint in the UI
+- Migration `0023`: `revoke execute on app_secrets RPCs from public/anon` for hardened key storage
+
+### Admin Loading-Quotes CRUD
+- Accessible from Admin Dashboard tile and `/admin/loading-quotes` route
+- List view with drag-reorder (persisted via `order_index`), per-row active toggle, edit, delete (shared confirm dialog)
+- Add/Edit form: text required ≤ 200 chars (live counter); optional source attribution ≤ 60 chars
+- Info banner shown when no quotes are active; student loading screen falls back to 3 seeded defaults
