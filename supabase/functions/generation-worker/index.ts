@@ -14,19 +14,26 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MODEL_FALLBACK = ["gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest"];
 
-// Retry budget: 24 attempts spanning ~19 hours.
+// Retry budget: 52 attempts spanning ~47 hours (two full day/night cycles).
 //
-// Measured overnight 2026-11-03/04 on the Gemini free tier: 24 CONSECUTIVE
-// 503 "experiencing high demand" responses over 7 hours, across all three
-// models, including 00:00, 01:00, 02:00 and 04:00 local. There is no quiet
-// hour. But capacity does return — a 44-minute mp3 succeeded on attempt 4
-// earlier the same day. So the budget must outlast a bad night rather than a
-// bad afternoon: it now covers a full day/night cycle.
+// Measured on the Gemini free tier:
+//   2026-11-03/04 overnight: 24 CONSECUTIVE 503 "experiencing high demand"
+//     responses over 7 hours, across all three models, including 00:00, 01:00,
+//     02:00 and 04:00 local. There is no quiet hour.
+//   2026-11-04 21:15 -> 11-05 01:39: a transcription SUCCEEDED on attempt 10
+//     after 4h23m of refusals.
+// Capacity therefore returns in windows that are hours apart and not tied to
+// time of day. The budget has to outlast a bad stretch, not a bad hour, and it
+// was widened 12 -> 24 -> 52 as each measurement came in.
 //
-// DO NOT shorten this without new measurements. An earlier draft used 5
-// attempts over ~1 hour; against the numbers above it would never succeed.
-const MAX_ATTEMPTS = 24;
+// DO NOT shorten this without new measurements. An early draft used 5 attempts
+// over ~1 hour; against the numbers above it would never have succeeded. Each
+// attempt is one request, and a 503 consumes no token quota, so a wide budget
+// costs essentially nothing.
+const MAX_ATTEMPTS = 52;
 // Minutes before attempt N+1, indexed by (attempts - 1); past the end, 60.
+// Quick retries for the first hour catch ordinary transient failures; hourly
+// after that is frequent enough to catch a capacity window when one opens.
 const BACKOFF_MIN = [2, 5, 10, 20, 30];
 
 const ATTEMPT_DEADLINE_MS = 130_000; // platform wall clock ~150s
@@ -37,7 +44,7 @@ const GEMINI_UPLOAD_BASE = "https://generativelanguage.googleapis.com/upload/v1b
 const FILE_ACTIVE_POLL_MS = 2_000;
 
 const TERMINAL_MESSAGE =
-  "تعذّر إتمام العملية بعد عدة محاولات على مدار يوم — خدمة الذكاء الاصطناعي مزدحمة. جرّب مرة أخرى.";
+  "تعذّر إتمام العملية بعد محاولات متكررة على مدار يومين — خدمة الذكاء الاصطناعي مزدحمة. جرّب مرة أخرى.";
 
 const TRANSCRIBE_PROMPT =
   "فرّغ هذا الدرس تفريغًا حرفيًا كاملًا من أول ثانية إلى آخر ثانية. " +
@@ -103,8 +110,6 @@ const json = (body: unknown, status = 200) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// A failure retrying cannot fix (bad input, bad key, bad link). Retrying these
-// only burns the free-tier request budget.
 class PermanentError extends Error {}
 
 function sanitize(msg: string): string {
@@ -120,7 +125,6 @@ async function errBody(res: Response, max = 400): Promise<string> {
   }
 }
 
-// 400/401/403 will not heal on retry; 429/500/503 will.
 function classify(status: number, msg: string): Error {
   return status === 400 || status === 401 || status === 403
     ? new PermanentError(msg)
@@ -242,8 +246,6 @@ async function uploadDriveAudioToGemini(
   return { fileUri: file.uri, mimeType };
 }
 
-// One Gemini call. Model rotates with the attempt number so successive retries
-// do not all land on the same (possibly saturated) model.
 async function callGemini(
   apiKey: string,
   model: string,
@@ -291,14 +293,12 @@ Deno.serve(async (req) => {
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // ── Auth: shared secret, not a user JWT ─────────────────────────────────
   const presented = req.headers.get("x-worker-secret") ?? "";
   const { data: secretRow } = await admin
     .from("app_secrets").select("value").eq("key", "worker_secret").maybeSingle();
   const expected = secretRow?.value as string | undefined;
   if (!expected || presented !== expected) return json({ error: "Unauthorized" }, 401);
 
-  // ── Claim one due job (also resolves jobs abandoned by a killed worker) ───
   const { data: jobRow, error: claimErr } = await admin.rpc("claim_generation_job");
   if (claimErr) return json({ error: "claim failed", detail: claimErr.message }, 500);
   const job: any = Array.isArray(jobRow) ? jobRow[0] : jobRow;
@@ -362,7 +362,6 @@ Deno.serve(async (req) => {
     const GEMINI_API_KEY = secret?.value as string | undefined;
     if (!GEMINI_API_KEY) throw new PermanentError("مفتاح Gemini غير مضبوط في إعدادات الأدمن");
 
-    // ══ TRANSCRIBE ════════════════════════════════════════════════════
     if (isTranscribe) {
       const sourceType = job.source_type as string | null;
       const sourceUrl = job.source_url as string | null;
@@ -408,12 +407,10 @@ Deno.serve(async (req) => {
       return json({ picked: 1, type: jobType, outcome: "done", attempts, chars: transcript.length }, 200);
     }
 
-    // ══ GENERATE QUESTIONS ════════════════════════════════════════════
     if (jobType !== "generate_questions") {
       throw new PermanentError(`نوع وظيفة غير معروف: ${jobType}`);
     }
 
-    // Prefer the text the admin submitted; fall back to the stored transcript.
     let sourceText = (job.input_text as string | null)?.trim() ?? "";
     if (!sourceText) {
       const { data: lesson } = await admin
@@ -494,7 +491,6 @@ Deno.serve(async (req) => {
 
     const { data: ins, error: insErr } = await admin
       .from("lesson_quiz_questions").insert(rows).select("id");
-    // A DB rejection is our bug, not Gemini's; retrying will reproduce it.
     if (insErr) throw new PermanentError(`فشل حفظ الأسئلة: ${insErr.message}`);
 
     const inserted = ins?.length ?? 0;

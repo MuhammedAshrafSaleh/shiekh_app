@@ -73,7 +73,7 @@ left `running` for more than 5 minutes.
 
 ---
 
-## 3. Why the retry budget is 24 attempts over ~19 hours
+## 3. Why the retry budget is 52 attempts over ~47 hours
 
 On the **Gemini free tier**, long audio is frequently refused:
 
@@ -95,24 +95,38 @@ Two conclusions, both load-bearing:
    24 minutes earlier the same day, and Ahmed's project has 14 historical
    successes. So retrying is worth doing — it is not hopeless, it is slow.
 
+### The measurement that set the final number
+
+On 2026-11-04 a transcription was queued at 21:15 and **succeeded on attempt 10
+at 01:39** — 4 hours 23 minutes of refusals before capacity opened.
+
+So capacity returns in windows that are **hours** apart and unrelated to time of
+day. A budget has to outlast a bad stretch, not a bad hour.
+
 Hence:
 
 ```ts
-const MAX_ATTEMPTS = 24;
+const MAX_ATTEMPTS = 52;
 const BACKOFF_MIN  = [2, 5, 10, 20, 30]; // then 60 for every later attempt
 ```
 
-That is ~19 hours of trying: about an hour of quick retries for the common
-transient case, then hourly for the rest of a full day/night cycle.
+That is ~47 hours — two full day/night cycles. The first hour of quick retries
+catches ordinary transient failures; hourly after that is frequent enough to
+land in a capacity window when one opens.
 
-The first version of this used 12 attempts over ~8 hours and was widened after
-the overnight run above showed 7 straight hours of refusals — 8 hours was not
-comfortably more than one bad stretch.
+The budget was widened **12 → 24 → 52** as each measurement came in. Every
+increase was a response to observed data, not a guess.
 
 **Do not shorten this without new measurements.** An earlier draft used 5
 attempts over ~1 hour; against the numbers above it would have failed every
 time. Each attempt is one request and a 503 consumes no token quota, so the
 cost of a wide budget is close to zero.
+
+### Question generation is not exempt
+
+On 2026-11-05 at 11:31 a `generate_questions` job — plain text input, no audio —
+also received a 503 on its first attempt. The free tier throttles by capacity,
+not by payload size, so both job types share the same budget.
 
 ---
 
@@ -154,9 +168,7 @@ either way; billing only changes how long the queue takes.
   Getting this wrong breaks the queue **silently** — jobs enqueue and nothing
   ever claims them.
 - The cron schedule embeds the project ref in a URL, so it must be created
-  once per client. For the full per-project setup checklist (functions,
-  extensions, cron schedule, Realtime, smoke test) see `docs/WHITELABEL.md`
-  → "Step 12 — AI job queue (background worker)".
+  once per client. See `docs/WHITELABEL.md`, "AI job queue".
 - `lessons` and `generation_jobs` must be in the `supabase_realtime`
   publication, and `generation_jobs` needs `REPLICA IDENTITY FULL`. Without
   these the admin UI never updates on its own and looks broken.
