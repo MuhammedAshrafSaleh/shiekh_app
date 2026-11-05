@@ -1,8 +1,8 @@
 -- ============================================================
--- docs/full_setup_part4.sql — Sheikhy setup, Part 4 of 4
+-- docs/full_setup_part4.sql — Sheikhy setup, Part 4 of 5
 -- ============================================================
 -- Migrations 0017–0024  (suggestions, practice exams, secrets, storage)
--- Run the four parts in order (part1 → part2 → part3 → part4);
+-- Run the five parts in order (part1 → part2 → part3 → part4 → part5);
 -- each part assumes every earlier part already succeeded.
 --
 -- [!] Elevated-privilege statements (postgres role; fine in the

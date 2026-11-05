@@ -1,8 +1,8 @@
 -- ============================================================
--- docs/full_setup_part1.sql — Sheikhy setup, Part 1 of 4
+-- docs/full_setup_part1.sql — Sheikhy setup, Part 1 of 5
 -- ============================================================
 -- Migrations 0000–0004  (baseline + initial RPCs/views)
--- Run the four parts in order (part1 → part2 → part3 → part4);
+-- Run the five parts in order (part1 → part2 → part3 → part4 → part5);
 -- each part assumes every earlier part already succeeded.
 -- Part 1 STARTS WITH 0000_baseline.sql — run this one first.
 --

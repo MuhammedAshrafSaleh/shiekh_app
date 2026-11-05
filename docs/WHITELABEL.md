@@ -347,7 +347,7 @@ Silent failure modes that have caused issues on real deployments.
 
 ## Checklist
 
-- [ ] All migrations `0000_baseline.sql` → `0024_storage.sql` run without errors
+- [ ] All migrations `0000_baseline.sql` → `0028_realtime_job_status.sql` run without errors
 - [ ] Three student-safe views exist (`lesson_quiz_questions_student`, etc.)
 - [ ] `on_auth_user_created` trigger present (created by `0000_baseline.sql`)
 - [ ] `media` Storage bucket + 3 policies created by migration `0024_storage.sql` (verify: 1 bucket, 3 storage policies)
@@ -379,24 +379,24 @@ select count(*) as view_count
 from information_schema.views
 where table_schema = 'public';
 
--- ── Functions in public schema (expect 25) ──────────────────────────────────
+-- ── Functions in public schema (expect 26) ──────────────────────────────────
 select count(*) as function_count
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public';
 
--- ── Triggers on public tables + auth schema (expect 11) ─────────────────────
---    9 on public tables + on_auth_user_created + on_auth_user_converted
+-- ── Triggers on public tables + auth schema (expect 17) ─────────────────────
+--    public-table triggers + on_auth_user_created + on_auth_user_converted
 select count(*) as trigger_count
 from information_schema.triggers
 where event_object_schema in ('public', 'auth');
 
--- ── RLS policies on public tables (expect ~55) ──────────────────────────────
+-- ── RLS policies on public tables (expect 53) ───────────────────────────────
 select count(*) as policy_count
 from pg_policies
 where schemaname = 'public';
 
--- ── Indexes on public tables (expect ~35) ───────────────────────────────────
+-- ── Indexes on public tables (expect 55) ────────────────────────────────────
 select count(*) as index_count
 from pg_indexes
 where schemaname = 'public';
@@ -444,6 +444,16 @@ where schemaname = 'storage'
 --   'Admins can update media'  UPDATE
 --   'Admins can delete media'  DELETE
 
+-- ── Extensions for the AI job queue (expect 2) ──────────────────────────────
+--    Installed by 0026_enable_cron_net.sql.
+select extname from pg_extension where extname in ('pg_cron','pg_net');
+
+-- ── Realtime publication for job status (expect 2) ──────────────────────────
+--    Added by 0028_realtime_job_status.sql; the admin UI updates from these.
+select tablename from pg_publication_tables
+ where pubname = 'supabase_realtime'
+   and tablename in ('lessons','generation_jobs');
+
 -- ── Schema grant sanity check (expect anon, authenticated, service_role) ────
 select grantee, privilege_type
 from information_schema.role_usage_grants
@@ -452,15 +462,17 @@ order by grantee;
 -- Expected: at least 3 rows — anon, authenticated, service_role — all USAGE
 ```
 
-**Expected counts summary (fresh install after all 24 migrations):**
+**Expected counts summary (fresh install after all 28 migrations):**
 
 | Object | Count |
 |---|---|
 | Public tables | 25 |
 | Public views | 4 |
-| Public functions | 25 |
-| Triggers (public + auth schema) | 11 |
-| Public RLS policies | ~53 |
-| Public indexes | ~35 |
+| Public functions | 26 |
+| Triggers (public + auth schema) | 17 |
+| Public RLS policies | 53 |
+| Public indexes | 55 |
 | Storage buckets | 1 (`media`) |
 | Storage RLS policies | 3 |
+| Extensions (`pg_cron`, `pg_net`) | 2 |
+| Realtime publication tables (`lessons`, `generation_jobs`) | 2 |
