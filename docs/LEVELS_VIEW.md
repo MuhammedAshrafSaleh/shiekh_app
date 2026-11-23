@@ -46,6 +46,11 @@ data availability."
 - **Rollout order**: Phase 1 applies to **medhat** only (after a read-only drift check vs
   the mokhtar snapshot). **ahmed goes last** in Phase 6 (oldest + largest client), together
   with **mokhtar**. Each project gets its own verify-query run.
+- **Rollout state (2026-11-23):**
+  - **medhat** (`tnghjkbkiipdtdboqwkk`) — ✅ `0029` **applied + verified** (levels table,
+    2 book columns, 3 functions, 3 indexes, both RLS policies, FK `SET NULL`, delete trigger).
+  - **ahmed** (`sbctifrsneiudphuqaqq`) — ⏳ pending (Phase 6). Drift-checked clean, not applied.
+  - **mokhtar** (`tsfhrjipqukcutdkaiei`) — ⏳ pending (Phase 6), currently unreachable via MCP.
 
 ---
 
