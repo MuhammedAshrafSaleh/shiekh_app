@@ -72,8 +72,12 @@ import '../features/suggestions/view/suggestion_video_page.dart';
 import '../features/admin/dashboard/cubit/admin_dashboard_cubit.dart';
 import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
 import '../features/admin/dashboard/view/admin_dashboard_page.dart';
+import '../features/admin/levels/cubit/admin_level_book_picker_cubit.dart';
+import '../features/admin/levels/cubit/admin_level_books_cubit.dart';
 import '../features/admin/levels/cubit/admin_levels_cubit.dart';
 import '../features/admin/levels/data/admin_level_repository.dart';
+import '../features/admin/levels/view/admin_level_book_picker_page.dart';
+import '../features/admin/levels/view/admin_level_books_page.dart';
 import '../features/admin/levels/view/admin_level_form_page.dart';
 import '../features/admin/levels/view/admin_levels_page.dart';
 import '../features/admin/sections/cubit/admin_sections_cubit.dart';
@@ -591,6 +595,38 @@ GoRouter buildRouter(AuthCubit authCubit) {
                 child: AdminLevelFormPage(existing: level),
               );
             },
+          ),
+          GoRoute(
+            path: ':id/books',
+            builder: (context, state) {
+              final levelId = state.pathParameters['id']!;
+              final levelName = state.uri.queryParameters['name'] ?? 'المستوى';
+              return BlocProvider(
+                create: (ctx) => AdminLevelBooksCubit(
+                  ctx.read<AdminLevelRepository>(),
+                  levelId,
+                )..load(),
+                child: AdminLevelBooksPage(
+                  levelId: levelId,
+                  levelName: levelName,
+                ),
+              );
+            },
+            routes: [
+              GoRoute(
+                path: 'add',
+                builder: (context, state) {
+                  final levelId = state.pathParameters['id']!;
+                  return BlocProvider(
+                    create: (ctx) => AdminLevelBookPickerCubit(
+                      ctx.read<AdminLevelRepository>(),
+                      levelId,
+                    )..load(),
+                    child: const AdminLevelBookPickerPage(),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),

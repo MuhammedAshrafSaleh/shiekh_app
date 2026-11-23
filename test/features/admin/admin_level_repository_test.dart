@@ -13,6 +13,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:sheikhy_app/core/errors/failures.dart';
 import 'package:sheikhy_app/features/admin/levels/data/admin_level_repository.dart';
 import 'package:sheikhy_app/features/notifications/cubit/connectivity_cubit.dart';
+import 'package:sheikhy_app/models/assignable_book_entity.dart';
 import 'package:sheikhy_app/models/level_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -224,6 +225,205 @@ void main() {
         (f) => expect(f, isA<ServerFailure>()),
         (_) => fail('expected Left'),
       );
+    });
+  });
+
+  // ── getBooksInLevel ───────────────────────────────────────────────────────
+  group('getBooksInLevel', () {
+    test('returns NetworkFailure when offline', () async {
+      when(() => connectivity.state).thenReturn(_offline);
+
+      final result = await repo.getBooksInLevel('lvl-1');
+
+      expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
+      verifyNever(() => client.from(any()));
+    });
+
+    test('returns ServerFailure on PostgrestException', () async {
+      goOnlineButThrow(const PostgrestException(message: 'db error'));
+
+      final result = await repo.getBooksInLevel('lvl-1');
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+
+    test('queries the books table', () async {
+      goOnlineButThrow(const PostgrestException(message: 'ok'));
+
+      await repo.getBooksInLevel('lvl-1');
+
+      verify(() => client.from('books')).called(greaterThanOrEqualTo(1));
+    });
+  });
+
+  // ── getAssignableBooks ────────────────────────────────────────────────────
+  group('getAssignableBooks', () {
+    test('returns NetworkFailure when offline', () async {
+      when(() => connectivity.state).thenReturn(_offline);
+
+      final result = await repo.getAssignableBooks('lvl-1');
+
+      expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
+      verifyNever(() => client.from(any()));
+    });
+
+    test('returns ServerFailure on PostgrestException', () async {
+      goOnlineButThrow(const PostgrestException(message: 'db error'));
+
+      final result = await repo.getAssignableBooks('lvl-1');
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+  });
+
+  // ── addBookToLevel ────────────────────────────────────────────────────────
+  group('addBookToLevel', () {
+    test('returns NetworkFailure when offline', () async {
+      when(() => connectivity.state).thenReturn(_offline);
+
+      final result = await repo.addBookToLevel(
+        bookId: 'book-1',
+        levelId: 'lvl-1',
+      );
+
+      expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
+      verifyNever(() => client.from(any()));
+    });
+
+    test('returns ServerFailure on PostgrestException', () async {
+      goOnlineButThrow(const PostgrestException(message: 'update error'));
+
+      final result = await repo.addBookToLevel(
+        bookId: 'book-1',
+        levelId: 'lvl-1',
+      );
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+  });
+
+  // ── removeBookFromLevel ───────────────────────────────────────────────────
+  group('removeBookFromLevel', () {
+    test('returns NetworkFailure when offline', () async {
+      when(() => connectivity.state).thenReturn(_offline);
+
+      final result = await repo.removeBookFromLevel('book-1');
+
+      expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
+      verifyNever(() => client.from(any()));
+    });
+
+    test('returns ServerFailure on PostgrestException', () async {
+      goOnlineButThrow(const PostgrestException(message: 'update error'));
+
+      final result = await repo.removeBookFromLevel('book-1');
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+  });
+
+  // ── reorderLevelBooks — scoped by p_level_id ──────────────────────────────
+  group('reorderLevelBooks', () {
+    test('returns NetworkFailure when offline', () async {
+      when(() => connectivity.state).thenReturn(_offline);
+
+      final result = await repo.reorderLevelBooks(
+        levelId: 'lvl-1',
+        updates: [(id: 'book-1', levelOrder: 1)],
+      );
+
+      expect(result, const Left(NetworkFailure('لا يوجد اتصال بالإنترنت')));
+      verifyNever(() => client.rpc(any(), params: any(named: 'params')));
+    });
+
+    test('calls reorder_level_books RPC with p_level_id + payload', () async {
+      when(() => connectivity.state).thenReturn(_online);
+      when(
+        () => client.rpc(any(), params: any(named: 'params')),
+      ).thenThrow(const PostgrestException(message: 'boom'));
+
+      await repo.reorderLevelBooks(
+        levelId: 'lvl-1',
+        updates: [(id: 'book-1', levelOrder: 1), (id: 'book-2', levelOrder: 2)],
+      );
+
+      verify(
+        () => client.rpc(
+          'reorder_level_books',
+          params: {
+            'p_level_id': 'lvl-1',
+            'p_updates': [
+              {'id': 'book-1', 'level_order': 1},
+              {'id': 'book-2', 'level_order': 2},
+            ],
+          },
+        ),
+      ).called(1);
+    });
+
+    test('returns ServerFailure on PostgrestException', () async {
+      when(() => connectivity.state).thenReturn(_online);
+      when(
+        () => client.rpc(any(), params: any(named: 'params')),
+      ).thenThrow(const PostgrestException(message: 'rpc error'));
+
+      final result = await repo.reorderLevelBooks(
+        levelId: 'lvl-1',
+        updates: [(id: 'book-1', levelOrder: 1)],
+      );
+
+      expect(result.isLeft(), true);
+      result.fold(
+        (f) => expect(f, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+    });
+  });
+
+  // ── AssignableBookEntity.fromJson ─────────────────────────────────────────
+  group('AssignableBookEntity.fromJson', () {
+    test('parses a free book (no level)', () {
+      final book = AssignableBookEntity.fromJson({
+        'id': 'book-1',
+        'title': 'بلوغ المرام',
+        'cover_image_url': null,
+        'level_id': null,
+        'levels': null,
+      });
+
+      expect(book.id, 'book-1');
+      expect(book.hasLevel, false);
+      expect(book.currentLevelName, isNull);
+    });
+
+    test('parses a book in another level with nested name', () {
+      final book = AssignableBookEntity.fromJson({
+        'id': 'book-2',
+        'title': 'عمدة الأحكام',
+        'cover_image_url': 'http://x/y.png',
+        'level_id': 'lvl-9',
+        'levels': {'name': 'المستوى الثاني'},
+      });
+
+      expect(book.hasLevel, true);
+      expect(book.currentLevelId, 'lvl-9');
+      expect(book.currentLevelName, 'المستوى الثاني');
     });
   });
 

@@ -125,6 +125,7 @@ class _LevelListItem extends StatelessWidget {
           '${level.bookCount} ${level.bookCount == 1 ? 'كتاب' : 'كتب'}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
+        onTap: () => _openBooks(context),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -142,6 +143,15 @@ class _LevelListItem extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openBooks(BuildContext context) async {
+    final cubit = context.read<AdminLevelsCubit>();
+    await context.push(
+      '/admin/levels/${level.id}/books?name=${Uri.encodeComponent(level.name)}',
+    );
+    // Book counts may have changed (assign/remove/move) — refresh on return.
+    if (context.mounted) cubit.load();
   }
 
   Future<void> _edit(BuildContext context) async {

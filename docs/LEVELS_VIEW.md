@@ -51,6 +51,16 @@ data availability."
     2 book columns, 3 functions, 3 indexes, both RLS policies, FK `SET NULL`, delete trigger).
   - **ahmed** (`sbctifrsneiudphuqaqq`) — ⏳ pending (Phase 6). Drift-checked clean, not applied.
   - **mokhtar** (`tsfhrjipqukcutdkaiei`) — ⏳ pending (Phase 6), currently unreachable via MCP.
+- **Runtime pass flavor**: the in-app verification MUST use the **medhat flavor** — each
+  flavor points at its own Supabase project (see `clients/<name>/secrets.json`), and medhat
+  is the only project with `0029` applied. Running ahmed/mokhtar would hit a DB with no
+  `levels` table. Command: `flutter run --flavor medhat
+  --dart-define-from-file=clients/medhat/client.json
+  --dart-define-from-file=clients/medhat/secrets.json`.
+- **Known ceiling**: `getLevels` (admin + student) counts books via a single
+  `books.select('level_id').limit(1000)` grouped fetch — inherited verbatim from
+  `AdminSectionRepository.getSections`. A client with >1000 books would under-count. Fine for
+  single-sheikh apps; revisit with a server-side aggregate only if that ceiling is ever hit.
 
 ---
 
