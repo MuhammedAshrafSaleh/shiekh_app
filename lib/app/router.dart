@@ -72,6 +72,10 @@ import '../features/suggestions/view/suggestion_video_page.dart';
 import '../features/admin/dashboard/cubit/admin_dashboard_cubit.dart';
 import '../features/admin/dashboard/data/admin_dashboard_repository.dart';
 import '../features/admin/dashboard/view/admin_dashboard_page.dart';
+import '../features/admin/levels/cubit/admin_levels_cubit.dart';
+import '../features/admin/levels/data/admin_level_repository.dart';
+import '../features/admin/levels/view/admin_level_form_page.dart';
+import '../features/admin/levels/view/admin_levels_page.dart';
 import '../features/admin/sections/cubit/admin_sections_cubit.dart';
 import '../features/admin/sections/data/admin_section_repository.dart';
 import '../features/admin/sections/view/admin_section_form_page.dart';
@@ -119,6 +123,7 @@ import '../models/banner_entity.dart';
 import '../models/book_entity.dart';
 import '../models/certificate_entity.dart';
 import '../models/loading_quote_entity.dart';
+import '../models/level_entity.dart';
 import '../models/section_entity.dart';
 import '../models/suggestion_entity.dart';
 
@@ -553,6 +558,37 @@ GoRouter buildRouter(AuthCubit authCubit) {
                 create: (ctx) =>
                     AdminSectionsCubit(ctx.read<AdminSectionRepository>()),
                 child: AdminSectionFormPage(existing: section),
+              );
+            },
+          ),
+        ],
+      ),
+
+      // --- Admin: Levels (browse-by-level) ---
+      GoRoute(
+        path: '/admin/levels',
+        builder: (context, _) => BlocProvider(
+          create: (ctx) =>
+              AdminLevelsCubit(ctx.read<AdminLevelRepository>())..load(),
+          child: const AdminLevelsPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, _) => BlocProvider(
+              create: (ctx) =>
+                  AdminLevelsCubit(ctx.read<AdminLevelRepository>()),
+              child: const AdminLevelFormPage(),
+            ),
+          ),
+          GoRoute(
+            path: ':id/edit',
+            builder: (context, state) {
+              final level = state.extra as LevelEntity;
+              return BlocProvider(
+                create: (ctx) =>
+                    AdminLevelsCubit(ctx.read<AdminLevelRepository>()),
+                child: AdminLevelFormPage(existing: level),
               );
             },
           ),

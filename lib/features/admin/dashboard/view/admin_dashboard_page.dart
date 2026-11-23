@@ -274,7 +274,13 @@ class _QuickActions extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            const Expanded(child: SizedBox()),
+            Expanded(
+              child: _QuickActionButton(
+                icon: Icons.school_outlined,
+                label: 'إدارة المستويات',
+                onTap: () => context.push('/admin/levels'),
+              ),
+            ),
             const SizedBox(width: AppSpacing.sm),
             const Expanded(child: SizedBox()),
           ],
