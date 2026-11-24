@@ -19,6 +19,8 @@ import '../features/admin/onboarding/data/admin_onboarding_repository.dart';
 import '../features/admin/qa/data/admin_qa_repository.dart';
 import '../features/admin/levels/data/admin_level_repository.dart';
 import '../features/admin/sections/data/admin_section_repository.dart';
+import '../features/levels/data/level_repository.dart';
+import '../core/cubit/view_mode_cubit.dart';
 import '../features/admin/shared/data/question_bank_repository.dart';
 import '../features/admin/stats/data/admin_stats_repository.dart';
 import '../features/auth/cubit/auth_cubit.dart';
@@ -56,6 +58,7 @@ class SheikhyProviders extends StatelessWidget {
       providers: [
         BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()..load()),
         BlocProvider<ConnectivityCubit>(create: (_) => ConnectivityCubit()),
+        BlocProvider<ViewModeCubit>(create: (_) => ViewModeCubit()..load()),
       ],
       child: Builder(
         builder: (ctx) {
@@ -71,6 +74,9 @@ class SheikhyProviders extends StatelessWidget {
               ),
               RepositoryProvider<SectionRepository>(
                 create: (_) => SectionRepository(supabase, connectivity),
+              ),
+              RepositoryProvider<LevelRepository>(
+                create: (_) => LevelRepository(supabase, connectivity),
               ),
               RepositoryProvider<OnboardingRepository>(
                 create: (_) => OnboardingRepository(supabase, connectivity),
