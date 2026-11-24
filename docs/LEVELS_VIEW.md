@@ -1,5 +1,51 @@
 # Browse Books by LEVEL (view-mode filter) — Implementation Plan
 
+> **Process rule (applies to this whole feature):** when an agreed step turns out
+> to be unnecessary or a worse option mid-task, **stop and ask before deviating** —
+> especially when a live client project (ahmed / medhat / mokhtar) is involved.
+> Don't silently swap the plan.
+
+## Implementation status
+
+- **Branch:** `feature/levels-view` (pushed to origin). Base: `master`.
+- **Phases 1–3 complete**, each its own commit (newest last):
+  - Phase 1 — migration `0029_levels.sql` + RLS + RPCs + docs: **`7b9ec46`**
+    (rollout-state record: **`51b9503`**)
+  - Phase 2 — admin levels CRUD + reordering dashboard: **`b823517`**
+  - Phase 3 — assign books to a level + order within it: **`fb25184`**
+- **Live rollout state** (see also the detailed block under "Rollout state" below):
+  - **medhat** (`tnghjkbkiipdtdboqwkk`) — ✅ `0029` **applied + verified**; full admin
+    runtime pass done on the medhat flavor, then the DB was restored byte-for-byte.
+  - **ahmed** (`sbctifrsneiudphuqaqq`) — drift-checked clean vs mokhtar, **not applied** (Phase 6).
+  - **mokhtar** (`tsfhrjipqukcutdkaiei`) — **pending** (Phase 6); was unreachable via MCP at the time.
+- **Next step = Phase 4** (app data layer, Dart only, no DB changes): add `levelId`/
+  `levelOrder` to `BookEntity`; create the **student** `LevelRepository`
+  (`getLevels` returning only levels with ≥1 **published** book — empty levels hidden
+  from students; `getBooksByLevel`); register it in `bloc_providers.dart`; add the
+  `ViewModeCubit` (device-local `SharedPreferences` key `browse_view_mode`, mirrors
+  `ThemeCubit`); unit tests for every repo method incl. the empty-level-excluded case.
+  Phases 5 (student filter + browsing UI) and 6 (apply to ahmed+mokhtar + doc updates)
+  follow. See the "Phases" section for the full breakdown.
+
+## Known limitations / untested paths
+
+- **Typed Arabic into the level-name form was never exercised.** `adb input text`
+  is ASCII-only, so the runtime pass created/edited levels with Latin names; Arabic
+  was verified only as **DB-seeded level names** and existing **book titles** (both
+  render correctly). The duplicate-name message itself is a constant Arabic string and
+  did render. **Muhamed will verify typed Arabic manually on a real device.**
+- **`uq_levels_name` normalization is minimal.** It is `unique (lower(btrim(name)))`,
+  which for Arabic only trims surrounding whitespace and lowercases Latin. Near-duplicates
+  differing by **hamza form, taa-marbuta vs haa, tatweel, or diacritics** (e.g.
+  "السنة الأولى" vs "السنه الأولى") are **NOT** blocked. **Accepted as-is — no Arabic
+  normalization unless explicitly asked.**
+- **Large-list paths unexercised.** medhat holds only **4 books**, so the runtime pass
+  did not exercise long lists, the `.limit(1000)` book-count cap (see "Known ceiling"),
+  or picker pagination.
+- **Runtime verification must use the `medhat` flavor, not `ahmed`** — each flavor points
+  at its own Supabase project, and medhat is the only one with `0029` applied. Running
+  ahmed/mokhtar would hit a DB with no `levels` table.
+
 ## Context
 
 Students currently browse books by **scientific section** only. The client wants
